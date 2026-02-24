@@ -131,20 +131,30 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
                 onClick={() => handleSelect(airport)}
                 className="px-4 py-3 cursor-pointer hover:bg-[var(--muted)] transition-colors"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-medium">
-                      {airport.city_ko || airport.city}
-                    </span>
-                    <span className="text-[var(--muted-foreground)] text-sm ml-2">
-                      {airport.city_ko ? airport.city : ""}
-                    </span>
+                <div className="flex items-center gap-3">
+                  <img
+                    src={`https://flagcdn.com/w40/${airport.country_code.toLowerCase()}.png`}
+                    srcSet={`https://flagcdn.com/w80/${airport.country_code.toLowerCase()}.png 2x`}
+                    alt={airport.country_code}
+                    className="w-7 h-5 object-cover rounded-sm shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-medium">
+                          {airport.city_ko || airport.city}
+                        </span>
+                        <span className="text-[var(--muted-foreground)] text-sm ml-2">
+                          {airport.city_ko ? airport.city : ""}
+                        </span>
+                      </div>
+                      <span className="text-sm font-mono text-[var(--muted-foreground)]">
+                        {airport.iata_code}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--muted-foreground)] mt-0.5 truncate">{airport.name}</p>
                   </div>
-                  <span className="text-sm font-mono text-[var(--muted-foreground)]">
-                    {airport.iata_code}
-                  </span>
                 </div>
-                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{airport.name}</p>
               </li>
             ))
           )}
