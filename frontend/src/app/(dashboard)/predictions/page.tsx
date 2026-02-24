@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { predictionsApi } from "@/lib/api-client";
 
@@ -47,19 +47,29 @@ function DirectionBadge({ direction }: { direction: string }) {
 
 export default function PredictionsPage() {
   const [originCode, setOriginCode] = useState("");
+  const [originDisplay, setOriginDisplay] = useState("");
   const [destCode, setDestCode] = useState("");
+  const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState("");
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [heatmapOrigin, setHeatmapOrigin] = useState("");
-  const [heatmapDest, setHeatmapDest] = useState("");
+  const [heatmapOriginCode, setHeatmapOriginCode] = useState("");
+  const [heatmapOriginDisplay, setHeatmapOriginDisplay] = useState("");
+  const [heatmapDestCode, setHeatmapDestCode] = useState("");
+  const [heatmapDestDisplay, setHeatmapDestDisplay] = useState("");
   const [heatmapMonth, setHeatmapMonth] = useState("");
   const [heatmap, setHeatmap] = useState<HeatmapResult | null>(null);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [heatmapError, setHeatmapError] = useState<string | null>(null);
+
+  // Swap refs
+  const predOriginKey = useRef(0);
+  const predDestKey = useRef(0);
+  const hmOriginKey = useRef(0);
+  const hmDestKey = useRef(0);
 
   const handlePredict = async () => {
     if (!originCode || !destCode || !date) return;
@@ -82,13 +92,13 @@ export default function PredictionsPage() {
   };
 
   const handleHeatmap = async () => {
-    if (!heatmapOrigin || !heatmapDest || !heatmapMonth) return;
+    if (!heatmapOriginCode || !heatmapDestCode || !heatmapMonth) return;
     setHeatmapLoading(true);
     setHeatmapError(null);
     try {
       const result = await predictionsApi.heatmap({
-        origin: heatmapOrigin,
-        dest: heatmapDest,
+        origin: heatmapOriginCode,
+        dest: heatmapDestCode,
         month: heatmapMonth,
       }) as HeatmapResult;
       setHeatmap(result);
@@ -98,6 +108,22 @@ export default function PredictionsPage() {
     } finally {
       setHeatmapLoading(false);
     }
+  };
+
+  const handlePredSwap = () => {
+    const tc = originCode, td = originDisplay;
+    setOriginCode(destCode); setOriginDisplay(destDisplay);
+    setDestCode(tc); setDestDisplay(td);
+    predOriginKey.current += 1;
+    predDestKey.current += 1;
+  };
+
+  const handleHmSwap = () => {
+    const tc = heatmapOriginCode, td = heatmapOriginDisplay;
+    setHeatmapOriginCode(heatmapDestCode); setHeatmapOriginDisplay(heatmapDestDisplay);
+    setHeatmapDestCode(tc); setHeatmapDestDisplay(td);
+    hmOriginKey.current += 1;
+    hmDestKey.current += 1;
   };
 
   const hasPredictionData = prediction && prediction.predicted_price !== null && prediction.model_version !== "none";
@@ -112,18 +138,32 @@ export default function PredictionsPage() {
         <p className="text-sm text-[var(--muted-foreground)] mb-4">
           노선과 출발일을 선택하면 AI가 가격 변동 추세를 분석합니다.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr_auto] gap-4 items-end">
           <AirportSearch
+            key={`po-${predOriginKey.current}`}
             label="출발지"
             placeholder="출발 도시"
-            value=""
-            onSelect={(code) => setOriginCode(code)}
+            value={originDisplay}
+            onSelect={(code, display) => { setOriginCode(code); setOriginDisplay(display || ""); }}
           />
+          <div className="hidden md:flex items-end pb-1">
+            <button
+              onClick={handlePredSwap}
+              disabled={!originCode && !destCode}
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30"
+              title="출발지/도착지 바꾸기"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
           <AirportSearch
+            key={`pd-${predDestKey.current}`}
             label="도착지"
             placeholder="도착 도시"
-            value=""
-            onSelect={(code) => setDestCode(code)}
+            value={destDisplay}
+            onSelect={(code, display) => { setDestCode(code); setDestDisplay(display || ""); }}
           />
           <div>
             <label className="block text-sm font-medium mb-1">출발일</label>
@@ -139,12 +179,24 @@ export default function PredictionsPage() {
             <button
               onClick={handlePredict}
               disabled={!originCode || !destCode || !date || loading}
-              className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {loading ? "분석 중..." : "예측 조회"}
             </button>
           </div>
         </div>
+
+        {/* Mobile swap */}
+        <button
+          onClick={handlePredSwap}
+          disabled={!originCode && !destCode}
+          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+        >
+          <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          출발지/도착지 바꾸기
+        </button>
 
         {/* Error */}
         {error && (
@@ -171,18 +223,18 @@ export default function PredictionsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">예측 가격</p>
-                <p className="text-xl font-bold">₩{Number(prediction.predicted_price).toLocaleString()}</p>
+                <p className="text-xl font-bold">&yen;{Number(prediction.predicted_price).toLocaleString()}</p>
               </div>
               {prediction.confidence_low && (
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">예측 하한</p>
-                  <p className="text-lg font-medium text-green-600">₩{Number(prediction.confidence_low).toLocaleString()}</p>
+                  <p className="text-lg font-medium text-green-600">&yen;{Number(prediction.confidence_low).toLocaleString()}</p>
                 </div>
               )}
               {prediction.confidence_high && (
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">예측 상한</p>
-                  <p className="text-lg font-medium text-red-600">₩{Number(prediction.confidence_high).toLocaleString()}</p>
+                  <p className="text-lg font-medium text-red-600">&yen;{Number(prediction.confidence_high).toLocaleString()}</p>
                 </div>
               )}
               {prediction.confidence_score && (
@@ -214,18 +266,32 @@ export default function PredictionsPage() {
         <p className="text-sm text-[var(--muted-foreground)] mb-4">
           출발일별 예상 가격을 히트맵으로 확인하세요. 초록색은 저렴, 빨간색은 비싼 날짜입니다.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr_auto] gap-4 items-end">
           <AirportSearch
+            key={`ho-${hmOriginKey.current}`}
             label="출발지"
             placeholder="출발 도시"
-            value=""
-            onSelect={(code) => setHeatmapOrigin(code)}
+            value={heatmapOriginDisplay}
+            onSelect={(code, display) => { setHeatmapOriginCode(code); setHeatmapOriginDisplay(display || ""); }}
           />
+          <div className="hidden md:flex items-end pb-1">
+            <button
+              onClick={handleHmSwap}
+              disabled={!heatmapOriginCode && !heatmapDestCode}
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30"
+              title="출발지/도착지 바꾸기"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
           <AirportSearch
+            key={`hd-${hmDestKey.current}`}
             label="도착지"
             placeholder="도착 도시"
-            value=""
-            onSelect={(code) => setHeatmapDest(code)}
+            value={heatmapDestDisplay}
+            onSelect={(code, display) => { setHeatmapDestCode(code); setHeatmapDestDisplay(display || ""); }}
           />
           <div>
             <label className="block text-sm font-medium mb-1">월</label>
@@ -239,13 +305,25 @@ export default function PredictionsPage() {
           <div className="flex items-end">
             <button
               onClick={handleHeatmap}
-              disabled={!heatmapOrigin || !heatmapDest || !heatmapMonth || heatmapLoading}
-              className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!heatmapOriginCode || !heatmapDestCode || !heatmapMonth || heatmapLoading}
+              className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {heatmapLoading ? "조회 중..." : "히트맵 조회"}
             </button>
           </div>
         </div>
+
+        {/* Mobile swap */}
+        <button
+          onClick={handleHmSwap}
+          disabled={!heatmapOriginCode && !heatmapDestCode}
+          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+        >
+          <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          출발지/도착지 바꾸기
+        </button>
 
         {heatmapError && (
           <div className="mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">

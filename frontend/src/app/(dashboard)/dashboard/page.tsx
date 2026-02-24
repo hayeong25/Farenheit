@@ -15,6 +15,12 @@ const popularRoutes = [
   { origin: "ICN", dest: "TPE", label: "서울 → 타이베이" },
 ];
 
+function getDefaultDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 14);
+  return d.toISOString().split("T")[0];
+}
+
 type SystemStatus = "ok" | "error" | "checking";
 
 export default function DashboardPage() {
@@ -38,6 +44,7 @@ export default function DashboardPage() {
 
   const hasData = stats && stats.prices > 0;
   const hasPredictions = stats && stats.predictions > 0;
+  const defaultDate = getDefaultDate();
 
   return (
     <div className="space-y-6">
@@ -45,30 +52,10 @@ export default function DashboardPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-[var(--background)] rounded-xl p-4 md:p-5 border border-[var(--border)]">
-          <p className="text-xs md:text-sm text-[var(--muted-foreground)]">등록된 공항</p>
-          <p className="text-2xl md:text-3xl font-bold mt-1">
-            {loading ? "-" : statsError ? "!" : (stats?.airports ?? 0).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-[var(--background)] rounded-xl p-4 md:p-5 border border-[var(--border)]">
-          <p className="text-xs md:text-sm text-[var(--muted-foreground)]">추적 중인 노선</p>
-          <p className="text-2xl md:text-3xl font-bold mt-1">
-            {loading ? "-" : statsError ? "!" : (stats?.routes ?? 0).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-[var(--background)] rounded-xl p-4 md:p-5 border border-[var(--border)]">
-          <p className="text-xs md:text-sm text-[var(--muted-foreground)]">수집된 가격 데이터</p>
-          <p className="text-2xl md:text-3xl font-bold mt-1">
-            {loading ? "-" : statsError ? "!" : (stats?.prices ?? 0).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-[var(--background)] rounded-xl p-4 md:p-5 border border-[var(--border)]">
-          <p className="text-xs md:text-sm text-[var(--muted-foreground)]">활성 예측</p>
-          <p className="text-2xl md:text-3xl font-bold mt-1">
-            {loading ? "-" : statsError ? "!" : (stats?.predictions ?? 0).toLocaleString()}
-          </p>
-        </div>
+        <StatCard label="등록된 공항" value={stats?.airports} loading={loading} error={statsError} />
+        <StatCard label="추적 중인 노선" value={stats?.routes} loading={loading} error={statsError} />
+        <StatCard label="수집된 가격 데이터" value={stats?.prices} loading={loading} error={statsError} />
+        <StatCard label="활성 예측" value={stats?.predictions} loading={loading} error={statsError} />
       </div>
 
       {statsError && (
@@ -84,17 +71,17 @@ export default function DashboardPage() {
           {popularRoutes.map((route) => (
             <Link
               key={`${route.origin}-${route.dest}`}
-              href={`/search?origin=${route.origin}&dest=${route.dest}`}
+              href={`/search?origin=${route.origin}&dest=${route.dest}&date=${defaultDate}`}
               className="flex items-center justify-between px-4 py-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50/50 transition-all group"
             >
               <span className="text-sm font-medium">{route.label}</span>
-              <span className="text-farenheit-500 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+              <span className="text-farenheit-500 opacity-0 group-hover:opacity-100 transition-opacity">&rarr;</span>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* System Status - Dynamic */}
+      {/* System Status */}
       <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
         <h2 className="text-lg font-semibold mb-4">시스템 상태</h2>
         <div className="space-y-3">
@@ -121,7 +108,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Getting Started Guide - shown when no data yet */}
+      {/* Getting Started Guide */}
       {!loading && !hasData && (
         <div className="bg-farenheit-50 rounded-xl p-6 border border-farenheit-200">
           <h2 className="text-lg font-semibold mb-3 text-farenheit-700">시작하기</h2>
@@ -133,6 +120,23 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function StatCard({ label, value, loading, error }: { label: string; value?: number; loading: boolean; error: boolean }) {
+  return (
+    <div className="bg-[var(--background)] rounded-xl p-4 md:p-5 border border-[var(--border)]">
+      <p className="text-xs md:text-sm text-[var(--muted-foreground)]">{label}</p>
+      <p className="text-2xl md:text-3xl font-bold mt-1">
+        {loading ? (
+          <span className="inline-block w-16 h-8 bg-[var(--muted)] rounded animate-pulse" />
+        ) : error ? (
+          "!"
+        ) : (
+          (value ?? 0).toLocaleString()
+        )}
+      </p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { recommendationsApi } from "@/lib/api-client";
 
@@ -41,12 +41,17 @@ const signalConfig: Record<string, { color: string; bgColor: string; label: stri
 
 export default function RecommendationsPage() {
   const [originCode, setOriginCode] = useState("");
+  const [originDisplay, setOriginDisplay] = useState("");
   const [destCode, setDestCode] = useState("");
+  const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState("");
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const originKeyRef = useRef(0);
+  const destKeyRef = useRef(0);
 
   const handleGetRecommendation = async () => {
     if (!originCode || !destCode || !date) return;
@@ -66,6 +71,14 @@ export default function RecommendationsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSwap = () => {
+    const tc = originCode, td = originDisplay;
+    setOriginCode(destCode); setOriginDisplay(destDisplay);
+    setDestCode(tc); setDestDisplay(td);
+    originKeyRef.current += 1;
+    destKeyRef.current += 1;
   };
 
   const signal = recommendation ? signalConfig[recommendation.signal] || signalConfig.HOLD : null;
@@ -95,18 +108,32 @@ export default function RecommendationsPage() {
       {/* Query Form */}
       <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
         <h2 className="text-lg font-semibold mb-4">추천 조회</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr_auto] gap-4 items-end">
           <AirportSearch
+            key={`ro-${originKeyRef.current}`}
             label="출발지"
             placeholder="출발 도시"
-            value=""
-            onSelect={(code) => setOriginCode(code)}
+            value={originDisplay}
+            onSelect={(code, display) => { setOriginCode(code); setOriginDisplay(display || ""); }}
           />
+          <div className="hidden md:flex items-end pb-1">
+            <button
+              onClick={handleSwap}
+              disabled={!originCode && !destCode}
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30"
+              title="출발지/도착지 바꾸기"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
           <AirportSearch
+            key={`rd-${destKeyRef.current}`}
             label="도착지"
             placeholder="도착 도시"
-            value=""
-            onSelect={(code) => setDestCode(code)}
+            value={destDisplay}
+            onSelect={(code, display) => { setDestCode(code); setDestDisplay(display || ""); }}
           />
           <div>
             <label className="block text-sm font-medium mb-1">출발일</label>
@@ -122,12 +149,24 @@ export default function RecommendationsPage() {
             <button
               onClick={handleGetRecommendation}
               disabled={!originCode || !destCode || !date || loading}
-              className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {loading ? "분석 중..." : "추천 받기"}
             </button>
           </div>
         </div>
+
+        {/* Mobile swap */}
+        <button
+          onClick={handleSwap}
+          disabled={!originCode && !destCode}
+          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+        >
+          <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          출발지/도착지 바꾸기
+        </button>
       </div>
 
       {/* Error */}

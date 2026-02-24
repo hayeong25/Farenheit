@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { flightsApi, FlightOffer, AirlineInfo } from "@/lib/api-client";
@@ -60,12 +60,15 @@ function SearchContent() {
     origin: string; dest: string; date: string; returnDate?: string; tripType: string;
   } | null>(null);
 
+  // Swap support
+  const originKeyRef = useRef(0);
+  const destKeyRef = useRef(0);
+
   const handleSearch = useCallback(async (
     origin: string, dest: string, depDate: string, cabin: string,
     stops: string, sort: string, retDate?: string
   ) => {
     if (!origin || !dest || !depDate) return;
-    if (tripType === "round_trip" && !retDate) return;
 
     setIsLoading(true);
     setError(null);
@@ -100,7 +103,6 @@ function SearchContent() {
       const result = await flightsApi.search(params as any);
       setOffers(result.offers);
       setAvailableAirlines(result.available_airlines);
-      // Select all airlines by default
       setSelectedAirlines(new Set(result.available_airlines.map(a => a.code)));
     } catch {
       setError("검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
@@ -108,7 +110,7 @@ function SearchContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [originDisplay, destDisplay, router, tripType]);
+  }, [originDisplay, destDisplay, router]);
 
   // Auto-search on URL params
   useEffect(() => {
@@ -131,14 +133,14 @@ function SearchContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-search when filters change
+  // Re-search when filters change (including cabin class)
   useEffect(() => {
     if (searched && originCode && destCode && date) {
       const retDate = tripType === "round_trip" ? returnDate : undefined;
       handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maxStops, sortBy]);
+  }, [maxStops, sortBy, cabinClass]);
 
   // Client-side airline filtering + price_desc sorting
   const filteredOffers = useMemo(() => {
@@ -176,6 +178,17 @@ function SearchContent() {
     }
   };
 
+  const handleSwap = () => {
+    const tempCode = originCode;
+    const tempDisplay = originDisplay;
+    setOriginCode(destCode);
+    setOriginDisplay(destDisplay);
+    setDestCode(tempCode);
+    setDestDisplay(tempDisplay);
+    originKeyRef.current += 1;
+    destKeyRef.current += 1;
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">항공편 검색</h1>
@@ -208,16 +221,30 @@ function SearchContent() {
 
         <div className={`grid grid-cols-1 gap-4 ${
           tripType === "round_trip"
-            ? "md:grid-cols-6"
-            : "md:grid-cols-5"
+            ? "md:grid-cols-[1fr_auto_1fr_1fr_1fr_1fr_auto]"
+            : "md:grid-cols-[1fr_auto_1fr_1fr_1fr_auto]"
         }`}>
           <AirportSearch
+            key={`s-origin-${originKeyRef.current}`}
             label="출발지"
             placeholder="도시 또는 공항 검색"
             value={originDisplay}
             onSelect={(code, display) => { setOriginCode(code); setOriginDisplay(display); }}
           />
+          <div className="hidden md:flex items-end pb-1">
+            <button
+              onClick={handleSwap}
+              disabled={!originCode && !destCode}
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30"
+              title="출발지/도착지 바꾸기"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
           <AirportSearch
+            key={`s-dest-${destKeyRef.current}`}
             label="도착지"
             placeholder="도시 또는 공항 검색"
             value={destDisplay}
@@ -230,7 +257,6 @@ function SearchContent() {
               value={date}
               onChange={(e) => {
                 setDate(e.target.value);
-                // If return date is before new departure date, clear it
                 if (returnDate && e.target.value > returnDate) {
                   setReturnDate("");
                 }
@@ -271,12 +297,24 @@ function SearchContent() {
                 handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
               }}
               disabled={!originCode || !destCode || !date || (tripType === "round_trip" && !returnDate) || isLoading}
-              className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {isLoading ? "검색 중..." : "검색"}
             </button>
           </div>
         </div>
+
+        {/* Mobile swap button */}
+        <button
+          onClick={handleSwap}
+          disabled={!originCode && !destCode}
+          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+        >
+          <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          출발지/도착지 바꾸기
+        </button>
       </div>
 
       {/* Error */}
@@ -315,6 +353,7 @@ function SearchContent() {
                   {filteredOffers.length}개 항공편
                   {filteredOffers.length !== offers.length && ` (전체 ${offers.length}개 중)`}
                   {directCount > 0 && ` | 직항 ${directCount}개`}
+                  {minPrice > 0 && ` | 최저가 ${formatPrice(minPrice, "KRW")}`}
                 </p>
               </div>
               <div className="flex gap-3">
@@ -369,7 +408,7 @@ function SearchContent() {
                       <span className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${
                         checked
                           ? "bg-farenheit-500 border-farenheit-500"
-                          : "border-gray-300 bg-white"
+                          : "border-gray-300 bg-[var(--background)]"
                       }`}>
                         {checked && (
                           <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -440,7 +479,7 @@ function SearchContent() {
                             </span>
                           )}
                           <span className="font-semibold">{formatTime(offer.departure_time)}</span>
-                          <span className="text-[var(--muted-foreground)]">→</span>
+                          <span className="text-[var(--muted-foreground)]">&rarr;</span>
                           <span className="font-semibold">{formatTime(offer.arrival_time)}</span>
                           <span className="text-[var(--muted-foreground)]">{formatDuration(offer.duration_minutes)}</span>
                           <span className="text-[var(--muted-foreground)]">{getStopsLabel(offer.stops)}</span>
@@ -456,7 +495,7 @@ function SearchContent() {
                               </span>
                             )}
                             <span className="font-semibold">{formatTime(offer.return_departure_time)}</span>
-                            <span className="text-[var(--muted-foreground)]">→</span>
+                            <span className="text-[var(--muted-foreground)]">&rarr;</span>
                             <span className="font-semibold">{formatTime(offer.return_arrival_time)}</span>
                             <span className="text-[var(--muted-foreground)]">{formatDuration(offer.return_duration_minutes)}</span>
                             <span className="text-[var(--muted-foreground)]">
@@ -487,7 +526,9 @@ function SearchContent() {
       {/* Initial State */}
       {!isLoading && !searched && (
         <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
-          <div className="text-4xl mb-4">&#9992;&#65039;</div>
+          <svg className="w-12 h-12 mx-auto mb-4 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+          </svg>
           <p className="text-lg mb-2">출발지, 도착지, 날짜를 입력하고 검색하세요</p>
           <p className="text-sm">Amadeus API로 전 세계 항공편을 실시간 검색합니다</p>
         </div>
