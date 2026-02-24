@@ -1,22 +1,19 @@
-import asyncio
-import logging
+"""Prediction task (runs without Celery)."""
 
-from pipeline.celery_app import app
+import logging
 
 logger = logging.getLogger(__name__)
 
 
-@app.task(name="pipeline.tasks.run_prediction.predict_all_active")
-def predict_all_active():
-    """Run prediction models for all active routes."""
+def predict_all_active_sync() -> dict:
+    """Run prediction models for all active routes (sync wrapper)."""
     # TODO: Implement with ML models
     logger.info("Running predictions for all active routes")
     return {"status": "ok", "message": "Prediction pipeline not yet implemented"}
 
 
-@app.task(name="pipeline.tasks.run_prediction.retrain_models")
-def retrain_models():
-    """Retrain ML models with latest data."""
+def retrain_models_sync() -> dict:
+    """Retrain ML models with latest data (sync wrapper)."""
     # TODO: Implement model retraining
     logger.info("Retraining ML models")
     return {"status": "ok", "message": "Model retraining not yet implemented"}

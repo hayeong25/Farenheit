@@ -1,13 +1,12 @@
-import logging
+"""Alert notification task (runs without Celery)."""
 
-from pipeline.celery_app import app
+import logging
 
 logger = logging.getLogger(__name__)
 
 
-@app.task(name="pipeline.tasks.send_alerts.check_and_send")
-def check_and_send():
-    """Check price alerts and send notifications when triggered."""
+def check_and_send_sync() -> dict:
+    """Check price alerts and send notifications (sync wrapper)."""
     # TODO: Implement alert checking and notification sending
     logger.info("Checking price alerts")
     return {"status": "ok", "message": "Alert system not yet implemented"}

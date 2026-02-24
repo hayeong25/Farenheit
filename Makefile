@@ -1,26 +1,21 @@
-.PHONY: dev backend frontend worker scheduler test lint clean
+.PHONY: dev backend frontend install seed test lint clean
 
-# Development
-dev:
-	docker compose -f infra/docker-compose.yml up --build
+# Install all dependencies
+install:
+	cd backend && pip install -e ".[dev]"
+	cd frontend && npm install
 
-dev-down:
-	docker compose -f infra/docker-compose.yml down
+# Seed database with reference data
+seed:
+	python scripts/seed_airports.py
 
-# Backend
+# Run backend (includes APScheduler)
 backend:
 	cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-# Frontend
+# Run frontend
 frontend:
 	cd frontend && npm run dev
-
-# Pipeline
-worker:
-	cd pipeline && celery -A celery_app worker --loglevel=info --concurrency=4
-
-scheduler:
-	cd pipeline && celery -A celery_app beat --loglevel=info
 
 # Testing
 test-backend:
@@ -40,15 +35,9 @@ lint-frontend:
 
 lint: lint-backend lint-frontend
 
-# Database
-db-migrate:
-	cd backend && alembic upgrade head
-
-db-revision:
-	cd backend && alembic revision --autogenerate -m "$(msg)"
-
 # Cleanup
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; true
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null; true
 	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null; true
+	rm -f data/farenheit.db

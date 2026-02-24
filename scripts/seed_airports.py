@@ -1,8 +1,21 @@
-"""Seed airport reference data into the database."""
+"""Seed airport, airline, and route reference data into the database."""
 
 import asyncio
+import sys
+from pathlib import Path
 
+# Add backend to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root / "backend"))
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.config import settings, DB_PATH
+from app.models.base import Base
+from app.models.airport import Airport
+from app.models.airline import Airline
+from app.models.route import Route
 
 # Major airports data
 AIRPORTS = [
@@ -81,41 +94,43 @@ POPULAR_ROUTES = [
 ]
 
 
-async def seed(database_url: str) -> None:
+async def seed() -> None:
     """Seed airports, airlines, and routes."""
-    # Import models here to ensure they're registered
-    from backend.app.models.airport import Airport
-    from backend.app.models.airline import Airline
-    from backend.app.models.route import Route
+    # Ensure data directory exists
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    engine = create_async_engine(database_url)
+    engine = create_async_engine(settings.DATABASE_URL, echo=False)
+
+    # Create tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with session_factory() as session:
+        # Check if already seeded
+        result = await session.execute(select(Airport).limit(1))
+        if result.scalar_one_or_none():
+            print("Database already seeded. Skipping.")
+            await engine.dispose()
+            return
+
         # Seed airports
         for iata, name, city, country, lat, lon, tz in AIRPORTS:
-            airport = Airport(
-                iata_code=iata,
-                name=name,
-                city=city,
-                country_code=country,
-                latitude=lat,
-                longitude=lon,
-                timezone=tz,
-            )
-            session.add(airport)
+            session.add(Airport(
+                iata_code=iata, name=name, city=city,
+                country_code=country, latitude=lat, longitude=lon, timezone=tz,
+            ))
 
         # Seed airlines
         for iata, name, country in AIRLINES:
-            airline = Airline(iata_code=iata, name=name, country_code=country)
-            session.add(airline)
+            session.add(Airline(iata_code=iata, name=name, country_code=country))
 
         await session.flush()
 
         # Seed routes
         for origin, dest in POPULAR_ROUTES:
-            route = Route(origin_code=origin, dest_code=dest)
-            session.add(route)
+            session.add(Route(origin_code=origin, dest_code=dest))
 
         await session.commit()
 
@@ -124,7 +139,4 @@ async def seed(database_url: str) -> None:
 
 
 if __name__ == "__main__":
-    import sys
-
-    url = sys.argv[1] if len(sys.argv) > 1 else "postgresql+asyncpg://farenheit:localdev@localhost:5432/farenheit"
-    asyncio.run(seed(url))
+    asyncio.run(seed())

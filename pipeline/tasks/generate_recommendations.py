@@ -1,13 +1,12 @@
-import logging
+"""Recommendation generation task (runs without Celery)."""
 
-from pipeline.celery_app import app
+import logging
 
 logger = logging.getLogger(__name__)
 
 
-@app.task(name="pipeline.tasks.generate_recommendations.generate_all")
-def generate_all():
-    """Generate BUY/WAIT/HOLD recommendations based on latest predictions."""
+def generate_all_sync() -> dict:
+    """Generate BUY/WAIT/HOLD recommendations (sync wrapper)."""
     # TODO: Implement recommendation generation
     logger.info("Generating recommendations for all active routes")
     return {"status": "ok", "message": "Recommendation generation not yet implemented"}

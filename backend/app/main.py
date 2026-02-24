@@ -7,11 +7,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api.router import api_router
 from app.db.session import engine
+from app.models.base import Base
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Create all tables on startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Start background scheduler
+    from app.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
+
     yield
+
+    stop_scheduler()
     await engine.dispose()
 
 

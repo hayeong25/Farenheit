@@ -1,14 +1,15 @@
+import os
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
+
+PROJECT_ROOT = Path(__file__).parent.parent
+DB_PATH = PROJECT_ROOT / "data" / "farenheit.db"
 
 
 class PipelineSettings(BaseSettings):
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://farenheit:localdev@localhost:5432/farenheit"
-
-    # Redis / Celery broker
-    REDIS_URL: str = "redis://localhost:6379/0"
-    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+    # Database (SQLite)
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{DB_PATH}"
 
     # Amadeus API
     AMADEUS_CLIENT_ID: str = ""
@@ -19,7 +20,7 @@ class PipelineSettings(BaseSettings):
     COLLECTION_BATCH_SIZE: int = 10
     MAX_RETRIES: int = 3
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 pipeline_settings = PipelineSettings()

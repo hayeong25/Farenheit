@@ -1,12 +1,18 @@
+import os
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
+
+# Project root directory
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+# SQLite database path
+DB_PATH = PROJECT_ROOT / "data" / "farenheit.db"
 
 
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://farenheit:localdev@localhost:5432/farenheit"
-
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    # Database (SQLite)
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{DB_PATH}"
 
     # Amadeus API
     AMADEUS_CLIENT_ID: str = ""
@@ -21,7 +27,11 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    # Scheduler
+    COLLECTION_INTERVAL_MINUTES: int = 30
+    PREDICTION_INTERVAL_MINUTES: int = 60
+
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

@@ -1,11 +1,12 @@
+"""Price collection task (runs without Celery)."""
+
 import asyncio
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from pipeline.celery_app import app
 from pipeline.collectors.amadeus_collector import AmadeusCollector
 from pipeline.collectors.base import PriceObservation
 from pipeline.config import pipeline_settings
@@ -45,14 +46,20 @@ async def _store_observations(
     observations: list[PriceObservation],
 ) -> int:
     """Store price observations in the database."""
-    # Import here to avoid circular dependency
-    from backend.app.models.flight_price import FlightPrice
-    from backend.app.models.route import Route
+    import sys
+    from pathlib import Path
+
+    # Ensure backend is importable
+    project_root = Path(__file__).parent.parent.parent
+    if str(project_root / "backend") not in sys.path:
+        sys.path.insert(0, str(project_root / "backend"))
+
+    from app.models.flight_price import FlightPrice
+    from app.models.route import Route
 
     stored = 0
     async with session_factory() as session:
         for obs in observations:
-            # Find or skip route
             result = await session.execute(
                 select(Route).where(
                     Route.origin_code == obs.origin,
@@ -85,9 +92,16 @@ async def _store_observations(
     return stored
 
 
-async def _collect_all_routes_async() -> dict:
+async def collect_all_routes_async() -> dict:
     """Main collection logic (async)."""
-    from backend.app.models.route import Route
+    import sys
+    from pathlib import Path
+
+    project_root = Path(__file__).parent.parent.parent
+    if str(project_root / "backend") not in sys.path:
+        sys.path.insert(0, str(project_root / "backend"))
+
+    from app.models.route import Route
 
     session_factory = _get_session_factory()
     collector = AmadeusCollector()
@@ -101,7 +115,7 @@ async def _collect_all_routes_async() -> dict:
         logger.info("No active routes to collect")
         return {"status": "ok", "routes": 0, "observations": 0}
 
-    # Generate departure dates (next 7 to 90 days)
+    # Generate departure dates (next 7 to 90 days, weekly intervals)
     today = date.today()
     departure_dates = [today + timedelta(days=d) for d in range(7, 91, 7)]
 
@@ -123,12 +137,6 @@ async def _collect_all_routes_async() -> dict:
     }
 
 
-@app.task(name="pipeline.tasks.collect_prices.collect_all_routes", bind=True, max_retries=3)
-def collect_all_routes(self):
-    """Celery task: Collect prices for all active routes."""
-    try:
-        result = asyncio.run(_collect_all_routes_async())
-        return result
-    except Exception as exc:
-        logger.error(f"Collection failed: {exc}")
-        self.retry(exc=exc, countdown=60 * (self.request.retries + 1))
+def collect_all_routes_sync() -> dict:
+    """Synchronous wrapper for APScheduler."""
+    return asyncio.run(collect_all_routes_async())

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(cd:*)",
+      "Bash(docker --version 2>/dev/null && docker compose version 2>/dev/null)",
+      "Bash(python:*)",
+      "Bash(cd \"/c/workspace/[Project] Farenheit\" && docker compose -f infra/docker-compose.yml up -d --build 2>&1)",
+      "Bash(head:*)",
+      "Bash(psql:*)",
+      "Bash(cd \"/c/workspace/[Project] Farenheit/backend\" && pip install -e \".[dev]\" 2>&1)",
+      "Bash(pip install:*)",
+      "Bash(tasklist | grep -i uvicorn 2>/dev/null; netstat -ano | grep :8000 2>/dev/null || ss -tlnp | grep :8000 2>/dev/null)",
+      "Bash(netstat -ano | grep \"LISTENING\" | grep -E \":\\(8080|8081|8082|8090|9000\\)\" 2>/dev/null)",
+      "Bash(curl:*)"
+    ]
+  }
+}

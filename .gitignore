@@ -59,10 +59,7 @@ coverage.xml
 # mypy
 .mypy_cache/
 
-# Celery
-celerybeat-schedule
-celerybeat.pid
-
 # Database
+data/
 *.db
 *.sqlite3
