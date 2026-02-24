@@ -83,12 +83,25 @@ export interface Airport {
 }
 
 // Flight APIs
+export interface AlertResponse {
+  id: number;
+  route_id: number;
+  target_price: number;
+  cabin_class: string;
+  departure_date: string | null;
+  is_triggered: boolean;
+  triggered_at: string | null;
+  created_at: string;
+}
+
 export const flightsApi = {
   search: (params: {
     origin: string;
     dest: string;
     departure_date: string;
     cabin_class?: string;
+    max_stops?: number | string;
+    sort_by?: string;
   }) => fetchAPI<FlightSearchResponse>(`/flights/search?${qs(params)}`),
 
   priceHistory: (params: {
@@ -148,6 +161,25 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ email, password, display_name }),
     }),
+};
+
+// Alerts API
+export const alertsApi = {
+  list: () => fetchAPI<AlertResponse[]>("/alerts"),
+
+  create: (data: {
+    route_id: number;
+    target_price: number;
+    cabin_class?: string;
+    departure_date?: string;
+  }) =>
+    fetchAPI<AlertResponse>("/alerts", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: number) =>
+    fetchAPI(`/alerts/${id}`, { method: "DELETE" }),
 };
 
 // Health API

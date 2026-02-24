@@ -1,6 +1,5 @@
 """APScheduler-based task scheduler (replaces Celery + Redis)."""
 
-import asyncio
 import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -24,7 +23,7 @@ def _run_collect_prices() -> None:
 
 
 def _run_predictions() -> None:
-    """Scheduled job: run ML predictions."""
+    """Scheduled job: run ML predictions, then generate recommendations and check alerts."""
     logger.info("Scheduler: Running predictions...")
     try:
         from pipeline.tasks.run_prediction import predict_all_active_sync
@@ -32,6 +31,24 @@ def _run_predictions() -> None:
         logger.info(f"Scheduler: Predictions complete - {result}")
     except Exception as e:
         logger.error(f"Scheduler: Predictions failed - {e}")
+
+    # Check alerts after predictions
+    try:
+        from pipeline.tasks.send_alerts import check_and_send_sync
+        alert_result = check_and_send_sync()
+        logger.info(f"Scheduler: Alerts checked - {alert_result}")
+    except Exception as e:
+        logger.error(f"Scheduler: Alert check failed - {e}")
+
+
+def _run_cleanup() -> None:
+    """Scheduled job: clean up old data."""
+    try:
+        from pipeline.tasks.cleanup import apply_retention_policy_sync
+        result = apply_retention_policy_sync()
+        logger.info(f"Scheduler: Cleanup complete - {result}")
+    except Exception as e:
+        logger.error(f"Scheduler: Cleanup failed - {e}")
 
 
 def start_scheduler() -> None:
@@ -44,6 +61,7 @@ def start_scheduler() -> None:
         id="collect_prices",
         name="Collect flight prices",
         replace_existing=True,
+        max_instances=1,  # Prevent overlapping
     )
 
     # Run predictions periodically
@@ -52,7 +70,18 @@ def start_scheduler() -> None:
         "interval",
         minutes=settings.PREDICTION_INTERVAL_MINUTES,
         id="run_predictions",
-        name="Run ML predictions",
+        name="Run ML predictions + alerts",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Daily cleanup at 4 AM
+    scheduler.add_job(
+        _run_cleanup,
+        "cron",
+        hour=4,
+        id="cleanup",
+        name="Data cleanup",
         replace_existing=True,
     )
 

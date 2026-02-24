@@ -40,6 +40,8 @@ async def create_alert(
     )
     db.add(alert)
     await db.flush()
+    await db.commit()
+    await db.refresh(alert)
     return AlertResponse.model_validate(alert)
 
 
@@ -56,3 +58,4 @@ async def delete_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     await db.delete(alert)
+    await db.commit()

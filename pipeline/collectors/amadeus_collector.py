@@ -67,7 +67,7 @@ class AmadeusCollector(AbstractCollector):
                 "adults": 1,
                 "travelClass": cabin_class,
                 "max": 50,
-                "currencyCode": "USD",
+                "currencyCode": "KRW",
             }
             if return_date:
                 params["returnDate"] = return_date.isoformat()

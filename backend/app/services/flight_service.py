@@ -149,7 +149,13 @@ class FlightService:
         self.db = db
 
     async def search(
-        self, origin: str, dest: str, departure_date: date, cabin_class: str
+        self,
+        origin: str,
+        dest: str,
+        departure_date: date,
+        cabin_class: str,
+        max_stops: int | None = None,
+        sort_by: str = "price",
     ) -> FlightSearchResponse:
         # Always search Amadeus API for live results
         offers = await _amadeus_client.search_flights(origin, dest, departure_date, cabin_class)
@@ -158,14 +164,41 @@ class FlightService:
         if not offers:
             offers = await self._search_from_db(origin, dest, departure_date, cabin_class)
 
+        # Deduplicate: keep cheapest per (airline, stops, duration bucket)
+        offers = self._deduplicate_offers(offers)
+
+        # Filter by stops
+        if max_stops is not None:
+            offers = [o for o in offers if o.stops <= max_stops]
+
+        # Sort
+        if sort_by == "duration":
+            offers.sort(key=lambda o: (o.duration_minutes or 9999, o.price_amount))
+        elif sort_by == "stops":
+            offers.sort(key=lambda o: (o.stops, o.price_amount))
+        else:
+            offers.sort(key=lambda o: o.price_amount)
+
         return FlightSearchResponse(
             origin=origin,
             destination=dest,
             departure_date=departure_date,
             cabin_class=cabin_class,
-            offers=sorted(offers, key=lambda o: o.price_amount),
+            offers=offers,
             total_count=len(offers),
         )
+
+    @staticmethod
+    def _deduplicate_offers(offers: list[FlightOffer]) -> list[FlightOffer]:
+        """Keep the cheapest offer per unique itinerary (airline + stops + ~duration)."""
+        seen: dict[str, FlightOffer] = {}
+        for offer in offers:
+            # Round duration to 30-min buckets to group similar flights
+            dur_bucket = (offer.duration_minutes or 0) // 30
+            key = f"{offer.airline_code}|{offer.stops}|{dur_bucket}"
+            if key not in seen or offer.price_amount < seen[key].price_amount:
+                seen[key] = offer
+        return list(seen.values())
 
     async def _search_from_db(
         self, origin: str, dest: str, departure_date: date, cabin_class: str
@@ -264,6 +297,6 @@ class FlightService:
             min_price=min(amounts) if amounts else None,
             max_price=max(amounts) if amounts else None,
             avg_price=(
-                Decimal(str(sum(amounts) / len(amounts))) if amounts else None
+                sum(amounts) / len(amounts) if amounts else None
             ),
         )
