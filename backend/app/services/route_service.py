@@ -18,7 +18,7 @@ class RouteService:
         return [RouteResponse.model_validate(r) for r in routes]
 
     async def search_airports(self, query: str) -> list[AirportSearchResponse]:
-        search_term = f"%{query.upper()}%"
+        search_term = f"%{query}%"
         result = await self.db.execute(
             select(Airport)
             .where(
@@ -26,6 +26,7 @@ class RouteService:
                     Airport.iata_code.ilike(search_term),
                     Airport.name.ilike(search_term),
                     Airport.city.ilike(search_term),
+                    Airport.city_ko.ilike(search_term),
                 )
             )
             .limit(10)

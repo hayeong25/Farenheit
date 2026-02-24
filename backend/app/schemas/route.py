@@ -16,6 +16,7 @@ class AirportSearchResponse(BaseModel):
     iata_code: str
     name: str
     city: str
+    city_ko: str | None = None
     country_code: str
 
     model_config = {"from_attributes": True}

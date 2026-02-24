@@ -1,6 +1,22 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AirportSearch } from "@/components/flights/AirportSearch";
 
 export default function HomePage() {
+  const router = useRouter();
+  const [originCode, setOriginCode] = useState("");
+  const [destCode, setDestCode] = useState("");
+  const [date, setDate] = useState("");
+
+  const handleSearch = () => {
+    if (originCode && destCode && date) {
+      router.push(`/search?origin=${originCode}&dest=${destCode}&date=${date}`);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -24,7 +40,6 @@ export default function HomePage() {
       {/* Hero */}
       <main className="flex-1 flex items-center justify-center">
         <div className="max-w-3xl mx-auto px-6 text-center">
-          <div className="text-6xl mb-6">🌡️</div>
           <h2 className="text-5xl font-bold mb-4 tracking-tight">
             항공권 가격의
             <br />
@@ -39,36 +54,35 @@ export default function HomePage() {
           {/* Search Form */}
           <div className="bg-[var(--muted)] rounded-2xl p-6 max-w-2xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium mb-1 text-left">출발지</label>
-                <input
-                  type="text"
-                  placeholder="ICN"
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 text-left">도착지</label>
-                <input
-                  type="text"
-                  placeholder="NRT"
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
-                />
-              </div>
+              <AirportSearch
+                label="출발지"
+                placeholder="도시 또는 공항 검색"
+                value=""
+                onSelect={(code) => setOriginCode(code)}
+              />
+              <AirportSearch
+                label="도착지"
+                placeholder="도시 또는 공항 검색"
+                value=""
+                onSelect={(code) => setDestCode(code)}
+              />
               <div>
                 <label className="block text-sm font-medium mb-1 text-left">출발일</label>
                 <input
                   type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 />
               </div>
             </div>
-            <Link
-              href="/dashboard/search"
-              className="block w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors text-center"
+            <button
+              onClick={handleSearch}
+              disabled={!originCode || !destCode || !date}
+              className="block w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               가격 분석하기
-            </Link>
+            </button>
           </div>
 
           {/* Features */}
