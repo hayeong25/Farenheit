@@ -9,18 +9,10 @@ class ApiError extends Error {
   }
 }
 
-function getAuthHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const token = localStorage.getItem("access_token");
-  if (token) return { Authorization: `Bearer ${token}` };
-  return {};
-}
-
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
       ...options?.headers,
     },
     ...options,
@@ -163,21 +155,6 @@ export const statsApi = {
   get: () => fetchAPI<StatsResponse>("/stats"),
 };
 
-// Auth APIs
-export const authApi = {
-  login: (email: string, password: string) =>
-    fetchAPI<{ access_token: string; token_type: string }>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
-
-  register: (email: string, password: string, display_name?: string) =>
-    fetchAPI<{ id: number; email: string; display_name: string | null }>("/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ email, password, display_name }),
-    }),
-};
-
 // Alerts API
 export const alertsApi = {
   list: () => fetchAPI<AlertResponse[]>("/alerts"),
@@ -197,7 +174,3 @@ export const alertsApi = {
     fetchAPI(`/alerts/${id}`, { method: "DELETE" }),
 };
 
-// Health API
-export const healthApi = {
-  check: () => fetchAPI("/health"),
-};

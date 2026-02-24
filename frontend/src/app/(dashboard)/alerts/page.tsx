@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { alertsApi, AlertResponse, routesApi } from "@/lib/api-client";
+import { alertsApi, AlertResponse } from "@/lib/api-client";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("ko-KR", {
@@ -15,7 +15,6 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
@@ -25,14 +24,7 @@ export default function AlertsPage() {
   const [departureDate, setDepartureDate] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const checkAuth = useCallback(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-    setIsLoggedIn(!!token);
-    return !!token;
-  }, []);
-
   const loadAlerts = useCallback(async () => {
-    if (!checkAuth()) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -43,7 +35,7 @@ export default function AlertsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAuth]);
+  }, []);
 
   useEffect(() => {
     loadAlerts();
@@ -84,14 +76,12 @@ export default function AlertsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">가격 알림</h1>
-        {isLoggedIn && (
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 rounded-lg bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors"
-          >
-            + 알림 추가
-          </button>
-        )}
+        <button
+          onClick={() => setShowCreate(true)}
+          className="px-4 py-2 rounded-lg bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors"
+        >
+          + 알림 추가
+        </button>
       </div>
 
       {/* How it works */}
@@ -128,79 +118,69 @@ export default function AlertsPage() {
         </div>
       )}
 
-      {/* Not logged in */}
-      {!isLoggedIn && (
-        <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
-          <p className="text-lg mb-2">로그인이 필요합니다</p>
-          <p className="text-sm">상단의 Login 버튼을 클릭하여 로그인하면 가격 알림을 설정할 수 있습니다.</p>
-        </div>
-      )}
-
       {/* Alert List */}
-      {isLoggedIn && (
-        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-          <h2 className="text-lg font-semibold mb-4">
-            내 알림 목록
-            <span className="text-sm font-normal text-[var(--muted-foreground)] ml-2">
-              {alerts.length}개
-            </span>
-          </h2>
+      <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+        <h2 className="text-lg font-semibold mb-4">
+          알림 목록
+          <span className="text-sm font-normal text-[var(--muted-foreground)] ml-2">
+            {alerts.length}개
+          </span>
+        </h2>
 
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block w-6 h-6 border-4 border-farenheit-200 border-t-farenheit-500 rounded-full animate-spin" />
-            </div>
-          ) : alerts.length === 0 ? (
-            <div className="text-center py-12 text-[var(--muted-foreground)]">
-              <p>설정된 가격 알림이 없습니다.</p>
-              <p className="text-sm mt-1">위의 &quot;+ 알림 추가&quot; 버튼으로 알림을 추가하세요.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {alerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className={`flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg border ${
-                    alert.is_triggered
-                      ? "border-green-300 bg-green-50/50"
-                      : "border-[var(--border)]"
-                  }`}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold">노선 #{alert.route_id}</span>
-                      <span className="text-xs px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
-                        {alert.cabin_class}
+        {isLoading ? (
+          <div className="text-center py-8">
+            <div className="inline-block w-6 h-6 border-4 border-farenheit-200 border-t-farenheit-500 rounded-full animate-spin" />
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="text-center py-12 text-[var(--muted-foreground)]">
+            <p>설정된 가격 알림이 없습니다.</p>
+            <p className="text-sm mt-1">위의 &quot;+ 알림 추가&quot; 버튼으로 알림을 추가하세요.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className={`flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg border ${
+                  alert.is_triggered
+                    ? "border-green-300 bg-green-50/50"
+                    : "border-[var(--border)]"
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold">노선 #{alert.route_id}</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
+                      {alert.cabin_class}
+                    </span>
+                    {alert.is_triggered ? (
+                      <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium">
+                        도달 완료
                       </span>
-                      {alert.is_triggered ? (
-                        <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium">
-                          도달 완료
-                        </span>
-                      ) : (
-                        <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">
-                          모니터링 중
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
-                      <span>목표가: ₩{Number(alert.target_price).toLocaleString()}</span>
-                      {alert.departure_date && <span>출발일: {alert.departure_date}</span>}
-                      <span>생성: {formatDate(alert.created_at)}</span>
-                      {alert.triggered_at && <span>도달: {formatDate(alert.triggered_at)}</span>}
-                    </div>
+                    ) : (
+                      <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">
+                        모니터링 중
+                      </span>
+                    )}
                   </div>
-                  <button
-                    onClick={() => handleDelete(alert.id)}
-                    className="text-sm text-red-500 hover:text-red-700 px-3 py-1 rounded border border-red-200 hover:bg-red-50 transition-colors"
-                  >
-                    삭제
-                  </button>
+                  <div className="flex items-center gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
+                    <span>목표가: ₩{Number(alert.target_price).toLocaleString()}</span>
+                    {alert.departure_date && <span>출발일: {alert.departure_date}</span>}
+                    <span>생성: {formatDate(alert.created_at)}</span>
+                    {alert.triggered_at && <span>도달: {formatDate(alert.triggered_at)}</span>}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                <button
+                  onClick={() => handleDelete(alert.id)}
+                  className="text-sm text-red-500 hover:text-red-700 px-3 py-1 rounded border border-red-200 hover:bg-red-50 transition-colors"
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Create Modal */}
       {showCreate && (

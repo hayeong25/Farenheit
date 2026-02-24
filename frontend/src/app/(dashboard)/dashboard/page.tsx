@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { statsApi, healthApi, StatsResponse } from "@/lib/api-client";
+import { statsApi, StatsResponse } from "@/lib/api-client";
 
 const popularRoutes = [
   { origin: "ICN", dest: "NRT", label: "서울 → 도쿄/나리타" },
@@ -24,16 +24,16 @@ export default function DashboardPage() {
   const [apiStatus, setApiStatus] = useState<SystemStatus>("checking");
 
   useEffect(() => {
-    // Load stats
     statsApi.get()
-      .then(setStats)
-      .catch(() => setStatsError(true))
+      .then((data) => {
+        setStats(data);
+        setApiStatus("ok");
+      })
+      .catch(() => {
+        setStatsError(true);
+        setApiStatus("error");
+      })
       .finally(() => setLoading(false));
-
-    // Check API health
-    healthApi.check()
-      .then(() => setApiStatus("ok"))
-      .catch(() => setApiStatus("error"));
   }, []);
 
   const hasData = stats && stats.prices > 0;
