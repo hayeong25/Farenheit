@@ -48,7 +48,9 @@ export interface FlightOffer {
   source: string;
   departure_time: string | null;
   arrival_time: string | null;
+  flight_number: string | null;
   // Return leg (round-trip)
+  return_flight_number: string | null;
   return_departure_time: string | null;
   return_arrival_time: string | null;
   return_stops: number | null;

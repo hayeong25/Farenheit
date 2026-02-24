@@ -17,7 +17,9 @@ class FlightOffer(BaseModel):
     source: str
     departure_time: str | None = None
     arrival_time: str | None = None
+    flight_number: str | None = None
     # Return leg info (round-trip only)
+    return_flight_number: str | None = None
     return_departure_time: str | None = None
     return_arrival_time: str | None = None
     return_stops: int | None = None

@@ -118,12 +118,15 @@ class AmadeusClient:
 
             airline_code = ob_segments[0].get("carrierCode", "")
             airline_name = carriers.get(airline_code, airline_code)
+            flight_number_raw = ob_segments[0].get("number", "")
+            flight_number = f"{airline_code}{flight_number_raw}" if flight_number_raw else None
             stops = len(ob_segments) - 1
             duration_minutes = self._parse_duration(outbound.get("duration", ""))
             departure_time = ob_segments[0].get("departure", {}).get("at", "")
             arrival_time = ob_segments[-1].get("arrival", {}).get("at", "")
 
             # Return leg (round-trip)
+            return_flight_number = None
             return_departure_time = None
             return_arrival_time = None
             return_stops = None
@@ -133,6 +136,9 @@ class AmadeusClient:
                 inbound = itineraries[1]
                 ib_segments = inbound.get("segments", [])
                 if ib_segments:
+                    ib_carrier = ib_segments[0].get("carrierCode", "")
+                    ib_number = ib_segments[0].get("number", "")
+                    return_flight_number = f"{ib_carrier}{ib_number}" if ib_number else None
                     return_departure_time = ib_segments[0].get("departure", {}).get("at", "")
                     return_arrival_time = ib_segments[-1].get("arrival", {}).get("at", "")
                     return_stops = len(ib_segments) - 1
@@ -151,6 +157,8 @@ class AmadeusClient:
                 source="amadeus",
                 departure_time=departure_time,
                 arrival_time=arrival_time,
+                flight_number=flight_number,
+                return_flight_number=return_flight_number,
                 return_departure_time=return_departure_time,
                 return_arrival_time=return_arrival_time,
                 return_stops=return_stops,
