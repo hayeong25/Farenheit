@@ -11,7 +11,7 @@ class PriceAlert(Base, TimestampMixin):
     __tablename__ = "price_alerts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     route_id: Mapped[int] = mapped_column(ForeignKey("routes.id"))
     target_price: Mapped[Decimal] = mapped_column()
     cabin_class: Mapped[str] = mapped_column(String(20), default="ECONOMY")

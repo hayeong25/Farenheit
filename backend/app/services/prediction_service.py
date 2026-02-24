@@ -65,7 +65,7 @@ class PredictionService:
         )
 
     async def get_heatmap(
-        self, origin: str, dest: str, month: str
+        self, origin: str, dest: str, month: str, cabin_class: str = "ECONOMY"
     ) -> HeatmapResponse:
         """Generate price heatmap for a given month.
 
@@ -97,7 +97,7 @@ class PredictionService:
                 Prediction.route_id == route.id,
                 Prediction.departure_date >= month_start,
                 Prediction.departure_date <= month_end,
-                Prediction.cabin_class == "ECONOMY",
+                Prediction.cabin_class == cabin_class,
             )
             .order_by(Prediction.departure_date)
         )

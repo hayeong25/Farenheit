@@ -186,7 +186,7 @@ export default function RecommendationsPage() {
             )}
           </div>
 
-          <div className="p-4 rounded-lg bg-white/50">
+          <div className="p-4 rounded-lg bg-[var(--muted)]">
             <p className="text-sm font-medium mb-1">분석 근거</p>
             <p className="text-sm text-[var(--muted-foreground)]">{recommendation.reasoning}</p>
           </div>

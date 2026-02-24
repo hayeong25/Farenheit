@@ -5,7 +5,8 @@ from pydantic import BaseModel
 
 
 class AlertCreate(BaseModel):
-    route_id: int
+    origin: str
+    destination: str
     target_price: Decimal
     cabin_class: str = "ECONOMY"
     departure_date: date | None = None
@@ -14,6 +15,8 @@ class AlertCreate(BaseModel):
 class AlertResponse(BaseModel):
     id: int
     route_id: int
+    origin: str | None = None
+    destination: str | None = None
     target_price: Decimal
     cabin_class: str
     departure_date: date | None

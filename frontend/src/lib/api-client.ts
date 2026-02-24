@@ -93,6 +93,8 @@ export interface Airport {
 export interface AlertResponse {
   id: number;
   route_id: number;
+  origin: string | null;
+  destination: string | null;
   target_price: number;
   cabin_class: string;
   departure_date: string | null;
@@ -162,7 +164,8 @@ export const alertsApi = {
   list: () => fetchAPI<AlertResponse[]>("/alerts"),
 
   create: (data: {
-    route_id: number;
+    origin: string;
+    destination: string;
     target_price: number;
     cabin_class?: string;
     departure_date?: string;

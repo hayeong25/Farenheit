@@ -48,9 +48,11 @@ async def get_heatmap(
     origin: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
     dest: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
     month: str = Query(..., pattern=r"^\d{4}-\d{2}$", description="Format: YYYY-MM"),
+    cabin_class: str = Query("ECONOMY"),
     db: AsyncSession = Depends(get_db),
 ) -> HeatmapResponse:
     origin = origin.upper()
     dest = dest.upper()
+    cabin_class = cabin_class.upper()
     service = PredictionService(db)
-    return await service.get_heatmap(origin, dest, month)
+    return await service.get_heatmap(origin, dest, month, cabin_class)

@@ -28,7 +28,7 @@ class RecommendationService:
                 departure_date=departure_date,
                 cabin_class=cabin_class,
                 signal="HOLD",
-                reasoning="No data available for this route yet. We are collecting price data.",
+                reasoning="이 노선의 데이터가 아직 없습니다. 가격 데이터를 수집 중이니 잠시 후 다시 확인해주세요.",
             )
 
         # Get latest prediction
@@ -51,7 +51,7 @@ class RecommendationService:
                 departure_date=departure_date,
                 cabin_class=cabin_class,
                 signal="HOLD",
-                reasoning="Prediction data is being generated. Please check back later.",
+                reasoning="예측 데이터를 생성 중입니다. 잠시 후 다시 확인해주세요.",
             )
 
         # Determine signal based on prediction
