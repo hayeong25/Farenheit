@@ -223,18 +223,18 @@ export default function PredictionsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">예측 가격</p>
-                <p className="text-xl font-bold">&yen;{Number(prediction.predicted_price).toLocaleString()}</p>
+                <p className="text-xl font-bold">₩{Number(prediction.predicted_price).toLocaleString()}</p>
               </div>
               {prediction.confidence_low && (
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">예측 하한</p>
-                  <p className="text-lg font-medium text-green-600">&yen;{Number(prediction.confidence_low).toLocaleString()}</p>
+                  <p className="text-lg font-medium text-green-600">₩{Number(prediction.confidence_low).toLocaleString()}</p>
                 </div>
               )}
               {prediction.confidence_high && (
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">예측 상한</p>
-                  <p className="text-lg font-medium text-red-600">&yen;{Number(prediction.confidence_high).toLocaleString()}</p>
+                  <p className="text-lg font-medium text-red-600">₩{Number(prediction.confidence_high).toLocaleString()}</p>
                 </div>
               )}
               {prediction.confidence_score && (
