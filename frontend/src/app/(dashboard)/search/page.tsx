@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "rea
 import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import Link from "next/link";
-import { flightsApi, FlightOffer, AirlineInfo, routesApi } from "@/lib/api-client";
+import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
 
 function formatDuration(minutes: number | null): string {
   if (!minutes) return "-";
@@ -60,6 +60,7 @@ function SearchContent() {
   const [searchInfo, setSearchInfo] = useState<{
     origin: string; dest: string; date: string; returnDate?: string; tripType: string;
   } | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryResponse | null>(null);
 
   // Swap support
   const originKeyRef = useRef(0);
@@ -105,6 +106,17 @@ function SearchContent() {
       setOffers(result.offers);
       setAvailableAirlines(result.available_airlines);
       setSelectedAirlines(new Set(result.available_airlines.map(a => a.code)));
+
+      // Load price history if route exists
+      if (result.route_id) {
+        flightsApi.priceHistory({
+          route_id: result.route_id,
+          departure_date: depDate,
+          days: 30,
+        }).then(h => setPriceHistory(h)).catch(() => setPriceHistory(null));
+      } else {
+        setPriceHistory(null);
+      }
     } catch {
       setError("검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
       setOffers([]);
@@ -459,12 +471,28 @@ function SearchContent() {
 
           {filteredOffers.length === 0 ? (
             <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
-              <p className="text-lg mb-2">검색 결과가 없습니다</p>
-              <p className="text-sm">
-                {selectedAirlines.size < availableAirlines.length
-                  ? "항공사 필터를 확인하거나, 다른 조건으로 다시 검색해보세요."
-                  : "다른 날짜나 필터 조건으로 다시 검색해보세요."}
-              </p>
+              {selectedAirlines.size === 0 && availableAirlines.length > 0 ? (
+                <>
+                  <p className="text-lg mb-2">항공사가 선택되지 않았습니다</p>
+                  <p className="text-sm mb-3">위 항공사 필터에서 최소 1개 항공사를 선택해주세요.</p>
+                  <button
+                    onClick={() => setSelectedAirlines(new Set(availableAirlines.map(a => a.code)))}
+                    className="px-4 py-2 rounded-lg bg-farenheit-500 text-white text-sm font-medium hover:bg-farenheit-600 transition-colors"
+                  >
+                    전체 선택
+                  </button>
+                </>
+              ) : offers.length === 0 ? (
+                <>
+                  <p className="text-lg mb-2">이 조건에 맞는 항공편이 없습니다</p>
+                  <p className="text-sm">다른 날짜나 경유 조건으로 다시 검색해보세요.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg mb-2">필터 조건에 맞는 항공편이 없습니다</p>
+                  <p className="text-sm">항공사 필터나 경유 조건을 변경해보세요.</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -513,21 +541,27 @@ function SearchContent() {
                         </div>
 
                         {/* Return leg (round-trip only) */}
-                        {isRoundTrip && offer.return_departure_time && (
+                        {isRoundTrip && (
                           <div className="flex items-center gap-4 text-sm flex-wrap">
                             <span className="text-xs font-medium text-[var(--muted-foreground)] w-12">오는편</span>
-                            {offer.return_flight_number && (
-                              <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
-                                {offer.return_flight_number}
-                              </span>
+                            {offer.return_departure_time ? (
+                              <>
+                                {offer.return_flight_number && (
+                                  <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
+                                    {offer.return_flight_number}
+                                  </span>
+                                )}
+                                <span className="font-semibold">{formatTime(offer.return_departure_time)}</span>
+                                <span className="text-[var(--muted-foreground)]">&rarr;</span>
+                                <span className="font-semibold">{formatTime(offer.return_arrival_time)}</span>
+                                <span className="text-[var(--muted-foreground)]">{formatDuration(offer.return_duration_minutes)}</span>
+                                <span className="text-[var(--muted-foreground)]">
+                                  {offer.return_stops !== null ? getStopsLabel(offer.return_stops) : ""}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-[var(--muted-foreground)] italic">귀국편 상세 정보는 예약 시 확인 가능</span>
                             )}
-                            <span className="font-semibold">{formatTime(offer.return_departure_time)}</span>
-                            <span className="text-[var(--muted-foreground)]">&rarr;</span>
-                            <span className="font-semibold">{formatTime(offer.return_arrival_time)}</span>
-                            <span className="text-[var(--muted-foreground)]">{formatDuration(offer.return_duration_minutes)}</span>
-                            <span className="text-[var(--muted-foreground)]">
-                              {offer.return_stops !== null ? getStopsLabel(offer.return_stops) : ""}
-                            </span>
                           </div>
                         )}
                       </div>
@@ -550,37 +584,94 @@ function SearchContent() {
         </div>
       )}
 
+      {/* Price History Summary */}
+      {!isLoading && searched && priceHistory && priceHistory.prices.length > 1 && (
+        <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
+          <h3 className="text-sm font-semibold mb-3">이 노선 가격 추이 (최근 30일)</h3>
+          <div className="grid grid-cols-3 gap-4 mb-3">
+            <div>
+              <p className="text-xs text-[var(--muted-foreground)]">최저가</p>
+              <p className="text-lg font-bold text-green-600">₩{Math.round(Number(priceHistory.min_price)).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--muted-foreground)]">평균가</p>
+              <p className="text-lg font-bold">₩{Math.round(Number(priceHistory.avg_price)).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--muted-foreground)]">최고가</p>
+              <p className="text-lg font-bold text-red-600">₩{Math.round(Number(priceHistory.max_price)).toLocaleString()}</p>
+            </div>
+          </div>
+          {/* Simple sparkline visualization */}
+          {(() => {
+            const prices = priceHistory.prices.map(p => Number(p.price_amount));
+            const min = Math.min(...prices);
+            const max = Math.max(...prices);
+            const range = max - min || 1;
+            const currentMin = minPrice;
+            const avgNum = Number(priceHistory.avg_price);
+            const position = avgNum > 0 ? ((currentMin - min) / range) * 100 : 50;
+            const isGoodPrice = currentMin <= avgNum;
+            return (
+              <div>
+                <div className="relative h-2 rounded-full bg-gradient-to-r from-green-200 via-yellow-200 to-red-200">
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[var(--foreground)] border-2 border-[var(--background)] shadow"
+                    style={{ left: `${Math.min(Math.max(position, 5), 95)}%` }}
+                    title={`현재 최저가: ₩${currentMin.toLocaleString()}`}
+                  />
+                </div>
+                <p className={`text-xs mt-2 font-medium ${isGoodPrice ? "text-green-600" : "text-yellow-600"}`}>
+                  {isGoodPrice
+                    ? `현재 최저가(₩${currentMin.toLocaleString()})는 평균보다 저렴합니다`
+                    : `현재 최저가(₩${currentMin.toLocaleString()})는 평균보다 높습니다`}
+                </p>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Quick Actions after search */}
       {!isLoading && searched && filteredOffers.length > 0 && originCode && destCode && date && (
         <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
-          <p className="text-sm font-medium mb-3">이 노선 더 알아보기</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="text-sm font-medium mb-3">다음 단계</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Link
               href={`/predictions?origin=${originCode}&dest=${destCode}&date=${date}`}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
+              className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
-              <svg className="w-4 h-4 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
               </svg>
-              가격 예측 보기
+              <div>
+                <p className="text-sm font-medium">가격 예측 보기</p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">앞으로 가격이 어떻게 변할지 확인</p>
+              </div>
             </Link>
             <Link
               href={`/recommendations?origin=${originCode}&dest=${destCode}&date=${date}`}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
+              className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
-              <svg className="w-4 h-4 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
               </svg>
-              구매 추천 받기
+              <div>
+                <p className="text-sm font-medium">구매 추천 받기</p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">지금 살지, 기다릴지 AI가 분석</p>
+              </div>
             </Link>
             <Link
-              href={`/alerts`}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
+              href="/alerts"
+              className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
-              <svg className="w-4 h-4 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
               </svg>
-              가격 알림 설정
+              <div>
+                <p className="text-sm font-medium">가격 알림 설정</p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">목표가에 도달하면 알려드립니다</p>
+              </div>
             </Link>
           </div>
         </div>

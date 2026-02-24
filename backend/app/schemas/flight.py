@@ -41,6 +41,7 @@ class FlightSearchResponse(BaseModel):
     offers: list[FlightOffer]
     total_count: int
     available_airlines: list[AirlineInfo] = []
+    route_id: int | None = None
 
 
 class PricePoint(BaseModel):

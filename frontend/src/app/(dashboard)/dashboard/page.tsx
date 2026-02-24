@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { statsApi, StatsResponse, alertsApi, AlertResponse } from "@/lib/api-client";
+import { statsApi, StatsResponse, alertsApi, AlertResponse, routesApi } from "@/lib/api-client";
 
-const popularRoutes = [
+interface PopularRoute {
+  origin: string;
+  dest: string;
+  label: string;
+}
+
+const fallbackRoutes: PopularRoute[] = [
   { origin: "ICN", dest: "NRT", label: "서울 → 도쿄/나리타" },
   { origin: "ICN", dest: "KIX", label: "서울 → 오사카/간사이" },
   { origin: "ICN", dest: "FUK", label: "서울 → 후쿠오카" },
@@ -24,6 +30,7 @@ function getDefaultDate(): string {
 export default function DashboardPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
+  const [popularRoutes, setPopularRoutes] = useState<PopularRoute[]>(fallbackRoutes);
   const [loading, setLoading] = useState(true);
   const [statsError, setStatsError] = useState(false);
 
@@ -31,9 +38,18 @@ export default function DashboardPage() {
     Promise.all([
       statsApi.get().catch(() => { setStatsError(true); return null; }),
       alertsApi.list().catch(() => []),
-    ]).then(([statsData, alertsData]) => {
+      routesApi.popular(8).catch(() => null),
+    ]).then(([statsData, alertsData, routesData]) => {
       if (statsData) setStats(statsData);
       setAlerts(alertsData as AlertResponse[]);
+      if (routesData && Array.isArray(routesData) && routesData.length > 0) {
+        const dynamicRoutes = (routesData as { origin_code: string; dest_code: string; origin_city: string | null; dest_city: string | null }[]).map(r => ({
+          origin: r.origin_code,
+          dest: r.dest_code,
+          label: `${r.origin_city || r.origin_code} → ${r.dest_city || r.dest_code}`,
+        }));
+        setPopularRoutes(dynamicRoutes);
+      }
     }).finally(() => setLoading(false));
   }, []);
 
@@ -186,19 +202,26 @@ function StatCard({
     <div className={`rounded-xl p-4 md:p-5 border ${
       highlight
         ? "bg-green-50 border-green-200"
-        : "bg-[var(--background)] border-[var(--border)]"
+        : error
+          ? "bg-red-50/50 border-red-200"
+          : "bg-[var(--background)] border-[var(--border)]"
     }`}>
       <p className="text-xs md:text-sm text-[var(--muted-foreground)]">{label}</p>
       <p className="text-2xl md:text-3xl font-bold mt-1">
         {loading ? (
           <span className="inline-block w-16 h-8 bg-[var(--muted)] rounded animate-pulse" />
         ) : error ? (
-          "-"
+          <span className="text-red-400 flex items-center gap-1">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            <span className="text-lg">연결 실패</span>
+          </span>
         ) : (
           (value ?? 0).toLocaleString()
         )}
       </p>
-      {description && (
+      {description && !error && (
         <p className="text-xs text-[var(--muted-foreground)] mt-1">{description}</p>
       )}
     </div>

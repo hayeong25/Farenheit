@@ -19,24 +19,27 @@ interface RecommendationResult {
   reasoning: string;
 }
 
-const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string }> = {
+const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string; icon: string }> = {
   BUY: {
     color: "text-green-700",
     bgColor: "bg-green-50 border-green-200",
     label: "BUY",
-    description: "지금 구매를 추천합니다",
+    description: "지금이 구매 적기입니다",
+    icon: "✓",
   },
   WAIT: {
     color: "text-yellow-700",
     bgColor: "bg-yellow-50 border-yellow-200",
     label: "WAIT",
     description: "가격 하락이 예상됩니다. 대기하세요",
+    icon: "⏳",
   },
   HOLD: {
     color: "text-gray-700",
     bgColor: "bg-gray-50 border-gray-200",
     label: "HOLD",
-    description: "추가 데이터 분석이 필요합니다",
+    description: "시장이 불안정합니다. 관망하세요",
+    icon: "⏸",
   },
 };
 
@@ -267,6 +270,15 @@ function RecommendationsContent() {
             )}
           </div>
 
+          {recommendation.signal === "WAIT" && recommendation.predicted_low_date && (
+            <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+              <p className="text-sm font-medium text-yellow-800">
+                예상 최저가 시점: {new Date(recommendation.predicted_low_date).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}경
+              </p>
+              <p className="text-xs text-yellow-700 mt-1">이 시점까지 대기하면 더 저렴한 가격을 기대할 수 있습니다.</p>
+            </div>
+          )}
+
           <div className="p-4 rounded-lg bg-[var(--muted)]">
             <p className="text-sm font-medium mb-1">분석 근거</p>
             <p className="text-sm text-[var(--muted-foreground)]">{recommendation.reasoning}</p>
@@ -275,9 +287,15 @@ function RecommendationsContent() {
       )}
 
       {!loading && searched && !recommendation && !error && (
-        <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
-          <p className="font-medium">이 노선의 추천 데이터가 아직 없습니다.</p>
-          <p className="text-sm mt-1">먼저 <strong>항공편 검색</strong>에서 이 노선을 검색하여 가격 데이터를 수집하세요.</p>
+        <div className="rounded-xl p-8 border-2 border-dashed border-[var(--border)] text-center">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[var(--muted)] flex items-center justify-center">
+            <svg className="w-7 h-7 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <p className="font-semibold text-[var(--foreground)]">데이터가 부족합니다</p>
+          <p className="text-sm text-[var(--muted-foreground)] mt-1">이 노선의 가격 데이터가 충분히 수집되지 않아 추천을 생성할 수 없습니다.</p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-2">먼저 항공편을 검색하면 가격 수집이 시작되고, 이후 AI 분석이 가능합니다.</p>
           {originCode && destCode && date && (
             <a
               href={`/search?origin=${originCode}&dest=${destCode}&date=${date}`}

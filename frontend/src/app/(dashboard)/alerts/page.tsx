@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi } from "@/lib/api-client";
 
@@ -49,6 +50,12 @@ function AlertCard({ alert, onDelete }: { alert: AlertResponse; onDelete: (id: n
   const destName = useResolvedCityName(alert.destination);
   const isTriggered = alert.is_triggered;
 
+  const searchDate = alert.departure_date || (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    return d.toISOString().split("T")[0];
+  })();
+
   return (
     <div
       className={`flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg border transition-colors ${
@@ -70,24 +77,35 @@ function AlertCard({ alert, onDelete }: { alert: AlertResponse; onDelete: (id: n
               ? "bg-green-100 text-green-700"
               : "bg-yellow-100 text-yellow-700"
           }`}>
-            {isTriggered ? "도달 완료" : "모니터링 중"}
+            {isTriggered ? "목표가 도달" : "모니터링 중"}
           </span>
         </div>
         <div className="flex items-center gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
           <span>목표가: ₩{Number(alert.target_price).toLocaleString()}</span>
           {alert.departure_date && <span>출발일: {alert.departure_date}</span>}
+          {!alert.departure_date && <span className="text-xs italic">모든 출발일 모니터링</span>}
           {isTriggered && alert.triggered_at
             ? <span>도달: {formatDate(alert.triggered_at)}</span>
             : <span>생성: {formatDate(alert.created_at)}</span>
           }
         </div>
       </div>
-      <button
-        onClick={() => onDelete(alert.id)}
-        className="text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded border border-red-200 hover:bg-red-50 transition-colors shrink-0"
-      >
-        삭제
-      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        {isTriggered && alert.origin && alert.destination && (
+          <Link
+            href={`/search?origin=${alert.origin}&dest=${alert.destination}&date=${searchDate}`}
+            className="text-sm text-farenheit-500 hover:text-farenheit-600 px-3 py-1.5 rounded border border-farenheit-200 hover:bg-farenheit-50 transition-colors"
+          >
+            지금 검색
+          </Link>
+        )}
+        <button
+          onClick={() => onDelete(alert.id)}
+          className="text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded border border-red-200 hover:bg-red-50 transition-colors"
+        >
+          삭제
+        </button>
+      </div>
     </div>
   );
 }
@@ -96,6 +114,7 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
@@ -106,6 +125,11 @@ export default function AlertsPage() {
   const [departureDate, setDepartureDate] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const loadAlerts = useCallback(async () => {
     setIsLoading(true);
@@ -143,6 +167,7 @@ export default function AlertsPage() {
       setDepartureDate("");
       setCabinClass("ECONOMY");
       await loadAlerts();
+      showToast("가격 알림이 설정되었습니다.");
     } catch {
       setCreateError("알림 생성에 실패했습니다. 입력 정보를 확인해주세요.");
     } finally {
@@ -154,6 +179,7 @@ export default function AlertsPage() {
     try {
       await alertsApi.delete(id);
       setAlerts((prev) => prev.filter((a) => a.id !== id));
+      showToast("알림이 삭제되었습니다.");
     } catch {
       setError("알림 삭제에 실패했습니다.");
     }
@@ -249,6 +275,13 @@ export default function AlertsPage() {
               <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-lg bg-[var(--foreground)] text-[var(--background)] text-sm font-medium shadow-lg animate-[fadeInUp_0.2s_ease-out]">
+          {toast}
         </div>
       )}
 

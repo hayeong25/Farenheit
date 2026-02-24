@@ -72,6 +72,17 @@ export interface FlightSearchResponse {
   offers: FlightOffer[];
   total_count: number;
   available_airlines: AirlineInfo[];
+  route_id: number | null;
+}
+
+export interface PriceHistoryResponse {
+  route_id: number;
+  departure_date: string;
+  airline_code: string | null;
+  prices: { time: string; price_amount: number; airline_code: string; source: string }[];
+  min_price: number | null;
+  max_price: number | null;
+  avg_price: number | null;
 }
 
 export interface StatsResponse {
@@ -119,7 +130,7 @@ export const flightsApi = {
     departure_date: string;
     airline_code?: string;
     days?: number;
-  }) => fetchAPI(`/flights/prices/history?${qs(params)}`),
+  }) => fetchAPI<PriceHistoryResponse>(`/flights/prices/history?${qs(params)}`),
 };
 
 // Prediction APIs

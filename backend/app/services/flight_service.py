@@ -317,6 +317,7 @@ class FlightService:
             offers=offers,
             total_count=len(offers),
             available_airlines=available_airlines,
+            route_id=route.id if route else None,
         )
 
     @staticmethod
