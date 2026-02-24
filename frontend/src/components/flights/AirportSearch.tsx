@@ -24,11 +24,12 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
   const [results, setResults] = useState<Airport[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedCode, setSelectedCode] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    setQuery(value);
+    if (value) setQuery(value);
   }, [value]);
 
   useEffect(() => {
@@ -66,7 +67,12 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
-    onSelect("", val);
+
+    // Clear selection when user types
+    if (selectedCode) {
+      setSelectedCode("");
+      onSelect("", "");
+    }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchAirports(val), 200);
@@ -77,6 +83,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
       ? `${airport.city_ko} (${airport.iata_code})`
       : `${airport.city} (${airport.iata_code})`;
     setQuery(displayName);
+    setSelectedCode(airport.iata_code);
     onSelect(airport.iata_code, displayName);
     setIsOpen(false);
   };
@@ -84,19 +91,39 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
   return (
     <div ref={wrapperRef} className="relative">
       <label className="block text-sm font-medium mb-1 text-left">{label}</label>
-      <input
-        type="text"
-        value={query}
-        onChange={handleChange}
-        onFocus={() => { if (results.length > 0) setIsOpen(true); }}
-        placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
-      />
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={handleChange}
+          onFocus={() => { if (results.length > 0 && !selectedCode) setIsOpen(true); }}
+          placeholder={placeholder}
+          className={`w-full px-4 py-3 rounded-lg border bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500 ${
+            selectedCode ? "border-farenheit-300" : "border-[var(--border)]"
+          }`}
+        />
+        {selectedCode && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setSelectedCode("");
+              setResults([]);
+              onSelect("", "");
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-sm"
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
       {isOpen && (
         <ul className="absolute z-50 w-full mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {isLoading ? (
             <li className="px-4 py-3 text-sm text-[var(--muted-foreground)]">검색 중...</li>
+          ) : results.length === 0 ? (
+            <li className="px-4 py-3 text-sm text-[var(--muted-foreground)]">결과가 없습니다</li>
           ) : (
             results.map((airport) => (
               <li

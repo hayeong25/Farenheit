@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000/api/v1";
 
 class ApiError extends Error {
   constructor(
@@ -9,17 +9,25 @@ class ApiError extends Error {
   }
 }
 
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("access_token");
+  if (token) return { Authorization: `Bearer ${token}` };
+  return {};
+}
+
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
       ...options?.headers,
     },
     ...options,
   });
 
   if (!res.ok) {
-    throw new ApiError(res.status, await res.json());
+    throw new ApiError(res.status, await res.json().catch(() => null));
   }
 
   return res.json();
@@ -34,6 +42,46 @@ function qs(params: Record<string, string | number | boolean | undefined>): stri
   ).toString();
 }
 
+// Types
+export interface FlightOffer {
+  airline_code: string;
+  airline_name: string | null;
+  departure_date: string;
+  return_date: string | null;
+  cabin_class: string;
+  price_amount: number;
+  currency: string;
+  stops: number;
+  duration_minutes: number | null;
+  source: string;
+  departure_time: string | null;
+  arrival_time: string | null;
+}
+
+export interface FlightSearchResponse {
+  origin: string;
+  destination: string;
+  departure_date: string;
+  cabin_class: string;
+  offers: FlightOffer[];
+  total_count: number;
+}
+
+export interface StatsResponse {
+  routes: number;
+  prices: number;
+  predictions: number;
+  airports: number;
+}
+
+export interface Airport {
+  iata_code: string;
+  name: string;
+  city: string;
+  city_ko: string | null;
+  country_code: string;
+}
+
 // Flight APIs
 export const flightsApi = {
   search: (params: {
@@ -41,7 +89,7 @@ export const flightsApi = {
     dest: string;
     departure_date: string;
     cabin_class?: string;
-  }) => fetchAPI(`/flights/search?${qs(params)}`),
+  }) => fetchAPI<FlightSearchResponse>(`/flights/search?${qs(params)}`),
 
   priceHistory: (params: {
     route_id: number;
@@ -79,7 +127,27 @@ export const routesApi = {
     fetchAPI(`/routes/popular?${qs({ limit: limit ?? 10 })}`),
 
   searchAirports: (q: string) =>
-    fetchAPI(`/routes/airports/search?${qs({ q })}`),
+    fetchAPI<Airport[]>(`/routes/airports/search?${qs({ q })}`),
+};
+
+// Stats API
+export const statsApi = {
+  get: () => fetchAPI<StatsResponse>("/stats"),
+};
+
+// Auth APIs
+export const authApi = {
+  login: (email: string, password: string) =>
+    fetchAPI<{ access_token: string; token_type: string }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
+  register: (email: string, password: string, display_name?: string) =>
+    fetchAPI<{ id: number; email: string; display_name: string | null }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, display_name }),
+    }),
 };
 
 // Health API

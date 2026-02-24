@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import flights, predictions, recommendations, routes, alerts, auth, health
+from app.api.v1 import flights, predictions, recommendations, routes, alerts, auth, health, stats
 
 api_router = APIRouter()
 
@@ -13,3 +13,4 @@ api_router.include_router(
 )
 api_router.include_router(routes.router, prefix="/v1/routes", tags=["routes"])
 api_router.include_router(alerts.router, prefix="/v1/alerts", tags=["alerts"])
+api_router.include_router(stats.router, prefix="/v1/stats", tags=["stats"])

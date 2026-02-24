@@ -1,45 +1,193 @@
+"use client";
+
+import { useState } from "react";
+import { AirportSearch } from "@/components/flights/AirportSearch";
+import { recommendationsApi } from "@/lib/api-client";
+
+interface RecommendationResult {
+  origin: string;
+  destination: string;
+  departure_date: string;
+  cabin_class: string;
+  signal: string;
+  best_airline: string | null;
+  current_price: number | null;
+  predicted_low: number | null;
+  predicted_low_date: string | null;
+  confidence: number | null;
+  reasoning: string;
+}
+
+const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string }> = {
+  BUY: {
+    color: "text-green-700",
+    bgColor: "bg-green-50 border-green-200",
+    label: "BUY",
+    description: "지금 구매를 추천합니다",
+  },
+  WAIT: {
+    color: "text-yellow-700",
+    bgColor: "bg-yellow-50 border-yellow-200",
+    label: "WAIT",
+    description: "가격 하락이 예상됩니다. 대기하세요",
+  },
+  HOLD: {
+    color: "text-gray-700",
+    bgColor: "bg-gray-50 border-gray-200",
+    label: "HOLD",
+    description: "추가 데이터 분석이 필요합니다",
+  },
+};
+
 export default function RecommendationsPage() {
+  const [originCode, setOriginCode] = useState("");
+  const [destCode, setDestCode] = useState("");
+  const [date, setDate] = useState("");
+  const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+
+  const handleGetRecommendation = async () => {
+    if (!originCode || !destCode || !date) return;
+    setLoading(true);
+    setSearched(true);
+    try {
+      const result = await recommendationsApi.get({
+        origin: originCode,
+        dest: destCode,
+        departure_date: date,
+      }) as RecommendationResult;
+      setRecommendation(result);
+    } catch {
+      setRecommendation(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signal = recommendation ? signalConfig[recommendation.signal] || signalConfig.HOLD : null;
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Recommendations</h1>
+      <h1 className="text-2xl font-bold">구매 추천</h1>
 
+      {/* Signal Legend */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Signal Legend */}
-        <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
-          <div className="flex items-center gap-3">
-            <span className="w-3 h-3 rounded-full bg-green-500" />
-            <div>
-              <p className="font-semibold text-green-600">BUY</p>
-              <p className="text-sm text-[var(--muted-foreground)]">지금 구매 추천</p>
+        {Object.entries(signalConfig).map(([key, cfg]) => (
+          <div key={key} className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
+            <div className="flex items-center gap-3">
+              <span className={`w-3 h-3 rounded-full ${
+                key === "BUY" ? "bg-green-500" :
+                key === "WAIT" ? "bg-yellow-500" : "bg-gray-400"
+              }`} />
+              <div>
+                <p className={`font-semibold ${cfg.color}`}>{cfg.label}</p>
+                <p className="text-sm text-[var(--muted-foreground)]">{cfg.description}</p>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
-          <div className="flex items-center gap-3">
-            <span className="w-3 h-3 rounded-full bg-yellow-500" />
-            <div>
-              <p className="font-semibold text-yellow-600">WAIT</p>
-              <p className="text-sm text-[var(--muted-foreground)]">가격 하락 예상, 대기</p>
-            </div>
+        ))}
+      </div>
+
+      {/* Query Form */}
+      <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+        <h2 className="text-lg font-semibold mb-4">추천 조회</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <AirportSearch
+            label="출발지"
+            placeholder="출발 도시"
+            value=""
+            onSelect={(code) => setOriginCode(code)}
+          />
+          <AirportSearch
+            label="도착지"
+            placeholder="도착 도시"
+            value=""
+            onSelect={(code) => setDestCode(code)}
+          />
+          <div>
+            <label className="block text-sm font-medium mb-1">출발일</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              min={new Date().toISOString().split("T")[0]}
+              className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
+            />
           </div>
-        </div>
-        <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
-          <div className="flex items-center gap-3">
-            <span className="w-3 h-3 rounded-full bg-gray-400" />
-            <div>
-              <p className="font-semibold text-gray-500">HOLD</p>
-              <p className="text-sm text-[var(--muted-foreground)]">추가 분석 필요</p>
-            </div>
+          <div className="flex items-end">
+            <button
+              onClick={handleGetRecommendation}
+              disabled={!originCode || !destCode || !date || loading}
+              className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "분석 중..." : "추천 받기"}
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-        <h2 className="text-lg font-semibold mb-4">Active Recommendations</h2>
-        <div className="text-center py-12 text-[var(--muted-foreground)]">
-          <p>관심 노선의 구매 추천이 여기에 표시됩니다.</p>
+      {/* Result */}
+      {loading && (
+        <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center">
+          <div className="inline-block w-8 h-8 border-4 border-farenheit-200 border-t-farenheit-500 rounded-full animate-spin mb-4" />
+          <p className="text-[var(--muted-foreground)]">AI가 최적 구매 타이밍을 분석하고 있습니다...</p>
         </div>
-      </div>
+      )}
+
+      {!loading && searched && recommendation && signal && (
+        <div className={`rounded-xl p-6 border-2 ${signal.bgColor}`}>
+          <div className="flex items-center gap-4 mb-4">
+            <span className={`text-4xl font-black ${signal.color}`}>
+              {signal.label}
+            </span>
+            <div>
+              <p className={`font-semibold ${signal.color}`}>{signal.description}</p>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                {recommendation.origin} → {recommendation.destination} | {recommendation.departure_date}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            {recommendation.current_price && (
+              <div>
+                <p className="text-xs text-[var(--muted-foreground)]">현재 예측 가격</p>
+                <p className="text-lg font-bold">₩{recommendation.current_price.toLocaleString()}</p>
+              </div>
+            )}
+            {recommendation.predicted_low && (
+              <div>
+                <p className="text-xs text-[var(--muted-foreground)]">예측 최저가</p>
+                <p className="text-lg font-bold text-green-600">₩{recommendation.predicted_low.toLocaleString()}</p>
+              </div>
+            )}
+            {recommendation.best_airline && (
+              <div>
+                <p className="text-xs text-[var(--muted-foreground)]">추천 항공사</p>
+                <p className="text-lg font-bold">{recommendation.best_airline}</p>
+              </div>
+            )}
+            {recommendation.confidence && (
+              <div>
+                <p className="text-xs text-[var(--muted-foreground)]">신뢰도</p>
+                <p className="text-lg font-bold">{(recommendation.confidence * 100).toFixed(0)}%</p>
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 rounded-lg bg-white/50">
+            <p className="text-sm font-medium mb-1">분석 근거</p>
+            <p className="text-sm text-[var(--muted-foreground)]">{recommendation.reasoning}</p>
+          </div>
+        </div>
+      )}
+
+      {!loading && searched && !recommendation && (
+        <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
+          <p>추천 데이터를 가져올 수 없습니다.</p>
+        </div>
+      )}
     </div>
   );
 }

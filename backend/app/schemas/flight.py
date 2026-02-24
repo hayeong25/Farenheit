@@ -15,6 +15,8 @@ class FlightOffer(BaseModel):
     stops: int
     duration_minutes: int | None = None
     source: str
+    departure_time: str | None = None
+    arrival_time: str | None = None
 
 
 class FlightSearchResponse(BaseModel):

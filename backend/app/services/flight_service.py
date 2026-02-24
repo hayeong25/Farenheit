@@ -1,9 +1,13 @@
+import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
+import httpx
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
+from app.models.airline import Airline
 from app.models.flight_price import FlightPrice
 from app.models.route import Route
 from app.schemas.flight import (
@@ -13,6 +17,132 @@ from app.schemas.flight import (
     PricePoint,
 )
 
+logger = logging.getLogger(__name__)
+
+
+class AmadeusClient:
+    """Lightweight Amadeus API client for real-time search."""
+
+    def __init__(self) -> None:
+        self.base_url = settings.AMADEUS_BASE_URL
+        self.client_id = settings.AMADEUS_CLIENT_ID
+        self.client_secret = settings.AMADEUS_CLIENT_SECRET
+        self._access_token: str | None = None
+        self._token_expires_at: datetime | None = None
+
+    async def _get_token(self, client: httpx.AsyncClient) -> str:
+        if self._access_token and self._token_expires_at:
+            if datetime.now(timezone.utc) < self._token_expires_at:
+                return self._access_token
+
+        resp = await client.post(
+            f"{self.base_url}/v1/security/oauth2/token",
+            data={
+                "grant_type": "client_credentials",
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        self._access_token = data["access_token"]
+        expires_in = data.get("expires_in", 1799)
+        self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
+        return self._access_token
+
+    async def search_flights(
+        self, origin: str, dest: str, departure_date: date, cabin_class: str = "ECONOMY"
+    ) -> list[FlightOffer]:
+        offers: list[FlightOffer] = []
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                token = await self._get_token(client)
+                params = {
+                    "originLocationCode": origin,
+                    "destinationLocationCode": dest,
+                    "departureDate": departure_date.isoformat(),
+                    "adults": 1,
+                    "travelClass": cabin_class,
+                    "max": 30,
+                    "currencyCode": "KRW",
+                }
+                resp = await client.get(
+                    f"{self.base_url}/v2/shopping/flight-offers",
+                    params=params,
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    carriers = data.get("dictionaries", {}).get("carriers", {})
+                    for offer in data.get("data", []):
+                        parsed = self._parse_offer(offer, departure_date, cabin_class, carriers)
+                        if parsed:
+                            offers.append(parsed)
+                else:
+                    logger.warning(f"Amadeus search failed: {resp.status_code} - {resp.text[:200]}")
+        except Exception as e:
+            logger.error(f"Amadeus search error: {e}")
+        return offers
+
+    def _parse_offer(
+        self, offer: dict, departure_date: date, cabin_class: str, carriers: dict
+    ) -> FlightOffer | None:
+        try:
+            price = Decimal(offer["price"]["grandTotal"])
+            currency = offer["price"].get("currency", "KRW")
+            itineraries = offer.get("itineraries", [])
+            if not itineraries:
+                return None
+
+            first = itineraries[0]
+            segments = first.get("segments", [])
+            if not segments:
+                return None
+
+            airline_code = segments[0].get("carrierCode", "")
+            airline_name = carriers.get(airline_code, airline_code)
+            stops = len(segments) - 1
+            duration_minutes = self._parse_duration(first.get("duration", ""))
+
+            departure_time = segments[0].get("departure", {}).get("at", "")
+            arrival_time = segments[-1].get("arrival", {}).get("at", "")
+
+            return FlightOffer(
+                airline_code=airline_code,
+                airline_name=airline_name,
+                departure_date=departure_date,
+                cabin_class=cabin_class,
+                price_amount=price,
+                currency=currency,
+                stops=stops,
+                duration_minutes=duration_minutes,
+                source="amadeus",
+                departure_time=departure_time,
+                arrival_time=arrival_time,
+            )
+        except (KeyError, ValueError) as e:
+            logger.warning(f"Failed to parse offer: {e}")
+            return None
+
+    @staticmethod
+    def _parse_duration(duration_str: str) -> int | None:
+        if not duration_str or not duration_str.startswith("PT"):
+            return None
+        duration_str = duration_str[2:]
+        hours = minutes = 0
+        if "H" in duration_str:
+            h_part, duration_str = duration_str.split("H")
+            hours = int(h_part)
+        if "M" in duration_str:
+            m_part = duration_str.replace("M", "")
+            if m_part:
+                minutes = int(m_part)
+        return hours * 60 + minutes
+
+
+# Singleton
+_amadeus_client = AmadeusClient()
+
 
 class FlightService:
     def __init__(self, db: AsyncSession):
@@ -21,50 +151,12 @@ class FlightService:
     async def search(
         self, origin: str, dest: str, departure_date: date, cabin_class: str
     ) -> FlightSearchResponse:
-        route_result = await self.db.execute(
-            select(Route).where(Route.origin_code == origin, Route.dest_code == dest)
-        )
-        route = route_result.scalar_one_or_none()
+        # Always search Amadeus API for live results
+        offers = await _amadeus_client.search_flights(origin, dest, departure_date, cabin_class)
 
-        offers: list[FlightOffer] = []
-        if route:
-            # Get latest price for each airline
-            subq = (
-                select(
-                    FlightPrice.airline_code,
-                    func.max(FlightPrice.time).label("latest_time"),
-                )
-                .where(
-                    FlightPrice.route_id == route.id,
-                    FlightPrice.departure_date == departure_date,
-                    FlightPrice.cabin_class == cabin_class,
-                )
-                .group_by(FlightPrice.airline_code)
-                .subquery()
-            )
-
-            result = await self.db.execute(
-                select(FlightPrice).join(
-                    subq,
-                    (FlightPrice.airline_code == subq.c.airline_code)
-                    & (FlightPrice.time == subq.c.latest_time),
-                )
-            )
-
-            for price in result.scalars().all():
-                offers.append(
-                    FlightOffer(
-                        airline_code=price.airline_code,
-                        departure_date=price.departure_date,
-                        return_date=price.return_date,
-                        cabin_class=price.cabin_class,
-                        price_amount=price.price_amount,
-                        currency=price.currency,
-                        stops=price.stops,
-                        duration_minutes=price.duration_minutes,
-                        source=price.source,
-                    )
-                )
+        # If Amadeus returned nothing, fall back to DB cache
+        if not offers:
+            offers = await self._search_from_db(origin, dest, departure_date, cabin_class)
 
         return FlightSearchResponse(
             origin=origin,
@@ -74,6 +166,62 @@ class FlightService:
             offers=sorted(offers, key=lambda o: o.price_amount),
             total_count=len(offers),
         )
+
+    async def _search_from_db(
+        self, origin: str, dest: str, departure_date: date, cabin_class: str
+    ) -> list[FlightOffer]:
+        route_result = await self.db.execute(
+            select(Route).where(Route.origin_code == origin, Route.dest_code == dest)
+        )
+        route = route_result.scalar_one_or_none()
+        if not route:
+            return []
+
+        subq = (
+            select(
+                FlightPrice.airline_code,
+                func.max(FlightPrice.time).label("latest_time"),
+            )
+            .where(
+                FlightPrice.route_id == route.id,
+                FlightPrice.departure_date == departure_date,
+                FlightPrice.cabin_class == cabin_class,
+            )
+            .group_by(FlightPrice.airline_code)
+            .subquery()
+        )
+
+        result = await self.db.execute(
+            select(FlightPrice).join(
+                subq,
+                (FlightPrice.airline_code == subq.c.airline_code)
+                & (FlightPrice.time == subq.c.latest_time),
+            )
+        )
+
+        offers = []
+        for price in result.scalars().all():
+            # Look up airline name
+            airline_result = await self.db.execute(
+                select(Airline.name).where(Airline.iata_code == price.airline_code)
+            )
+            airline_name = airline_result.scalar_one_or_none()
+
+            offers.append(
+                FlightOffer(
+                    airline_code=price.airline_code,
+                    airline_name=airline_name,
+                    departure_date=price.departure_date,
+                    return_date=price.return_date,
+                    cabin_class=price.cabin_class,
+                    price_amount=price.price_amount,
+                    currency=price.currency,
+                    stops=price.stops,
+                    duration_minutes=price.duration_minutes,
+                    source=price.source,
+                )
+            )
+        return offers
 
     async def get_price_history(
         self,

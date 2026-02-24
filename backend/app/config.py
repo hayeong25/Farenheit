@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     COLLECTION_INTERVAL_MINUTES: int = 30
     PREDICTION_INTERVAL_MINUTES: int = 60
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+    model_config = {"env_file": str(PROJECT_ROOT / ".env"), "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()
