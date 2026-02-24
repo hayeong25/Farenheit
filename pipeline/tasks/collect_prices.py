@@ -115,9 +115,16 @@ async def collect_all_routes_async() -> dict:
         logger.info("No active routes to collect")
         return {"status": "ok", "routes": 0, "observations": 0}
 
-    # Generate departure dates (next 7 to 90 days, weekly intervals)
+    # Generate departure dates:
+    # - Next 30 days: every 3 days (dense near-term data for accuracy)
+    # - 30-60 days out: every 5 days
+    # - 60-90 days out: weekly
     today = date.today()
-    departure_dates = [today + timedelta(days=d) for d in range(7, 91, 7)]
+    departure_dates = (
+        [today + timedelta(days=d) for d in range(7, 31, 3)]
+        + [today + timedelta(days=d) for d in range(30, 61, 5)]
+        + [today + timedelta(days=d) for d in range(63, 91, 7)]
+    )
 
     all_observations: list[PriceObservation] = []
     for route in routes:

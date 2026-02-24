@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
@@ -9,9 +10,18 @@ from app.api.router import api_router
 from app.db.session import engine
 from app.models.base import Base
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Security warning
+    if settings.JWT_SECRET_KEY == "change-this-to-a-real-secret-key":
+        logger.warning(
+            "⚠️  JWT_SECRET_KEY is using the default value. "
+            "Set a strong secret in .env for production!"
+        )
+
     # Create all tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

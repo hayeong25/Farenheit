@@ -129,7 +129,8 @@ export const flightsApi = {
 // Prediction APIs
 export const predictionsApi = {
   get: (params: {
-    route_id: number;
+    origin: string;
+    dest: string;
     departure_date: string;
     cabin_class?: string;
   }) => fetchAPI(`/predictions?${qs(params)}`),

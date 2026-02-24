@@ -57,16 +57,16 @@ class StatisticalPredictor:
         # EMA (exponential moving average) - recent prices weighted more
         if n >= 7:
             ema_short = self._ema(prices, span=3)
-            ema_long = self._ema(prices, span=7)
+            ema_long = self._ema(prices, span=min(n, 14))
         else:
             ema_short = prices.mean()
             ema_long = prices.mean()
 
-        # Trend analysis
-        if n >= 3:
-            # Linear regression on last available points
-            x = np.arange(min(n, 14))
-            y = prices[-len(x):]
+        # Trend analysis - use all available data (up to 30 days)
+        trend_window = min(n, 30)
+        if trend_window >= 3:
+            x = np.arange(trend_window)
+            y = prices[-trend_window:]
             slope, intercept = np.polyfit(x, y, 1)
             trend_per_day = slope
         else:
@@ -74,43 +74,65 @@ class StatisticalPredictor:
 
         # Volatility (standard deviation of daily changes)
         if n >= 3:
-            daily_changes = np.diff(prices) / prices[:-1]
-            volatility = np.std(daily_changes) if len(daily_changes) > 0 else 0.05
+            # Safely compute percentage changes, avoiding division by zero
+            prev_prices = prices[:-1]
+            safe_mask = prev_prices > 0.01
+            if safe_mask.any():
+                safe_changes = np.diff(prices)[safe_mask] / prev_prices[safe_mask]
+                volatility = float(np.std(safe_changes)) if len(safe_changes) > 1 else 0.05
+            else:
+                volatility = 0.05
         else:
             volatility = 0.05  # Default 5% volatility
 
-        # Price direction
-        if n >= 5:
-            recent_trend = (prices[-1] - prices[-min(5, n)]) / prices[-min(5, n)]
-            if recent_trend > 0.02:
+        # Price direction - use longer window for stability
+        direction_window = min(n, 10)
+        if direction_window >= 3:
+            # Use weighted recent trend (more weight to recent data)
+            recent_prices = prices[-direction_window:]
+            weights = np.linspace(0.5, 1.0, len(recent_prices))
+            weighted_trend = np.polyfit(np.arange(len(recent_prices)), recent_prices, 1, w=weights)
+            pct_change = weighted_trend[0] * len(recent_prices) / recent_prices.mean()
+
+            if pct_change > 0.015:
                 direction = "UP"
-            elif recent_trend < -0.02:
+            elif pct_change < -0.015:
                 direction = "DOWN"
             else:
                 direction = "STABLE"
         else:
             direction = "STABLE"
 
-        # Confidence based on data quantity and consistency
-        data_confidence = min(n / 30, 1.0) * 0.5  # More data = more confident
-        trend_consistency = 1.0 - min(volatility * 5, 0.5)  # Less volatile = more confident
-        confidence = round(data_confidence + trend_consistency * 0.5, 3)
-        confidence = max(0.1, min(confidence, 0.95))
+        # Confidence based on data quantity, consistency, and trend strength
+        data_confidence = min(n / 30, 1.0) * 0.4
+        trend_consistency = max(0, 1.0 - volatility * 3) * 0.3
+        # Trend strength factor - stronger trends are more confident
+        trend_strength = min(abs(trend_per_day / (current_price + 1)) * 100, 1.0) * 0.3
+        confidence = round(data_confidence + trend_consistency + trend_strength, 3)
+        confidence = float(np.clip(confidence, 0.1, 0.95))
 
-        # Generate forecast series
+        # Generate forecast series with EMA-weighted prediction
         forecast_series = []
         last_date = daily["date"].iloc[-1]
+        # Blend EMA-based and trend-based predictions
+        ema_weight = 0.6
+        trend_weight = 0.4
+
         for d in range(1, forecast_days + 1):
             forecast_date = last_date + timedelta(days=d)
-            predicted = current_price + trend_per_day * d
-            # Add seasonality: slight premium for weekends
-            if forecast_date.weekday() >= 5:  # Weekend
-                predicted *= 1.01
+
+            # EMA-based: mean reversion toward EMA
+            ema_predicted = ema_short + (ema_long - ema_short) * (d / forecast_days) * 0.3
+            # Trend-based: linear extrapolation with dampening
+            dampening = 1.0 / (1.0 + d * 0.05)  # Dampen trend over longer horizons
+            trend_predicted = current_price + trend_per_day * d * dampening
+
+            predicted = ema_weight * ema_predicted + trend_weight * trend_predicted
 
             # Confidence interval widens over time
-            uncertainty = current_price * volatility * np.sqrt(d)
-            low = max(predicted - uncertainty * 1.5, min_observed * 0.9)
-            high = predicted + uncertainty * 1.5
+            uncertainty = current_price * volatility * np.sqrt(d) * 1.2
+            low = max(predicted - uncertainty, min_observed * 0.85)
+            high = predicted + uncertainty
 
             forecast_series.append({
                 "date": forecast_date.isoformat(),
@@ -136,4 +158,4 @@ class StatisticalPredictor:
         """Calculate exponential moving average."""
         weights = np.exp(np.linspace(-1, 0, min(len(data), span)))
         weights /= weights.sum()
-        return np.dot(data[-len(weights):], weights)
+        return float(np.dot(data[-len(weights):], weights))

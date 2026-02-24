@@ -46,11 +46,13 @@ export default function RecommendationsPage() {
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleGetRecommendation = async () => {
     if (!originCode || !destCode || !date) return;
     setLoading(true);
     setSearched(true);
+    setError(null);
     try {
       const result = await recommendationsApi.get({
         origin: originCode,
@@ -59,6 +61,7 @@ export default function RecommendationsPage() {
       }) as RecommendationResult;
       setRecommendation(result);
     } catch {
+      setError("추천 조회 중 오류가 발생했습니다. 서버 연결을 확인해주세요.");
       setRecommendation(null);
     } finally {
       setLoading(false);
@@ -127,6 +130,13 @@ export default function RecommendationsPage() {
         </div>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
       {/* Result */}
       {loading && (
         <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center">
@@ -183,9 +193,11 @@ export default function RecommendationsPage() {
         </div>
       )}
 
-      {!loading && searched && !recommendation && (
+      {!loading && searched && !recommendation && !error && (
         <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
-          <p>추천 데이터를 가져올 수 없습니다.</p>
+          <p className="font-medium">이 노선의 추천 데이터가 아직 없습니다.</p>
+          <p className="text-sm mt-1">먼저 <strong>항공편 검색</strong>에서 이 노선을 검색하여 가격 데이터를 수집하세요.</p>
+          <p className="text-sm mt-1">충분한 데이터가 쌓이면 AI 구매 추천이 자동으로 활성화됩니다.</p>
         </div>
       )}
     </div>

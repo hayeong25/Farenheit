@@ -286,18 +286,25 @@ class FlightService:
             )
         )
 
-        offers = []
-        for price in result.scalars().all():
-            # Look up airline name
-            airline_result = await self.db.execute(
-                select(Airline.name).where(Airline.iata_code == price.airline_code)
-            )
-            airline_name = airline_result.scalar_one_or_none()
+        prices_list = result.scalars().all()
+        if not prices_list:
+            return []
 
+        # Batch lookup airline names (avoid N+1)
+        airline_codes = list({p.airline_code for p in prices_list if p.airline_code})
+        airline_names: dict[str, str] = {}
+        if airline_codes:
+            airline_result = await self.db.execute(
+                select(Airline.iata_code, Airline.name).where(Airline.iata_code.in_(airline_codes))
+            )
+            airline_names = {row.iata_code: row.name for row in airline_result.all()}
+
+        offers = []
+        for price in prices_list:
             offers.append(
                 FlightOffer(
                     airline_code=price.airline_code,
-                    airline_name=airline_name,
+                    airline_name=airline_names.get(price.airline_code),
                     departure_date=price.departure_date,
                     return_date=price.return_date,
                     cabin_class=price.cabin_class,

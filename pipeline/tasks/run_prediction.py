@@ -48,8 +48,8 @@ async def _predict_all_routes() -> dict:
             return {"status": "ok", "routes": 0, "predictions": 0}
 
         today = date.today()
-        # Predict for departure dates 7-60 days out
-        target_dates = [today + timedelta(days=d) for d in range(7, 61, 7)]
+        # Predict for departure dates 7-60 days out (every 3 days for accuracy)
+        target_dates = [today + timedelta(days=d) for d in range(7, 61, 3)]
 
         for route in routes:
             routes_processed += 1
@@ -73,6 +73,10 @@ async def _predict_all_routes() -> dict:
                 {"time": p.time, "price_amount": float(p.price_amount), "airline_code": p.airline_code}
                 for p in price_rows
             ])
+
+            # Determine dominant airline for this route
+            airline_mode = price_df["airline_code"].mode()
+            dominant_airline = airline_mode.iloc[0] if len(airline_mode) > 0 else None
 
             for dep_date in target_dates:
                 # Filter prices relevant to this departure date
@@ -112,6 +116,7 @@ async def _predict_all_routes() -> dict:
                 else:
                     pred = Prediction(
                         route_id=route.id,
+                        airline_code=dominant_airline,
                         departure_date=dep_date,
                         cabin_class="ECONOMY",
                         predicted_price=result_pred["predicted_price"],

@@ -40,7 +40,7 @@ function SearchContent() {
   const [date, setDate] = useState(searchParams.get("date") || "");
   const [returnDate, setReturnDate] = useState(searchParams.get("return_date") || "");
   const [tripType, setTripType] = useState<"round_trip" | "one_way">(
-    searchParams.get("return_date") ? "round_trip" : "round_trip"
+    searchParams.get("return_date") ? "round_trip" : "one_way"
   );
   const [cabinClass, setCabinClass] = useState("ECONOMY");
 

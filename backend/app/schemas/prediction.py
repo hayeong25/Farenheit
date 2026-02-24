@@ -15,13 +15,13 @@ class PredictionResponse(BaseModel):
     route_id: int
     departure_date: date
     cabin_class: str
-    predicted_price: Decimal
+    predicted_price: Decimal | None
     confidence_low: Decimal | None
     confidence_high: Decimal | None
     price_direction: str  # UP, DOWN, STABLE
     confidence_score: Decimal | None
     model_version: str
-    predicted_at: datetime
+    predicted_at: datetime | None
     forecast_series: list[ForecastPoint] = []
 
 

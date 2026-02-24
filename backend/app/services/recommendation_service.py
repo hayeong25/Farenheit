@@ -71,18 +71,31 @@ class RecommendationService:
         )
 
     def _determine_signal(self, pred: Prediction) -> str:
-        if pred.price_direction == "DOWN" and pred.confidence_score and pred.confidence_score > Decimal("0.7"):
-            return "WAIT"
-        elif pred.price_direction == "UP" and pred.confidence_score and pred.confidence_score > Decimal("0.7"):
+        has_confidence = pred.confidence_score and pred.confidence_score > Decimal("0.6")
+        if pred.price_direction == "UP" and has_confidence:
+            # Price going up → buy now before it gets more expensive
             return "BUY"
+        elif pred.price_direction == "DOWN" and has_confidence:
+            # Price going down → wait for lower prices
+            return "WAIT"
         return "HOLD"
 
     def _generate_reasoning(self, signal: str, pred: Prediction) -> str:
         direction_kr = {"UP": "상승", "DOWN": "하락", "STABLE": "안정"}
         direction = direction_kr.get(pred.price_direction, pred.price_direction)
+        confidence_pct = int(float(pred.confidence_score or 0) * 100)
 
         if signal == "BUY":
-            return f"가격이 {direction} 추세입니다. 지금 구매하는 것이 유리합니다."
+            return (
+                f"가격이 {direction} 추세입니다 (신뢰도 {confidence_pct}%). "
+                f"지금 구매하는 것이 유리합니다. 더 기다리면 가격이 오를 가능성이 높습니다."
+            )
         elif signal == "WAIT":
-            return f"가격이 {direction} 추세입니다. 조금 더 기다리면 더 낮은 가격을 기대할 수 있습니다."
-        return f"가격이 {direction} 상태입니다. 추가 데이터를 수집 중입니다."
+            return (
+                f"가격이 {direction} 추세입니다 (신뢰도 {confidence_pct}%). "
+                f"조금 더 기다리면 더 낮은 가격을 기대할 수 있습니다."
+            )
+        return (
+            f"가격이 {direction} 상태입니다. "
+            f"뚜렷한 추세가 없어 추가 데이터를 수집 중입니다. 급하지 않다면 모니터링을 계속하세요."
+        )

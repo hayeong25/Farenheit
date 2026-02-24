@@ -12,11 +12,14 @@ router = APIRouter()
 
 @router.get("", response_model=RecommendationResponse)
 async def get_recommendation(
-    origin: str = Query(..., min_length=3, max_length=3),
-    dest: str = Query(..., min_length=3, max_length=3),
+    origin: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
+    dest: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
     departure_date: date = Query(...),
     cabin_class: str = Query("ECONOMY"),
     db: AsyncSession = Depends(get_db),
 ) -> RecommendationResponse:
+    origin = origin.upper()
+    dest = dest.upper()
+    cabin_class = cabin_class.upper()
     service = RecommendationService(db)
     return await service.get_recommendation(origin, dest, departure_date, cabin_class)
