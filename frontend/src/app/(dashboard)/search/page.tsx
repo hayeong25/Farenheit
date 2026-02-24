@@ -89,7 +89,7 @@ function SearchContent() {
         dest,
         departure_date: depDate,
         cabin_class: cabin,
-        sort_by: sort,
+        sort_by: sort === "price_desc" ? "price" : sort,
       };
       if (retDate) {
         params.return_date = retDate;
@@ -140,13 +140,17 @@ function SearchContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxStops, sortBy]);
 
-  // Client-side airline filtering
+  // Client-side airline filtering + price_desc sorting
   const filteredOffers = useMemo(() => {
-    if (selectedAirlines.size === 0 || selectedAirlines.size === availableAirlines.length) {
-      return offers;
+    let result = offers;
+    if (selectedAirlines.size > 0 && selectedAirlines.size < availableAirlines.length) {
+      result = result.filter(o => selectedAirlines.has(o.airline_code));
     }
-    return offers.filter(o => selectedAirlines.has(o.airline_code));
-  }, [offers, selectedAirlines, availableAirlines.length]);
+    if (sortBy === "price_desc") {
+      result = [...result].sort((a, b) => b.price_amount - a.price_amount);
+    }
+    return result;
+  }, [offers, selectedAirlines, availableAirlines.length, sortBy]);
 
   const minPrice = filteredOffers.length > 0 ? Math.min(...filteredOffers.map(o => o.price_amount)) : 0;
   const directCount = filteredOffers.filter(o => o.stops === 0).length;
@@ -329,15 +333,16 @@ function SearchContent() {
                   onChange={(e) => setSortBy(e.target.value)}
                   className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)]"
                 >
-                  <option value="price">가격순</option>
-                  <option value="duration">소요시간순</option>
-                  <option value="stops">경유 적은순</option>
+                  <option value="price">가격 낮은 순</option>
+                  <option value="price_desc">가격 높은 순</option>
+                  <option value="duration">소요시간 짧은 순</option>
+                  <option value="stops">경유 적은 순</option>
                 </select>
               </div>
             </div>
           </div>
 
-          {/* Airline Filter Checkboxes */}
+          {/* Airline Filter */}
           {availableAirlines.length > 1 && (
             <div className="bg-[var(--background)] rounded-xl p-4 border border-[var(--border)]">
               <div className="flex items-center justify-between mb-3">
@@ -350,25 +355,38 @@ function SearchContent() {
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {availableAirlines.map((airline) => (
-                  <label
-                    key={airline.code}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
-                      selectedAirlines.has(airline.code)
-                        ? "border-farenheit-300 bg-farenheit-50 text-farenheit-700"
-                        : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)]"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedAirlines.has(airline.code)}
-                      onChange={() => toggleAirline(airline.code)}
-                      className="sr-only"
-                    />
-                    <span className="font-mono text-xs">{airline.code}</span>
-                    <span>{airline.name}</span>
-                  </label>
-                ))}
+                {availableAirlines.map((airline) => {
+                  const checked = selectedAirlines.has(airline.code);
+                  return (
+                    <label
+                      key={airline.code}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-all select-none ${
+                        checked
+                          ? "border-farenheit-400 bg-farenheit-50 text-farenheit-700 shadow-sm"
+                          : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-gray-400"
+                      }`}
+                    >
+                      <span className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${
+                        checked
+                          ? "bg-farenheit-500 border-farenheit-500"
+                          : "border-gray-300 bg-white"
+                      }`}>
+                        {checked && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleAirline(airline.code)}
+                        className="sr-only"
+                      />
+                      <span className="font-medium">{airline.name || airline.code}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -399,9 +417,6 @@ function SearchContent() {
                         {/* Airline header */}
                         <div className="flex items-center gap-3 flex-wrap">
                           <span className="font-bold text-lg">{offer.airline_name || offer.airline_code}</span>
-                          <span className="text-xs px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
-                            {offer.airline_code}
-                          </span>
                           {isLowest && (
                             <span className="text-xs px-2 py-0.5 rounded bg-farenheit-50 text-farenheit-600 font-medium">
                               최저가
@@ -419,6 +434,11 @@ function SearchContent() {
                           <span className="text-xs font-medium text-[var(--muted-foreground)] w-12">
                             {isRoundTrip ? "가는편" : ""}
                           </span>
+                          {offer.flight_number && (
+                            <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
+                              {offer.flight_number}
+                            </span>
+                          )}
                           <span className="font-semibold">{formatTime(offer.departure_time)}</span>
                           <span className="text-[var(--muted-foreground)]">→</span>
                           <span className="font-semibold">{formatTime(offer.arrival_time)}</span>
@@ -430,6 +450,11 @@ function SearchContent() {
                         {isRoundTrip && offer.return_departure_time && (
                           <div className="flex items-center gap-4 text-sm flex-wrap">
                             <span className="text-xs font-medium text-[var(--muted-foreground)] w-12">오는편</span>
+                            {offer.return_flight_number && (
+                              <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
+                                {offer.return_flight_number}
+                              </span>
+                            )}
                             <span className="font-semibold">{formatTime(offer.return_departure_time)}</span>
                             <span className="text-[var(--muted-foreground)]">→</span>
                             <span className="font-semibold">{formatTime(offer.return_arrival_time)}</span>
