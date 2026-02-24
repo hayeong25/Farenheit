@@ -15,13 +15,17 @@ async def search_flights(
     origin: str = Query(..., min_length=3, max_length=3, description="Origin IATA code"),
     dest: str = Query(..., min_length=3, max_length=3, description="Destination IATA code"),
     departure_date: date = Query(..., description="Departure date"),
+    return_date: date | None = Query(None, description="Return date for round-trip"),
     cabin_class: str = Query("ECONOMY", description="Cabin class"),
     max_stops: int | None = Query(None, ge=0, le=3, description="Max stops filter"),
     sort_by: str = Query("price", description="Sort by: price, duration, stops"),
     db: AsyncSession = Depends(get_db),
 ) -> FlightSearchResponse:
     service = FlightService(db)
-    return await service.search(origin, dest, departure_date, cabin_class, max_stops, sort_by)
+    return await service.search(
+        origin, dest, departure_date, cabin_class,
+        max_stops, sort_by, return_date=return_date,
+    )
 
 
 @router.get("/prices/history", response_model=PriceHistoryResponse)

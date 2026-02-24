@@ -11,6 +11,7 @@ from app.models.airline import Airline
 from app.models.flight_price import FlightPrice
 from app.models.route import Route
 from app.schemas.flight import (
+    AirlineInfo,
     FlightOffer,
     FlightSearchResponse,
     PriceHistoryResponse,
@@ -51,21 +52,29 @@ class AmadeusClient:
         return self._access_token
 
     async def search_flights(
-        self, origin: str, dest: str, departure_date: date, cabin_class: str = "ECONOMY"
+        self,
+        origin: str,
+        dest: str,
+        departure_date: date,
+        cabin_class: str = "ECONOMY",
+        return_date: date | None = None,
     ) -> list[FlightOffer]:
         offers: list[FlightOffer] = []
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 token = await self._get_token(client)
-                params = {
+                params: dict = {
                     "originLocationCode": origin,
                     "destinationLocationCode": dest,
                     "departureDate": departure_date.isoformat(),
                     "adults": 1,
                     "travelClass": cabin_class,
-                    "max": 30,
+                    "max": 50,
                     "currencyCode": "KRW",
                 }
+                if return_date:
+                    params["returnDate"] = return_date.isoformat()
+
                 resp = await client.get(
                     f"{self.base_url}/v2/shopping/flight-offers",
                     params=params,
@@ -75,7 +84,9 @@ class AmadeusClient:
                     data = resp.json()
                     carriers = data.get("dictionaries", {}).get("carriers", {})
                     for offer in data.get("data", []):
-                        parsed = self._parse_offer(offer, departure_date, cabin_class, carriers)
+                        parsed = self._parse_offer(
+                            offer, departure_date, cabin_class, carriers, return_date
+                        )
                         if parsed:
                             offers.append(parsed)
                 else:
@@ -85,7 +96,12 @@ class AmadeusClient:
         return offers
 
     def _parse_offer(
-        self, offer: dict, departure_date: date, cabin_class: str, carriers: dict
+        self,
+        offer: dict,
+        departure_date: date,
+        cabin_class: str,
+        carriers: dict,
+        return_date: date | None = None,
     ) -> FlightOffer | None:
         try:
             price = Decimal(offer["price"]["grandTotal"])
@@ -94,23 +110,39 @@ class AmadeusClient:
             if not itineraries:
                 return None
 
-            first = itineraries[0]
-            segments = first.get("segments", [])
-            if not segments:
+            # Outbound leg
+            outbound = itineraries[0]
+            ob_segments = outbound.get("segments", [])
+            if not ob_segments:
                 return None
 
-            airline_code = segments[0].get("carrierCode", "")
+            airline_code = ob_segments[0].get("carrierCode", "")
             airline_name = carriers.get(airline_code, airline_code)
-            stops = len(segments) - 1
-            duration_minutes = self._parse_duration(first.get("duration", ""))
+            stops = len(ob_segments) - 1
+            duration_minutes = self._parse_duration(outbound.get("duration", ""))
+            departure_time = ob_segments[0].get("departure", {}).get("at", "")
+            arrival_time = ob_segments[-1].get("arrival", {}).get("at", "")
 
-            departure_time = segments[0].get("departure", {}).get("at", "")
-            arrival_time = segments[-1].get("arrival", {}).get("at", "")
+            # Return leg (round-trip)
+            return_departure_time = None
+            return_arrival_time = None
+            return_stops = None
+            return_duration_minutes = None
+
+            if len(itineraries) > 1:
+                inbound = itineraries[1]
+                ib_segments = inbound.get("segments", [])
+                if ib_segments:
+                    return_departure_time = ib_segments[0].get("departure", {}).get("at", "")
+                    return_arrival_time = ib_segments[-1].get("arrival", {}).get("at", "")
+                    return_stops = len(ib_segments) - 1
+                    return_duration_minutes = self._parse_duration(inbound.get("duration", ""))
 
             return FlightOffer(
                 airline_code=airline_code,
                 airline_name=airline_name,
                 departure_date=departure_date,
+                return_date=return_date,
                 cabin_class=cabin_class,
                 price_amount=price,
                 currency=currency,
@@ -119,6 +151,10 @@ class AmadeusClient:
                 source="amadeus",
                 departure_time=departure_time,
                 arrival_time=arrival_time,
+                return_departure_time=return_departure_time,
+                return_arrival_time=return_arrival_time,
+                return_stops=return_stops,
+                return_duration_minutes=return_duration_minutes,
             )
         except (KeyError, ValueError) as e:
             logger.warning(f"Failed to parse offer: {e}")
@@ -156,9 +192,12 @@ class FlightService:
         cabin_class: str,
         max_stops: int | None = None,
         sort_by: str = "price",
+        return_date: date | None = None,
     ) -> FlightSearchResponse:
-        # Always search Amadeus API for live results
-        offers = await _amadeus_client.search_flights(origin, dest, departure_date, cabin_class)
+        # Search Amadeus API for live results
+        offers = await _amadeus_client.search_flights(
+            origin, dest, departure_date, cabin_class, return_date
+        )
 
         # If Amadeus returned nothing, fall back to DB cache
         if not offers:
@@ -166,6 +205,16 @@ class FlightService:
 
         # Deduplicate: keep cheapest per (airline, stops, duration bucket)
         offers = self._deduplicate_offers(offers)
+
+        # Collect available airlines before filtering
+        airline_set: dict[str, str] = {}
+        for o in offers:
+            if o.airline_code not in airline_set:
+                airline_set[o.airline_code] = o.airline_name or o.airline_code
+        available_airlines = [
+            AirlineInfo(code=code, name=name)
+            for code, name in sorted(airline_set.items(), key=lambda x: x[1])
+        ]
 
         # Filter by stops
         if max_stops is not None:
@@ -179,13 +228,18 @@ class FlightService:
         else:
             offers.sort(key=lambda o: o.price_amount)
 
+        trip_type = "round_trip" if return_date else "one_way"
+
         return FlightSearchResponse(
             origin=origin,
             destination=dest,
             departure_date=departure_date,
+            return_date=return_date,
+            trip_type=trip_type,
             cabin_class=cabin_class,
             offers=offers,
             total_count=len(offers),
+            available_airlines=available_airlines,
         )
 
     @staticmethod

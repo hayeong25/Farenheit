@@ -56,15 +56,28 @@ export interface FlightOffer {
   source: string;
   departure_time: string | null;
   arrival_time: string | null;
+  // Return leg (round-trip)
+  return_departure_time: string | null;
+  return_arrival_time: string | null;
+  return_stops: number | null;
+  return_duration_minutes: number | null;
+}
+
+export interface AirlineInfo {
+  code: string;
+  name: string;
 }
 
 export interface FlightSearchResponse {
   origin: string;
   destination: string;
   departure_date: string;
+  return_date: string | null;
+  trip_type: string;
   cabin_class: string;
   offers: FlightOffer[];
   total_count: number;
+  available_airlines: AirlineInfo[];
 }
 
 export interface StatsResponse {
@@ -99,6 +112,7 @@ export const flightsApi = {
     origin: string;
     dest: string;
     departure_date: string;
+    return_date?: string;
     cabin_class?: string;
     max_stops?: number | string;
     sort_by?: string;

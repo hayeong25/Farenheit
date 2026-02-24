@@ -10,11 +10,18 @@ export default function HomePage() {
   const [originCode, setOriginCode] = useState("");
   const [destCode, setDestCode] = useState("");
   const [date, setDate] = useState("");
+  const [returnDate, setReturnDate] = useState("");
+  const [tripType, setTripType] = useState<"round_trip" | "one_way">("round_trip");
 
   const handleSearch = () => {
-    if (originCode && destCode && date) {
-      router.push(`/search?origin=${originCode}&dest=${destCode}&date=${date}`);
+    if (!originCode || !destCode || !date) return;
+    if (tripType === "round_trip" && !returnDate) return;
+
+    let url = `/search?origin=${originCode}&dest=${destCode}&date=${date}`;
+    if (tripType === "round_trip" && returnDate) {
+      url += `&return_date=${returnDate}`;
     }
+    router.push(url);
   };
 
   return (
@@ -53,7 +60,31 @@ export default function HomePage() {
 
           {/* Search Form */}
           <div className="bg-[var(--muted)] rounded-2xl p-6 max-w-2xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* Trip Type Toggle */}
+            <div className="flex gap-1 mb-4 bg-[var(--background)] rounded-lg p-1 w-fit mx-auto">
+              <button
+                onClick={() => setTripType("round_trip")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  tripType === "round_trip"
+                    ? "bg-farenheit-500 text-white shadow-sm"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                왕복
+              </button>
+              <button
+                onClick={() => { setTripType("one_way"); setReturnDate(""); }}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  tripType === "one_way"
+                    ? "bg-farenheit-500 text-white shadow-sm"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                편도
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <AirportSearch
                 label="출발지"
                 placeholder="도시 또는 공항 검색"
@@ -66,20 +97,41 @@ export default function HomePage() {
                 value=""
                 onSelect={(code) => setDestCode(code)}
               />
+            </div>
+            <div className={`grid grid-cols-1 gap-4 mb-4 ${
+              tripType === "round_trip" ? "md:grid-cols-2" : "md:grid-cols-1"
+            }`}>
               <div>
                 <label className="block text-sm font-medium mb-1 text-left">출발일</label>
                 <input
                   type="date"
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    if (returnDate && e.target.value > returnDate) {
+                      setReturnDate("");
+                    }
+                  }}
                   min={new Date().toISOString().split("T")[0]}
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 />
               </div>
+              {tripType === "round_trip" && (
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-left">귀국일</label>
+                  <input
+                    type="date"
+                    value={returnDate}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    min={date || new Date().toISOString().split("T")[0]}
+                    className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
+                  />
+                </div>
+              )}
             </div>
             <button
               onClick={handleSearch}
-              disabled={!originCode || !destCode || !date}
+              disabled={!originCode || !destCode || !date || (tripType === "round_trip" && !returnDate)}
               className="block w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               가격 분석하기
@@ -89,21 +141,21 @@ export default function HomePage() {
           {/* Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
             <div>
-              <div className="text-3xl mb-3">📊</div>
+              <div className="text-3xl mb-3">&#128202;</div>
               <h3 className="font-semibold text-lg mb-2">실시간 가격 추적</h3>
               <p className="text-[var(--muted-foreground)] text-sm">
                 전 세계 항공사 가격을 실시간으로 수집하고 추적합니다
               </p>
             </div>
             <div>
-              <div className="text-3xl mb-3">🤖</div>
+              <div className="text-3xl mb-3">&#129302;</div>
               <h3 className="font-semibold text-lg mb-2">AI 가격 예측</h3>
               <p className="text-[var(--muted-foreground)] text-sm">
                 머신러닝 앙상블 모델로 가격 변동을 예측합니다
               </p>
             </div>
             <div>
-              <div className="text-3xl mb-3">🎯</div>
+              <div className="text-3xl mb-3">&#127919;</div>
               <h3 className="font-semibold text-lg mb-2">최적 시기 추천</h3>
               <p className="text-[var(--muted-foreground)] text-sm">
                 BUY / WAIT / HOLD 시그널로 구매 타이밍을 알려드립니다
