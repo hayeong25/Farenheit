@@ -14,6 +14,7 @@ export default function HomePage() {
   const [date, setDate] = useState("");
   const [returnDate, setReturnDate] = useState("");
   const [tripType, setTripType] = useState<"round_trip" | "one_way">("round_trip");
+  const [cabinClass, setCabinClass] = useState("ECONOMY");
 
   // Refs for resetting AirportSearch components
   const originKeyRef = useRef(0);
@@ -26,6 +27,9 @@ export default function HomePage() {
     let url = `/search?origin=${originCode}&dest=${destCode}&date=${date}`;
     if (tripType === "round_trip" && returnDate) {
       url += `&return_date=${returnDate}`;
+    }
+    if (cabinClass !== "ECONOMY") {
+      url += `&cabin=${cabinClass}`;
     }
     router.push(url);
   };
@@ -141,7 +145,7 @@ export default function HomePage() {
             </div>
 
             <div className={`grid grid-cols-1 gap-4 mb-4 ${
-              tripType === "round_trip" ? "md:grid-cols-2" : "md:grid-cols-1"
+              tripType === "round_trip" ? "md:grid-cols-3" : "md:grid-cols-2"
             }`}>
               <div>
                 <label className="block text-sm font-medium mb-1 text-left">출발일</label>
@@ -170,6 +174,19 @@ export default function HomePage() {
                   />
                 </div>
               )}
+              <div>
+                <label className="block text-sm font-medium mb-1 text-left">좌석 등급</label>
+                <select
+                  value={cabinClass}
+                  onChange={(e) => setCabinClass(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
+                >
+                  <option value="ECONOMY">이코노미</option>
+                  <option value="PREMIUM_ECONOMY">프리미엄 이코노미</option>
+                  <option value="BUSINESS">비즈니스</option>
+                  <option value="FIRST">퍼스트</option>
+                </select>
+              </div>
             </div>
             <button
               onClick={handleSearch}

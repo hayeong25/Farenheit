@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { AirportSearch } from "@/components/flights/AirportSearch";
-import { alertsApi, AlertResponse } from "@/lib/api-client";
+import { alertsApi, AlertResponse, routesApi } from "@/lib/api-client";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("ko-KR", {
@@ -18,6 +18,79 @@ const cabinLabels: Record<string, string> = {
   BUSINESS: "비즈니스",
   FIRST: "퍼스트",
 };
+
+// Cache for resolved IATA → city names
+const cityNameCache: Record<string, string> = {};
+
+function useResolvedCityName(iataCode: string | null | undefined): string {
+  const [name, setName] = useState(iataCode ? (cityNameCache[iataCode] || iataCode) : "");
+
+  useEffect(() => {
+    if (!iataCode) return;
+    if (cityNameCache[iataCode]) {
+      setName(cityNameCache[iataCode]);
+      return;
+    }
+    routesApi.searchAirports(iataCode).then((airports) => {
+      const match = airports.find(a => a.iata_code === iataCode);
+      if (match) {
+        const resolved = `${match.city_ko || match.city} (${iataCode})`;
+        cityNameCache[iataCode] = resolved;
+        setName(resolved);
+      }
+    }).catch(() => {});
+  }, [iataCode]);
+
+  return name;
+}
+
+function AlertCard({ alert, onDelete }: { alert: AlertResponse; onDelete: (id: number) => void }) {
+  const originName = useResolvedCityName(alert.origin);
+  const destName = useResolvedCityName(alert.destination);
+  const isTriggered = alert.is_triggered;
+
+  return (
+    <div
+      className={`flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg border transition-colors ${
+        isTriggered
+          ? "border-green-300 bg-green-50/50"
+          : "border-[var(--border)] hover:border-farenheit-200"
+      }`}
+    >
+      <div className="flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold">
+            {originName} → {destName}
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
+            {cabinLabels[alert.cabin_class] || alert.cabin_class}
+          </span>
+          <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+            isTriggered
+              ? "bg-green-100 text-green-700"
+              : "bg-yellow-100 text-yellow-700"
+          }`}>
+            {isTriggered ? "도달 완료" : "모니터링 중"}
+          </span>
+        </div>
+        <div className="flex items-center gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
+          <span>목표가: ₩{Number(alert.target_price).toLocaleString()}</span>
+          {alert.departure_date && <span>출발일: {alert.departure_date}</span>}
+          {isTriggered && alert.triggered_at
+            ? <span>도달: {formatDate(alert.triggered_at)}</span>
+            : <span>생성: {formatDate(alert.created_at)}</span>
+          }
+        </div>
+      </div>
+      <button
+        onClick={() => onDelete(alert.id)}
+        className="text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded border border-red-200 hover:bg-red-50 transition-colors shrink-0"
+      >
+        삭제
+      </button>
+    </div>
+  );
+}
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
@@ -101,9 +174,9 @@ export default function AlertsPage() {
         </button>
       </div>
 
-      {/* How it works */}
+      {/* How it works - honest wording */}
       <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-        <h2 className="text-lg font-semibold mb-3">알림 설정 방법</h2>
+        <h2 className="text-lg font-semibold mb-3">이렇게 동작합니다</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 rounded-lg bg-[var(--muted)]">
             <div className="w-8 h-8 rounded-full bg-farenheit-100 text-farenheit-600 flex items-center justify-center text-sm font-bold mb-2">1</div>
@@ -114,16 +187,16 @@ export default function AlertsPage() {
           </div>
           <div className="p-4 rounded-lg bg-[var(--muted)]">
             <div className="w-8 h-8 rounded-full bg-farenheit-100 text-farenheit-600 flex items-center justify-center text-sm font-bold mb-2">2</div>
-            <p className="font-medium text-sm">AI가 가격 모니터링</p>
+            <p className="font-medium text-sm">자동 가격 모니터링</p>
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
-              30분 간격으로 가격을 수집하고 분석합니다
+              30분 간격으로 가격을 수집하고 비교합니다
             </p>
           </div>
           <div className="p-4 rounded-lg bg-[var(--muted)]">
             <div className="w-8 h-8 rounded-full bg-farenheit-100 text-farenheit-600 flex items-center justify-center text-sm font-bold mb-2">3</div>
-            <p className="font-medium text-sm">목표가 도달 시 알림</p>
+            <p className="font-medium text-sm">이 페이지에서 확인</p>
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
-              목표 가격에 도달하면 즉시 알려드립니다
+              목표 가격에 도달하면 &quot;도달 완료&quot;로 표시됩니다
             </p>
           </div>
         </div>
@@ -156,35 +229,7 @@ export default function AlertsPage() {
         ) : (
           <div className="space-y-3">
             {activeAlerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg border border-[var(--border)] hover:border-farenheit-200 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">
-                      {alert.origin} → {alert.destination}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
-                      {cabinLabels[alert.cabin_class] || alert.cabin_class}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">
-                      모니터링 중
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
-                    <span>목표가: ₩{Number(alert.target_price).toLocaleString()}</span>
-                    {alert.departure_date && <span>출발일: {alert.departure_date}</span>}
-                    <span>생성: {formatDate(alert.created_at)}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDelete(alert.id)}
-                  className="text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded border border-red-200 hover:bg-red-50 transition-colors shrink-0"
-                >
-                  삭제
-                </button>
-              </div>
+              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} />
             ))}
           </div>
         )}
@@ -201,35 +246,7 @@ export default function AlertsPage() {
           </h2>
           <div className="space-y-3">
             {triggeredAlerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg border border-green-300 bg-green-50/50"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">
-                      {alert.origin} → {alert.destination}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
-                      {cabinLabels[alert.cabin_class] || alert.cabin_class}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium">
-                      도달 완료
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
-                    <span>목표가: ₩{Number(alert.target_price).toLocaleString()}</span>
-                    {alert.departure_date && <span>출발일: {alert.departure_date}</span>}
-                    {alert.triggered_at && <span>도달: {formatDate(alert.triggered_at)}</span>}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDelete(alert.id)}
-                  className="text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded border border-red-200 hover:bg-red-50 transition-colors shrink-0"
-                >
-                  삭제
-                </button>
-              </div>
+              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} />
             ))}
           </div>
         </div>
@@ -268,7 +285,7 @@ export default function AlertsPage() {
                   className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 />
                 <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                  이 금액 이하가 되면 알림을 보내드립니다
+                  이 금액 이하가 되면 이 페이지에서 &quot;도달 완료&quot;로 표시됩니다
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

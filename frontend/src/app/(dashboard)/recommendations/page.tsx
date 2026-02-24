@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
-import { recommendationsApi } from "@/lib/api-client";
+import { recommendationsApi, routesApi } from "@/lib/api-client";
 
 interface RecommendationResult {
   origin: string;
@@ -39,12 +40,15 @@ const signalConfig: Record<string, { color: string; bgColor: string; label: stri
   },
 };
 
-export default function RecommendationsPage() {
-  const [originCode, setOriginCode] = useState("");
+function RecommendationsContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const [originCode, setOriginCode] = useState(searchParams.get("origin") || "");
   const [originDisplay, setOriginDisplay] = useState("");
-  const [destCode, setDestCode] = useState("");
+  const [destCode, setDestCode] = useState(searchParams.get("dest") || "");
   const [destDisplay, setDestDisplay] = useState("");
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(searchParams.get("date") || "");
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -53,16 +57,46 @@ export default function RecommendationsPage() {
   const originKeyRef = useRef(0);
   const destKeyRef = useRef(0);
 
-  const handleGetRecommendation = async () => {
-    if (!originCode || !destCode || !date) return;
+  // Resolve IATA codes to display names on mount
+  useEffect(() => {
+    const o = searchParams.get("origin");
+    const d = searchParams.get("dest");
+    if (o && !originDisplay) {
+      routesApi.searchAirports(o).then((airports) => {
+        const match = airports.find(a => a.iata_code === o);
+        if (match) {
+          setOriginDisplay(`${match.city_ko || match.city} (${o})`);
+          originKeyRef.current += 1;
+        } else {
+          setOriginDisplay(o);
+        }
+      }).catch(() => setOriginDisplay(o));
+    }
+    if (d && !destDisplay) {
+      routesApi.searchAirports(d).then((airports) => {
+        const match = airports.find(a => a.iata_code === d);
+        if (match) {
+          setDestDisplay(`${match.city_ko || match.city} (${d})`);
+          destKeyRef.current += 1;
+        } else {
+          setDestDisplay(d);
+        }
+      }).catch(() => setDestDisplay(d));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleGetRecommendation = useCallback(async (origin: string, dest: string, depDate: string) => {
+    if (!origin || !dest || !depDate) return;
     setLoading(true);
     setSearched(true);
     setError(null);
+    router.replace(`/recommendations?origin=${origin}&dest=${dest}&date=${depDate}`, { scroll: false });
     try {
       const result = await recommendationsApi.get({
-        origin: originCode,
-        dest: destCode,
-        departure_date: date,
+        origin,
+        dest,
+        departure_date: depDate,
       }) as RecommendationResult;
       setRecommendation(result);
     } catch {
@@ -71,7 +105,18 @@ export default function RecommendationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  // Auto-search on mount if URL params present
+  useEffect(() => {
+    const o = searchParams.get("origin");
+    const d = searchParams.get("dest");
+    const dt = searchParams.get("date");
+    if (o && d && dt && !searched) {
+      handleGetRecommendation(o, d, dt);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSwap = () => {
     const tc = originCode, td = originDisplay;
@@ -88,26 +133,23 @@ export default function RecommendationsPage() {
       <h1 className="text-2xl font-bold">구매 추천</h1>
 
       {/* Signal Legend */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3">
         {Object.entries(signalConfig).map(([key, cfg]) => (
-          <div key={key} className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
-            <div className="flex items-center gap-3">
-              <span className={`w-3 h-3 rounded-full ${
+          <div key={key} className="bg-[var(--background)] rounded-xl p-4 border border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${
                 key === "BUY" ? "bg-green-500" :
                 key === "WAIT" ? "bg-yellow-500" : "bg-gray-400"
               }`} />
-              <div>
-                <p className={`font-semibold ${cfg.color}`}>{cfg.label}</p>
-                <p className="text-sm text-[var(--muted-foreground)]">{cfg.description}</p>
-              </div>
+              <span className={`font-semibold text-sm ${cfg.color}`}>{cfg.label}</span>
             </div>
+            <p className="text-xs text-[var(--muted-foreground)] mt-1">{cfg.description}</p>
           </div>
         ))}
       </div>
 
       {/* Query Form */}
       <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-        <h2 className="text-lg font-semibold mb-4">추천 조회</h2>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr_auto] gap-4 items-end">
           <AirportSearch
             key={`ro-${originKeyRef.current}`}
@@ -147,7 +189,7 @@ export default function RecommendationsPage() {
           </div>
           <div className="flex items-end">
             <button
-              onClick={handleGetRecommendation}
+              onClick={() => handleGetRecommendation(originCode, destCode, date)}
               disabled={!originCode || !destCode || !date || loading}
               className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
@@ -193,7 +235,7 @@ export default function RecommendationsPage() {
             <div>
               <p className={`font-semibold ${signal.color}`}>{signal.description}</p>
               <p className="text-sm text-[var(--muted-foreground)]">
-                {recommendation.origin} → {recommendation.destination} | {recommendation.departure_date}
+                {originDisplay || recommendation.origin} → {destDisplay || recommendation.destination} | {recommendation.departure_date}
               </p>
             </div>
           </div>
@@ -236,9 +278,37 @@ export default function RecommendationsPage() {
         <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
           <p className="font-medium">이 노선의 추천 데이터가 아직 없습니다.</p>
           <p className="text-sm mt-1">먼저 <strong>항공편 검색</strong>에서 이 노선을 검색하여 가격 데이터를 수집하세요.</p>
-          <p className="text-sm mt-1">충분한 데이터가 쌓이면 AI 구매 추천이 자동으로 활성화됩니다.</p>
+          {originCode && destCode && date && (
+            <a
+              href={`/search?origin=${originCode}&dest=${destCode}&date=${date}`}
+              className="inline-block mt-4 px-5 py-2.5 rounded-lg bg-farenheit-500 text-white font-medium hover:bg-farenheit-600 transition-colors text-sm"
+            >
+              이 노선 검색하기
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Initial State */}
+      {!searched && !loading && (
+        <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
+          <svg className="w-12 h-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+          </svg>
+          <p className="text-lg mb-2">출발지, 도착지, 출발일을 입력하세요</p>
+          <p className="text-sm">AI가 지금 구매할지, 기다릴지 분석해드립니다</p>
         </div>
       )}
     </div>
+  );
+}
+
+export default function RecommendationsPage() {
+  return (
+    <Suspense fallback={
+      <div className="text-center py-12 text-[var(--muted-foreground)]">로딩 중...</div>
+    }>
+      <RecommendationsContent />
+    </Suspense>
   );
 }

@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
-import { flightsApi, FlightOffer, AirlineInfo } from "@/lib/api-client";
+import Link from "next/link";
+import { flightsApi, FlightOffer, AirlineInfo, routesApi } from "@/lib/api-client";
 
 function formatDuration(minutes: number | null): string {
   if (!minutes) return "-";
@@ -42,7 +43,7 @@ function SearchContent() {
   const [tripType, setTripType] = useState<"round_trip" | "one_way">(
     searchParams.get("return_date") ? "round_trip" : "one_way"
   );
-  const [cabinClass, setCabinClass] = useState("ECONOMY");
+  const [cabinClass, setCabinClass] = useState(searchParams.get("cabin") || "ECONOMY");
 
   // Filters
   const [maxStops, setMaxStops] = useState<string>("any");
@@ -112,22 +113,46 @@ function SearchContent() {
     }
   }, [originDisplay, destDisplay, router]);
 
-  // Auto-search on URL params
+  // Resolve IATA codes to display names and auto-search on URL params
   useEffect(() => {
     const o = searchParams.get("origin");
     const d = searchParams.get("dest");
     const dt = searchParams.get("date");
     const rt = searchParams.get("return_date");
-    if (o && d && dt && !searched) {
+
+    if (o) {
       setOriginCode(o);
-      setOriginDisplay(o);
+      // Resolve to city name
+      routesApi.searchAirports(o).then((airports) => {
+        const match = airports.find(a => a.iata_code === o);
+        if (match) {
+          const name = match.city_ko || match.city;
+          setOriginDisplay(`${name} (${o})`);
+          originKeyRef.current += 1;
+        } else {
+          setOriginDisplay(o);
+        }
+      }).catch(() => setOriginDisplay(o));
+    }
+    if (d) {
       setDestCode(d);
-      setDestDisplay(d);
-      setDate(dt);
-      if (rt) {
-        setReturnDate(rt);
-        setTripType("round_trip");
-      }
+      routesApi.searchAirports(d).then((airports) => {
+        const match = airports.find(a => a.iata_code === d);
+        if (match) {
+          const name = match.city_ko || match.city;
+          setDestDisplay(`${name} (${d})`);
+          destKeyRef.current += 1;
+        } else {
+          setDestDisplay(d);
+        }
+      }).catch(() => setDestDisplay(d));
+    }
+    if (dt) setDate(dt);
+    if (rt) {
+      setReturnDate(rt);
+      setTripType("round_trip");
+    }
+    if (o && d && dt && !searched) {
       handleSearch(o, d, dt, cabinClass, maxStops, sortBy, rt || undefined);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -522,6 +547,42 @@ function SearchContent() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Quick Actions after search */}
+      {!isLoading && searched && filteredOffers.length > 0 && originCode && destCode && date && (
+        <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
+          <p className="text-sm font-medium mb-3">이 노선 더 알아보기</p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/predictions?origin=${originCode}&dest=${destCode}&date=${date}`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
+            >
+              <svg className="w-4 h-4 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+              </svg>
+              가격 예측 보기
+            </Link>
+            <Link
+              href={`/recommendations?origin=${originCode}&dest=${destCode}&date=${date}`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
+            >
+              <svg className="w-4 h-4 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+              </svg>
+              구매 추천 받기
+            </Link>
+            <Link
+              href={`/alerts`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
+            >
+              <svg className="w-4 h-4 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+              가격 알림 설정
+            </Link>
+          </div>
         </div>
       )}
 
