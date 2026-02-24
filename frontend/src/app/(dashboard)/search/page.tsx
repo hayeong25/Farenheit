@@ -219,11 +219,8 @@ function SearchContent() {
           </button>
         </div>
 
-        <div className={`grid grid-cols-1 gap-4 ${
-          tripType === "round_trip"
-            ? "md:grid-cols-[1fr_auto_1fr_1fr_1fr_1fr_auto]"
-            : "md:grid-cols-[1fr_auto_1fr_1fr_1fr_auto]"
-        }`}>
+        {/* Row 1: Origin / Swap / Destination */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 md:gap-2 items-end mb-4">
           <AirportSearch
             key={`s-origin-${originKeyRef.current}`}
             label="출발지"
@@ -250,6 +247,23 @@ function SearchContent() {
             value={destDisplay}
             onSelect={(code, display) => { setDestCode(code); setDestDisplay(display); }}
           />
+          {/* Mobile swap */}
+          <button
+            onClick={handleSwap}
+            disabled={!originCode && !destCode}
+            className="md:hidden w-full py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+          >
+            <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            출발지/도착지 바꾸기
+          </button>
+        </div>
+
+        {/* Row 2: Dates + Cabin + Search */}
+        <div className={`grid grid-cols-1 gap-4 ${
+          tripType === "round_trip" ? "md:grid-cols-4" : "md:grid-cols-3"
+        }`}>
           <div>
             <label className="block text-sm font-medium mb-1">출발일</label>
             <input
@@ -297,24 +311,12 @@ function SearchContent() {
                 handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
               }}
               disabled={!originCode || !destCode || !date || (tripType === "round_trip" && !returnDate) || isLoading}
-              className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? "검색 중..." : "검색"}
             </button>
           </div>
         </div>
-
-        {/* Mobile swap button */}
-        <button
-          onClick={handleSwap}
-          disabled={!originCode && !destCode}
-          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
-        >
-          <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          출발지/도착지 바꾸기
-        </button>
       </div>
 
       {/* Error */}
