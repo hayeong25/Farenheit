@@ -192,6 +192,68 @@ class FlightService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def _ensure_route(self, origin: str, dest: str) -> Route | None:
+        """Create route if it doesn't exist, so scheduler can collect data for it."""
+        result = await self.db.execute(
+            select(Route).where(Route.origin_code == origin, Route.dest_code == dest)
+        )
+        route = result.scalar_one_or_none()
+        if not route:
+            try:
+                route = Route(origin_code=origin, dest_code=dest, is_active=True)
+                self.db.add(route)
+                await self.db.flush()
+                logger.info(f"Auto-created route: {origin} -> {dest}")
+            except Exception:
+                await self.db.rollback()
+                route = None
+        return route
+
+    async def _store_search_results(
+        self, route: Route, offers: list[FlightOffer], cabin_class: str
+    ) -> None:
+        """Cache search results as price data for prediction pipeline."""
+        now = datetime.now(timezone.utc)
+
+        # Check which airline codes exist in DB
+        airline_codes = list({o.airline_code for o in offers if o.airline_code})
+        existing_airlines: set[str] = set()
+        if airline_codes:
+            result = await self.db.execute(
+                select(Airline.iata_code).where(Airline.iata_code.in_(airline_codes))
+            )
+            existing_airlines = {row[0] for row in result.all()}
+
+        stored = 0
+        for offer in offers:
+            if offer.airline_code not in existing_airlines:
+                continue  # Skip airlines not in reference data
+            try:
+                price = FlightPrice(
+                    time=now,
+                    route_id=route.id,
+                    airline_code=offer.airline_code,
+                    departure_date=offer.departure_date,
+                    cabin_class=cabin_class,
+                    return_date=offer.return_date,
+                    price_amount=offer.price_amount,
+                    currency=offer.currency,
+                    stops=offer.stops,
+                    duration_minutes=offer.duration_minutes,
+                    source="amadeus-search",
+                )
+                self.db.add(price)
+                stored += 1
+            except Exception as e:
+                logger.warning(f"Failed to store price: {e}")
+        if stored > 0:
+            try:
+                await self.db.commit()
+                logger.info(f"Stored {stored} price observations from search")
+            except Exception as e:
+                logger.warning(f"Failed to commit search prices: {e}")
+                await self.db.rollback()
+
     async def search(
         self,
         origin: str,
@@ -202,10 +264,17 @@ class FlightService:
         sort_by: str = "price",
         return_date: date | None = None,
     ) -> FlightSearchResponse:
+        # Ensure route exists for future data collection
+        route = await self._ensure_route(origin, dest)
+
         # Search Amadeus API for live results
         offers = await _amadeus_client.search_flights(
             origin, dest, departure_date, cabin_class, return_date
         )
+
+        # Store search results as price data for predictions
+        if offers and route:
+            await self._store_search_results(route, offers, cabin_class)
 
         # If Amadeus returned nothing, fall back to DB cache
         if not offers:

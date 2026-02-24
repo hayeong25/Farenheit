@@ -1,7 +1,7 @@
 """Lightweight statistical prediction model - works without Prophet.
 
-Uses exponential moving average, trend analysis, and volatility estimation
-to generate price predictions when ML models can't be used.
+Uses exponential moving average, trend analysis, volatility estimation,
+and day-of-week seasonality to generate price predictions.
 """
 
 import logging
@@ -15,7 +15,19 @@ logger = logging.getLogger(__name__)
 
 
 class StatisticalPredictor:
-    """Price prediction using statistical methods (EMA, trend, volatility)."""
+    """Price prediction using statistical methods (EMA, trend, volatility, seasonality)."""
+
+    # Day-of-week seasonality factors (Mon=0 ... Sun=6)
+    # Based on typical flight pricing: weekdays slightly cheaper, weekend departures pricier
+    DOW_FACTORS = {
+        0: 0.98,   # Monday - slightly below avg
+        1: 0.97,   # Tuesday - cheapest day
+        2: 0.98,   # Wednesday - slightly below avg
+        3: 1.00,   # Thursday - average
+        4: 1.03,   # Friday - slightly above avg
+        5: 1.04,   # Saturday - above avg
+        6: 1.02,   # Sunday - slightly above avg
+    }
 
     def predict(
         self,
@@ -74,7 +86,6 @@ class StatisticalPredictor:
 
         # Volatility (standard deviation of daily changes)
         if n >= 3:
-            # Safely compute percentage changes, avoiding division by zero
             prev_prices = prices[:-1]
             safe_mask = prev_prices > 0.01
             if safe_mask.any():
@@ -83,12 +94,14 @@ class StatisticalPredictor:
             else:
                 volatility = 0.05
         else:
-            volatility = 0.05  # Default 5% volatility
+            volatility = 0.05
+
+        # Clamp volatility to reasonable range
+        volatility = max(0.01, min(volatility, 0.3))
 
         # Price direction - use longer window for stability
         direction_window = min(n, 10)
         if direction_window >= 3:
-            # Use weighted recent trend (more weight to recent data)
             recent_prices = prices[-direction_window:]
             weights = np.linspace(0.5, 1.0, len(recent_prices))
             weighted_trend = np.polyfit(np.arange(len(recent_prices)), recent_prices, 1, w=weights)
@@ -104,17 +117,15 @@ class StatisticalPredictor:
             direction = "STABLE"
 
         # Confidence based on data quantity, consistency, and trend strength
-        data_confidence = min(n / 30, 1.0) * 0.4
+        data_confidence = min(n / 20, 1.0) * 0.4  # Full confidence at 20 data points
         trend_consistency = max(0, 1.0 - volatility * 3) * 0.3
-        # Trend strength factor - stronger trends are more confident
         trend_strength = min(abs(trend_per_day / (current_price + 1)) * 100, 1.0) * 0.3
         confidence = round(data_confidence + trend_consistency + trend_strength, 3)
         confidence = float(np.clip(confidence, 0.1, 0.95))
 
-        # Generate forecast series with EMA-weighted prediction
+        # Generate forecast series with EMA-weighted prediction + seasonality
         forecast_series = []
         last_date = daily["date"].iloc[-1]
-        # Blend EMA-based and trend-based predictions
         ema_weight = 0.6
         trend_weight = 0.4
 
@@ -124,10 +135,14 @@ class StatisticalPredictor:
             # EMA-based: mean reversion toward EMA
             ema_predicted = ema_short + (ema_long - ema_short) * (d / forecast_days) * 0.3
             # Trend-based: linear extrapolation with dampening
-            dampening = 1.0 / (1.0 + d * 0.05)  # Dampen trend over longer horizons
+            dampening = 1.0 / (1.0 + d * 0.05)
             trend_predicted = current_price + trend_per_day * d * dampening
 
             predicted = ema_weight * ema_predicted + trend_weight * trend_predicted
+
+            # Apply day-of-week seasonality
+            dow = forecast_date.weekday()
+            predicted *= self.DOW_FACTORS.get(dow, 1.0)
 
             # Confidence interval widens over time
             uncertainty = current_price * volatility * np.sqrt(d) * 1.2
