@@ -33,11 +33,16 @@ async def get_stats(db: AsyncSession = Depends(get_db)) -> dict:
             select(func.count()).select_from(Airport)
         )).scalar() or 0
 
+        last_collected = (await db.execute(
+            select(func.max(FlightPrice.time))
+        )).scalar()
+
         return {
             "routes": routes_count,
             "prices": prices_count,
             "predictions": predictions_count,
             "airports": airports_count,
+            "last_price_collected_at": last_collected.isoformat() if last_collected else None,
         }
     except Exception as e:
         logger.error(f"Stats query failed: {e}")
@@ -46,4 +51,5 @@ async def get_stats(db: AsyncSession = Depends(get_db)) -> dict:
             "prices": 0,
             "predictions": 0,
             "airports": 0,
+            "last_price_collected_at": None,
         }

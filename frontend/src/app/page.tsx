@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
+import { getRecentSearches, type RecentSearch } from "@/lib/utils";
 
 export default function HomePage() {
   const router = useRouter();
@@ -15,6 +16,12 @@ export default function HomePage() {
   const [returnDate, setReturnDate] = useState("");
   const [tripType, setTripType] = useState<"round_trip" | "one_way">("round_trip");
   const [cabinClass, setCabinClass] = useState("ECONOMY");
+
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+
+  useEffect(() => {
+    setRecentSearches(getRecentSearches());
+  }, []);
 
   // Refs for resetting AirportSearch components
   const originKeyRef = useRef(0);
@@ -196,6 +203,27 @@ export default function HomePage() {
               가격 분석하기
             </button>
           </div>
+
+          {/* Recent Searches for returning users */}
+          {recentSearches.length > 0 && (
+            <div className="mt-8 max-w-2xl mx-auto">
+              <p className="text-sm text-[var(--muted-foreground)] mb-3">최근 검색</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {recentSearches.slice(0, 4).map((s, i) => (
+                  <Link
+                    key={i}
+                    href={`/search?origin=${s.origin}&dest=${s.dest}&date=${s.date}${s.returnDate ? `&return_date=${s.returnDate}` : ""}`}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
+                  >
+                    <span className="font-medium">{s.originDisplay} → {s.destDisplay}</span>
+                    {s.minPrice && (
+                      <span className="text-xs text-farenheit-500">₩{Math.round(s.minPrice).toLocaleString()}</span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">

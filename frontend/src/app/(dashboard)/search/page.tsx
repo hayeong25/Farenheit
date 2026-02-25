@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import Link from "next/link";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
+import { saveRecentSearch } from "@/lib/utils";
 
 function formatDuration(minutes: number | null): string {
   if (!minutes) return "-";
@@ -106,6 +107,21 @@ function SearchContent() {
       setOffers(result.offers);
       setAvailableAirlines(result.available_airlines);
       setSelectedAirlines(new Set(result.available_airlines.map(a => a.code)));
+
+      // Save to recent searches
+      const lowestPrice = result.offers.length > 0
+        ? Math.min(...result.offers.map(o => Number(o.price_amount)))
+        : undefined;
+      saveRecentSearch({
+        origin,
+        dest,
+        originDisplay: originDisplay || origin,
+        destDisplay: destDisplay || dest,
+        date: depDate,
+        returnDate: retDate,
+        cabinClass: cabin,
+        minPrice: lowestPrice,
+      });
 
       // Load price history if route exists
       if (result.route_id) {
@@ -566,14 +582,27 @@ function SearchContent() {
                         )}
                       </div>
 
-                      {/* Price */}
-                      <div className="text-right md:min-w-[140px] flex-shrink-0">
-                        <p className={`text-2xl font-bold ${isLowest ? "text-farenheit-500" : ""}`}>
-                          {formatPrice(offer.price_amount, offer.currency)}
-                        </p>
-                        <p className="text-xs text-[var(--muted-foreground)]">
-                          1인 {isRoundTrip ? "왕복" : "편도"}
-                        </p>
+                      {/* Price + Booking */}
+                      <div className="text-right md:min-w-[140px] flex-shrink-0 flex flex-col items-end gap-2">
+                        <div>
+                          <p className={`text-2xl font-bold ${isLowest ? "text-farenheit-500" : ""}`}>
+                            {formatPrice(offer.price_amount, offer.currency)}
+                          </p>
+                          <p className="text-xs text-[var(--muted-foreground)]">
+                            1인 {isRoundTrip ? "왕복" : "편도"}
+                          </p>
+                        </div>
+                        <a
+                          href={`https://www.google.com/travel/flights?q=flights+${originCode}+to+${destCode}+on+${offer.departure_date}${isRoundTrip && offer.return_date ? `+return+${offer.return_date}` : ""}&curr=KRW`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors"
+                        >
+                          예약하기
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                          </svg>
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -638,7 +667,7 @@ function SearchContent() {
           <p className="text-sm font-medium mb-3">다음 단계</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Link
-              href={`/predictions?origin=${originCode}&dest=${destCode}&date=${date}`}
+              href={`/predictions?origin=${originCode}&dest=${destCode}&date=${date}${cabinClass !== "ECONOMY" ? `&cabin=${cabinClass}` : ""}`}
               className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
               <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -650,7 +679,7 @@ function SearchContent() {
               </div>
             </Link>
             <Link
-              href={`/recommendations?origin=${originCode}&dest=${destCode}&date=${date}`}
+              href={`/recommendations?origin=${originCode}&dest=${destCode}&date=${date}${cabinClass !== "ECONOMY" ? `&cabin=${cabinClass}` : ""}`}
               className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
               <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

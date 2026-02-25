@@ -52,6 +52,7 @@ function RecommendationsContent() {
   const [destCode, setDestCode] = useState(searchParams.get("dest") || "");
   const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState(searchParams.get("date") || "");
+  const [cabinClass] = useState(searchParams.get("cabin") || "ECONOMY");
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -94,12 +95,14 @@ function RecommendationsContent() {
     setLoading(true);
     setSearched(true);
     setError(null);
-    router.replace(`/recommendations?origin=${origin}&dest=${dest}&date=${depDate}`, { scroll: false });
+    const cabinParam = cabinClass !== "ECONOMY" ? `&cabin=${cabinClass}` : "";
+    router.replace(`/recommendations?origin=${origin}&dest=${dest}&date=${depDate}${cabinParam}`, { scroll: false });
     try {
       const result = await recommendationsApi.get({
         origin,
         dest,
         departure_date: depDate,
+        cabin_class: cabinClass,
       }) as RecommendationResult;
       setRecommendation(result);
     } catch {
@@ -129,7 +132,8 @@ function RecommendationsContent() {
     destKeyRef.current += 1;
   };
 
-  const signal = recommendation ? signalConfig[recommendation.signal] || signalConfig.HOLD : null;
+  const isInsufficient = recommendation?.signal === "INSUFFICIENT";
+  const signal = recommendation && !isInsufficient ? signalConfig[recommendation.signal] || signalConfig.HOLD : null;
 
   return (
     <div className="space-y-6">
@@ -286,7 +290,7 @@ function RecommendationsContent() {
         </div>
       )}
 
-      {!loading && searched && !recommendation && !error && (
+      {!loading && searched && (!recommendation || isInsufficient) && !error && (
         <div className="rounded-xl p-8 border-2 border-dashed border-[var(--border)] text-center">
           <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[var(--muted)] flex items-center justify-center">
             <svg className="w-7 h-7 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -294,8 +298,12 @@ function RecommendationsContent() {
             </svg>
           </div>
           <p className="font-semibold text-[var(--foreground)]">데이터가 부족합니다</p>
-          <p className="text-sm text-[var(--muted-foreground)] mt-1">이 노선의 가격 데이터가 충분히 수집되지 않아 추천을 생성할 수 없습니다.</p>
-          <p className="text-xs text-[var(--muted-foreground)] mt-2">먼저 항공편을 검색하면 가격 수집이 시작되고, 이후 AI 분석이 가능합니다.</p>
+          <p className="text-sm text-[var(--muted-foreground)] mt-1">
+            {isInsufficient && recommendation?.reasoning
+              ? recommendation.reasoning
+              : "이 노선의 가격 데이터가 충분히 수집되지 않아 추천을 생성할 수 없습니다."}
+          </p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-2">먼저 항공편을 검색하면 가격 수집이 시작되고, 약 1시간 후 AI 분석이 가능합니다.</p>
           {originCode && destCode && date && (
             <a
               href={`/search?origin=${originCode}&dest=${destCode}&date=${date}`}

@@ -55,6 +55,7 @@ function PredictionsContent() {
   const [destCode, setDestCode] = useState(searchParams.get("dest") || "");
   const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState(searchParams.get("date") || "");
+  const [cabinClass] = useState(searchParams.get("cabin") || "ECONOMY");
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -106,13 +107,15 @@ function PredictionsContent() {
     setError(null);
 
     // Update URL
-    router.replace(`/predictions?origin=${origin}&dest=${dest}&date=${depDate}`, { scroll: false });
+    const cabinParam = cabinClass !== "ECONOMY" ? `&cabin=${cabinClass}` : "";
+    router.replace(`/predictions?origin=${origin}&dest=${dest}&date=${depDate}${cabinParam}`, { scroll: false });
 
     try {
       const result = await predictionsApi.get({
         origin,
         dest,
         departure_date: depDate,
+        cabin_class: cabinClass,
       }) as PredictionResult;
       setPrediction(result);
     } catch {

@@ -27,8 +27,8 @@ class RecommendationService:
                 destination=dest,
                 departure_date=departure_date,
                 cabin_class=cabin_class,
-                signal="HOLD",
-                reasoning="이 노선의 데이터가 아직 없습니다. 가격 데이터를 수집 중이니 잠시 후 다시 확인해주세요.",
+                signal="INSUFFICIENT",
+                reasoning="이 노선의 데이터가 아직 없습니다. 항공편 검색을 먼저 실행하면 가격 수집이 시작됩니다.",
             )
 
         # Get latest prediction
@@ -50,8 +50,8 @@ class RecommendationService:
                 destination=dest,
                 departure_date=departure_date,
                 cabin_class=cabin_class,
-                signal="HOLD",
-                reasoning="예측 데이터를 생성 중입니다. 잠시 후 다시 확인해주세요.",
+                signal="INSUFFICIENT",
+                reasoning="예측 데이터를 생성 중입니다. 검색으로 가격 수집이 시작된 후 약 1시간 내에 분석이 완료됩니다.",
             )
 
         # Determine signal based on prediction

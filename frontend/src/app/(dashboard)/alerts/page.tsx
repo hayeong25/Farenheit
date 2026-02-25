@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
-import { alertsApi, AlertResponse, routesApi } from "@/lib/api-client";
+import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("ko-KR", {
@@ -115,6 +115,7 @@ export default function AlertsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [lastCollected, setLastCollected] = useState<string | null>(null);
 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
@@ -146,6 +147,7 @@ export default function AlertsPage() {
 
   useEffect(() => {
     loadAlerts();
+    statsApi.get().then(s => setLastCollected(s.last_price_collected_at)).catch(() => {});
   }, [loadAlerts]);
 
   const handleCreate = async () => {
@@ -217,6 +219,21 @@ export default function AlertsPage() {
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
               30분 간격으로 가격을 수집하고 비교합니다
             </p>
+            {lastCollected && (
+              <p className="text-xs mt-2 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <span className="text-green-600 font-medium">
+                  마지막 수집: {(() => {
+                    const diff = Date.now() - new Date(lastCollected).getTime();
+                    const mins = Math.floor(diff / 60000);
+                    if (mins < 1) return "방금 전";
+                    if (mins < 60) return `${mins}분 전`;
+                    const hours = Math.floor(mins / 60);
+                    return `${hours}시간 전`;
+                  })()}
+                </span>
+              </p>
+            )}
           </div>
           <div className="p-4 rounded-lg bg-[var(--muted)]">
             <div className="w-8 h-8 rounded-full bg-farenheit-100 text-farenheit-600 flex items-center justify-center text-sm font-bold mb-2">3</div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { statsApi, StatsResponse, alertsApi, AlertResponse, routesApi } from "@/lib/api-client";
+import { getRecentSearches, type RecentSearch } from "@/lib/utils";
 
 interface PopularRoute {
   origin: string;
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [popularRoutes, setPopularRoutes] = useState<PopularRoute[]>(fallbackRoutes);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [loading, setLoading] = useState(true);
   const [statsError, setStatsError] = useState(false);
 
@@ -51,6 +53,7 @@ export default function DashboardPage() {
         setPopularRoutes(dynamicRoutes);
       }
     }).finally(() => setLoading(false));
+    setRecentSearches(getRecentSearches());
   }, []);
 
   const hasData = stats && stats.prices > 0;
@@ -119,9 +122,37 @@ export default function DashboardPage() {
         </Link>
       )}
 
+      {/* Recent Searches */}
+      {recentSearches.length > 0 && (
+        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+          <h2 className="text-lg font-semibold mb-4">내 최근 검색</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {recentSearches.slice(0, 4).map((s, i) => (
+              <Link
+                key={i}
+                href={`/search?origin=${s.origin}&dest=${s.dest}&date=${s.date}${s.returnDate ? `&return_date=${s.returnDate}` : ""}${s.cabinClass !== "ECONOMY" ? `&cabin=${s.cabinClass}` : ""}`}
+                className="flex flex-col px-4 py-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50/50 transition-all group"
+              >
+                <span className="text-sm font-medium">{s.originDisplay} → {s.destDisplay}</span>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    {s.date}{s.returnDate ? ` ~ ${s.returnDate}` : ""}
+                  </span>
+                  {s.minPrice && (
+                    <span className="text-xs font-medium text-farenheit-500">
+                      ₩{Math.round(s.minPrice).toLocaleString()}~
+                    </span>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick Search */}
       <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-        <h2 className="text-lg font-semibold mb-4">인기 노선 빠른 검색</h2>
+        <h2 className="text-lg font-semibold mb-4">{recentSearches.length > 0 ? "인기 노선" : "인기 노선 빠른 검색"}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {popularRoutes.map((route) => (
             <Link

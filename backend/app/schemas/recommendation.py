@@ -9,7 +9,7 @@ class RecommendationResponse(BaseModel):
     destination: str
     departure_date: date
     cabin_class: str
-    signal: str  # BUY, WAIT, HOLD
+    signal: str  # BUY, WAIT, HOLD, INSUFFICIENT
     best_airline: str | None = None
     current_price: Decimal | None = None
     predicted_low: Decimal | None = None
