@@ -24,6 +24,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
   const [results, setResults] = useState<Airport[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [selectedCode, setSelectedCode] = useState(value ? "" : "");
   const [highlightIdx, setHighlightIdx] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -53,16 +54,23 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
     }
 
     setIsLoading(true);
+    setFetchError(false);
     try {
       const res = await fetch(`${API_BASE}/routes/airports/search?q=${encodeURIComponent(q)}`);
       if (res.ok) {
         const data: Airport[] = await res.json();
         setResults(data);
-        setIsOpen(data.length > 0);
+        setIsOpen(true);
         setHighlightIdx(-1);
+      } else {
+        setResults([]);
+        setFetchError(true);
+        setIsOpen(true);
       }
     } catch {
       setResults([]);
+      setFetchError(true);
+      setIsOpen(true);
     } finally {
       setIsLoading(false);
     }
@@ -150,6 +158,8 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
         <ul className="absolute z-50 w-full mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {isLoading ? (
             <li className="px-4 py-3 text-sm text-[var(--muted-foreground)]">검색 중...</li>
+          ) : fetchError ? (
+            <li className="px-4 py-3 text-sm text-red-500">서버 연결에 실패했습니다. 다시 입력해주세요.</li>
           ) : results.length === 0 ? (
             <li className="px-4 py-3 text-sm text-[var(--muted-foreground)]">결과가 없습니다</li>
           ) : (

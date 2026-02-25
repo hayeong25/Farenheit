@@ -62,6 +62,7 @@ function SearchContent() {
     origin: string; dest: string; date: string; returnDate?: string; tripType: string;
   } | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistoryResponse | null>(null);
+  const [validationMsg, setValidationMsg] = useState("");
 
   // Swap support
   const originKeyRef = useRef(0);
@@ -134,7 +135,7 @@ function SearchContent() {
         setPriceHistory(null);
       }
     } catch {
-      setError("검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      setError("서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.");
       setOffers([]);
     } finally {
       setIsLoading(false);
@@ -357,24 +358,48 @@ function SearchContent() {
               <option value="FIRST">퍼스트</option>
             </select>
           </div>
-          <div className="flex items-end">
+          <div className="flex flex-col items-stretch justify-end">
             <button
               onClick={() => {
+                const missing: string[] = [];
+                if (!originCode) missing.push("출발지");
+                if (!destCode) missing.push("도착지");
+                if (!date) missing.push("출발일");
+                if (tripType === "round_trip" && !returnDate) missing.push("귀국일");
+                if (missing.length > 0) {
+                  setValidationMsg(`${missing.join(", ")}을(를) 입력해주세요.`);
+                  return;
+                }
+                setValidationMsg("");
                 const retDate = tripType === "round_trip" ? returnDate : undefined;
                 handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
               }}
-              disabled={!originCode || !destCode || !date || (tripType === "round_trip" && !returnDate) || isLoading}
+              disabled={isLoading}
               className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? "검색 중..." : "검색"}
             </button>
+            {validationMsg && (
+              <p className="text-xs text-red-500 mt-1">{validationMsg}</p>
+            )}
           </div>
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">{error}</div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-red-700 text-sm">{error}</p>
+          <button
+            onClick={() => {
+              const retDate = tripType === "round_trip" ? returnDate : undefined;
+              handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
+            }}
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+          >
+            다시 시도
+          </button>
+        </div>
       )}
 
       {/* Loading */}

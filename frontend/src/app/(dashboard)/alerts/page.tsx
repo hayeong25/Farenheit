@@ -50,11 +50,7 @@ function AlertCard({ alert, onDelete }: { alert: AlertResponse; onDelete: (id: n
   const destName = useResolvedCityName(alert.destination);
   const isTriggered = alert.is_triggered;
 
-  const searchDate = alert.departure_date || (() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 14);
-    return d.toISOString().split("T")[0];
-  })();
+  const searchDate = alert.departure_date || new Date().toISOString().split("T")[0];
 
   return (
     <div
@@ -139,7 +135,7 @@ export default function AlertsPage() {
       const data = await alertsApi.list();
       setAlerts(data);
     } catch {
-      setError("알림 목록을 불러오는 데 실패했습니다. 서버 연결을 확인해주세요.");
+      setError("서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.");
     } finally {
       setIsLoading(false);
     }
@@ -246,8 +242,14 @@ export default function AlertsPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
-          {error}
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-red-700 text-sm">{error}</p>
+          <button
+            onClick={loadAlerts}
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+          >
+            다시 시도
+          </button>
         </div>
       )}
 

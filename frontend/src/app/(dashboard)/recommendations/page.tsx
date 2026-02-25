@@ -106,7 +106,7 @@ function RecommendationsContent() {
       }) as RecommendationResult;
       setRecommendation(result);
     } catch {
-      setError("추천 조회 중 오류가 발생했습니다. 서버 연결을 확인해주세요.");
+      setError("서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.");
       setRecommendation(null);
     } finally {
       setLoading(false);
@@ -140,7 +140,7 @@ function RecommendationsContent() {
       <h1 className="text-2xl font-bold">구매 추천</h1>
 
       {/* Signal Legend */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {Object.entries(signalConfig).map(([key, cfg]) => (
           <div key={key} className="bg-[var(--background)] rounded-xl p-4 border border-[var(--border)]">
             <div className="flex items-center gap-2">
@@ -153,6 +153,13 @@ function RecommendationsContent() {
             <p className="text-xs text-[var(--muted-foreground)] mt-1">{cfg.description}</p>
           </div>
         ))}
+        <div className="bg-[var(--background)] rounded-xl p-4 border border-dashed border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+            <span className="font-semibold text-sm text-blue-700">데이터 부족</span>
+          </div>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">아직 분석할 데이터가 없습니다</p>
+        </div>
       </div>
 
       {/* Query Form */}
@@ -220,8 +227,14 @@ function RecommendationsContent() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
-          {error}
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-red-700 text-sm">{error}</p>
+          <button
+            onClick={() => handleGetRecommendation(originCode, destCode, date)}
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+          >
+            다시 시도
+          </button>
         </div>
       )}
 

@@ -99,8 +99,14 @@ export default function DashboardPage() {
       </div>
 
       {statsError && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
-          서버에 연결할 수 없습니다. 잠시 후 새로고침 해주세요.
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-red-700 text-sm">서버에 연결할 수 없습니다.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+          >
+            다시 시도
+          </button>
         </div>
       )}
 

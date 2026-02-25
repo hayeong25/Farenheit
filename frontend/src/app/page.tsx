@@ -18,6 +18,7 @@ export default function HomePage() {
   const [cabinClass, setCabinClass] = useState("ECONOMY");
 
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [validationMsg, setValidationMsg] = useState("");
 
   useEffect(() => {
     setRecentSearches(getRecentSearches());
@@ -28,8 +29,16 @@ export default function HomePage() {
   const destKeyRef = useRef(0);
 
   const handleSearch = () => {
-    if (!originCode || !destCode || !date) return;
-    if (tripType === "round_trip" && !returnDate) return;
+    const missing: string[] = [];
+    if (!originCode) missing.push("출발지");
+    if (!destCode) missing.push("도착지");
+    if (!date) missing.push("출발일");
+    if (tripType === "round_trip" && !returnDate) missing.push("귀국일");
+    if (missing.length > 0) {
+      setValidationMsg(`${missing.join(", ")}을(를) 입력해주세요.`);
+      return;
+    }
+    setValidationMsg("");
 
     let url = `/search?origin=${originCode}&dest=${destCode}&date=${date}`;
     if (tripType === "round_trip" && returnDate) {
@@ -197,11 +206,13 @@ export default function HomePage() {
             </div>
             <button
               onClick={handleSearch}
-              disabled={!originCode || !destCode || !date || (tripType === "round_trip" && !returnDate)}
-              className="block w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors text-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="block w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors text-center"
             >
               가격 분석하기
             </button>
+            {validationMsg && (
+              <p className="text-sm text-red-500 mt-2 text-left">{validationMsg}</p>
+            )}
           </div>
 
           {/* Recent Searches for returning users */}
@@ -212,10 +223,13 @@ export default function HomePage() {
                 {recentSearches.slice(0, 4).map((s, i) => (
                   <Link
                     key={i}
-                    href={`/search?origin=${s.origin}&dest=${s.dest}&date=${s.date}${s.returnDate ? `&return_date=${s.returnDate}` : ""}`}
+                    href={`/search?origin=${s.origin}&dest=${s.dest}&date=${s.date}${s.returnDate ? `&return_date=${s.returnDate}` : ""}${s.cabinClass !== "ECONOMY" ? `&cabin=${s.cabinClass}` : ""}`}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
                   >
                     <span className="font-medium">{s.originDisplay} → {s.destDisplay}</span>
+                    <span className="text-xs text-[var(--muted-foreground)]">
+                      {s.date.slice(5)}{s.returnDate ? ` ~ ${s.returnDate.slice(5)}` : ""}
+                    </span>
                     {s.minPrice && (
                       <span className="text-xs text-farenheit-500">₩{Math.round(s.minPrice).toLocaleString()}</span>
                     )}

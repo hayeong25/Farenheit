@@ -119,7 +119,7 @@ function PredictionsContent() {
       }) as PredictionResult;
       setPrediction(result);
     } catch {
-      setError("예측 조회 중 오류가 발생했습니다. 서버 연결을 확인해주세요.");
+      setError("서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.");
       setPrediction(null);
     } finally {
       setLoading(false);
@@ -231,8 +231,14 @@ function PredictionsContent() {
 
       {/* Error */}
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-          {error}
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between gap-3">
+          <p className="text-red-700 text-sm">{error}</p>
+          <button
+            onClick={() => handlePredict(originCode, destCode, date)}
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+          >
+            다시 시도
+          </button>
         </div>
       )}
 
