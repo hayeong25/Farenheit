@@ -279,20 +279,40 @@ function RecommendationsContent() {
                 <p className="text-lg font-bold">{recommendation.best_airline}</p>
               </div>
             )}
-            {recommendation.confidence && (
-              <div>
-                <p className="text-xs text-[var(--muted-foreground)]">신뢰도</p>
-                <p className="text-lg font-bold">{(recommendation.confidence * 100).toFixed(0)}%</p>
-              </div>
-            )}
+            {recommendation.confidence && (() => {
+              const pct = recommendation.confidence * 100;
+              const label = pct >= 85 ? "높음" : pct >= 60 ? "보통" : "낮음";
+              const color = pct >= 85 ? "text-green-600" : pct >= 60 ? "text-yellow-600" : "text-red-600";
+              return (
+                <div>
+                  <p className="text-xs text-[var(--muted-foreground)]">신뢰도</p>
+                  <p className="text-lg font-bold">{pct.toFixed(0)}% <span className={`text-sm font-medium ${color}`}>({label})</span></p>
+                </div>
+              );
+            })()}
           </div>
 
           {recommendation.signal === "WAIT" && recommendation.predicted_low_date && (
             <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
-              <p className="text-sm font-medium text-yellow-800">
-                예상 최저가 시점: {new Date(recommendation.predicted_low_date).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}경
-              </p>
-              <p className="text-xs text-yellow-700 mt-1">이 시점까지 대기하면 더 저렴한 가격을 기대할 수 있습니다.</p>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">
+                    예상 최저가 시점: {new Date(recommendation.predicted_low_date).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}경
+                  </p>
+                  <p className="text-xs text-yellow-700 mt-1">이 시점까지 대기하면 더 저렴한 가격을 기대할 수 있습니다.</p>
+                </div>
+                {recommendation.predicted_low && (
+                  <a
+                    href={`/alerts`}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-yellow-600 text-white text-sm font-medium hover:bg-yellow-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                    </svg>
+                    가격 알림 설정
+                  </a>
+                )}
+              </div>
             </div>
           )}
 

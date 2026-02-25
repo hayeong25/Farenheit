@@ -274,12 +274,17 @@ function PredictionsContent() {
                 <p className="text-lg font-medium text-red-600">₩{Number(prediction.confidence_high).toLocaleString()}</p>
               </div>
             )}
-            {prediction.confidence_score && (
-              <div>
-                <p className="text-xs text-[var(--muted-foreground)]">신뢰도</p>
-                <p className="text-lg font-medium">{(Number(prediction.confidence_score) * 100).toFixed(0)}%</p>
-              </div>
-            )}
+            {prediction.confidence_score && (() => {
+              const pct = Number(prediction.confidence_score) * 100;
+              const label = pct >= 85 ? "높음" : pct >= 60 ? "보통" : "낮음";
+              const color = pct >= 85 ? "text-green-600" : pct >= 60 ? "text-yellow-600" : "text-red-600";
+              return (
+                <div>
+                  <p className="text-xs text-[var(--muted-foreground)]">신뢰도</p>
+                  <p className="text-lg font-medium">{pct.toFixed(0)}% <span className={`text-sm ${color}`}>({label})</span></p>
+                </div>
+              );
+            })()}
           </div>
           <p className="text-xs text-[var(--muted-foreground)]">
             모델: {prediction.model_version}
@@ -322,7 +327,10 @@ function PredictionsContent() {
         <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
           <h2 className="text-lg font-semibold mb-2">
             월간 가격 히트맵
-            {date && <span className="text-sm font-normal text-[var(--muted-foreground)] ml-2">{date.slice(0, 7)}</span>}
+            {date && (() => {
+              const [y, m] = date.slice(0, 7).split("-");
+              return <span className="text-sm font-normal text-[var(--muted-foreground)] ml-2">{y}년 {Number(m)}월</span>;
+            })()}
           </h2>
           <p className="text-sm text-[var(--muted-foreground)] mb-4">
             같은 노선의 출발일별 예상 가격입니다. 초록색은 저렴, 빨간색은 비싼 날짜입니다.

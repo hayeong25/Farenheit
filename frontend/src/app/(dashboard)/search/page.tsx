@@ -280,7 +280,7 @@ function SearchContent() {
             label="출발지"
             placeholder="도시 또는 공항 검색"
             value={originDisplay}
-            onSelect={(code, display) => { setOriginCode(code); setOriginDisplay(display); }}
+            onSelect={(code, display) => { setOriginCode(code); setOriginDisplay(display); setValidationMsg(""); }}
           />
           <div className="hidden md:flex items-end pb-1">
             <button
@@ -299,7 +299,7 @@ function SearchContent() {
             label="도착지"
             placeholder="도시 또는 공항 검색"
             value={destDisplay}
-            onSelect={(code, display) => { setDestCode(code); setDestDisplay(display); }}
+            onSelect={(code, display) => { setDestCode(code); setDestDisplay(display); setValidationMsg(""); }}
           />
           {/* Mobile swap */}
           <button
@@ -325,6 +325,7 @@ function SearchContent() {
               value={date}
               onChange={(e) => {
                 setDate(e.target.value);
+                setValidationMsg("");
                 if (returnDate && e.target.value > returnDate) {
                   setReturnDate("");
                 }
@@ -339,7 +340,7 @@ function SearchContent() {
               <input
                 type="date"
                 value={returnDate}
-                onChange={(e) => setReturnDate(e.target.value)}
+                onChange={(e) => { setReturnDate(e.target.value); setValidationMsg(""); }}
                 min={date || new Date().toISOString().split("T")[0]}
                 className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
               />

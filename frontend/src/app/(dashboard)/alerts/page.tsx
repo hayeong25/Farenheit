@@ -45,7 +45,12 @@ function useResolvedCityName(iataCode: string | null | undefined): string {
   return name;
 }
 
-function AlertCard({ alert, onDelete }: { alert: AlertResponse; onDelete: (id: number) => void }) {
+function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete }: {
+  alert: AlertResponse;
+  onDelete: (id: number) => void;
+  confirmingId: number | null;
+  onConfirmDelete: (id: number | null) => void;
+}) {
   const originName = useResolvedCityName(alert.origin);
   const destName = useResolvedCityName(alert.destination);
   const isTriggered = alert.is_triggered;
@@ -90,17 +95,34 @@ function AlertCard({ alert, onDelete }: { alert: AlertResponse; onDelete: (id: n
         {isTriggered && alert.origin && alert.destination && (
           <Link
             href={`/search?origin=${alert.origin}&dest=${alert.destination}&date=${searchDate}`}
-            className="text-sm text-farenheit-500 hover:text-farenheit-600 px-3 py-1.5 rounded border border-farenheit-200 hover:bg-farenheit-50 transition-colors"
+            className="text-sm text-white bg-farenheit-500 hover:bg-farenheit-600 px-4 py-1.5 rounded-lg font-medium transition-colors"
           >
             지금 검색
           </Link>
         )}
-        <button
-          onClick={() => onDelete(alert.id)}
-          className="text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded border border-red-200 hover:bg-red-50 transition-colors"
-        >
-          삭제
-        </button>
+        {confirmingId === alert.id ? (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => onDelete(alert.id)}
+              className="text-sm text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded font-medium transition-colors"
+            >
+              확인
+            </button>
+            <button
+              onClick={() => onConfirmDelete(null)}
+              className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] px-3 py-1.5 rounded border border-[var(--border)] transition-colors"
+            >
+              취소
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => onConfirmDelete(alert.id)}
+            className="text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded border border-red-200 hover:bg-red-50 transition-colors"
+          >
+            삭제
+          </button>
+        )}
       </div>
     </div>
   );
@@ -112,6 +134,7 @@ export default function AlertsPage() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [lastCollected, setLastCollected] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
@@ -177,8 +200,10 @@ export default function AlertsPage() {
     try {
       await alertsApi.delete(id);
       setAlerts((prev) => prev.filter((a) => a.id !== id));
+      setDeleteConfirm(null);
       showToast("알림이 삭제되었습니다.");
     } catch {
+      setDeleteConfirm(null);
       setError("알림 삭제에 실패했습니다.");
     }
   };
@@ -191,7 +216,15 @@ export default function AlertsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">가격 알림</h1>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={() => {
+            setOriginCode("");
+            setDestCode("");
+            setTargetPrice("");
+            setDepartureDate("");
+            setCabinClass("ECONOMY");
+            setCreateError(null);
+            setShowCreate(true);
+          }}
           className="px-4 py-2 rounded-lg bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors text-sm font-medium"
         >
           + 알림 추가
@@ -274,7 +307,7 @@ export default function AlertsPage() {
         ) : (
           <div className="space-y-3">
             {activeAlerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} />
+              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} confirmingId={deleteConfirm} onConfirmDelete={setDeleteConfirm} />
             ))}
           </div>
         )}
@@ -291,7 +324,7 @@ export default function AlertsPage() {
           </h2>
           <div className="space-y-3">
             {triggeredAlerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} />
+              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} confirmingId={deleteConfirm} onConfirmDelete={setDeleteConfirm} />
             ))}
           </div>
         </div>
@@ -299,7 +332,7 @@ export default function AlertsPage() {
 
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-lg bg-[var(--foreground)] text-[var(--background)] text-sm font-medium shadow-lg animate-[fadeInUp_0.2s_ease-out]">
+        <div role="status" aria-live="polite" className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-lg bg-[var(--foreground)] text-[var(--background)] text-sm font-medium shadow-lg animate-[fadeInUp_0.2s_ease-out]">
           {toast}
         </div>
       )}
