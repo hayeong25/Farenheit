@@ -706,7 +706,7 @@ function SearchContent() {
           <p className="text-sm font-medium mb-3">다음 단계</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Link
-              href={`/predictions?origin=${originCode}&dest=${destCode}&date=${date}${cabinClass !== "ECONOMY" ? `&cabin=${cabinClass}` : ""}`}
+              href={`/predictions?${new URLSearchParams({ origin: originCode, dest: destCode, date, ...(cabinClass !== "ECONOMY" ? { cabin: cabinClass } : {}) }).toString()}`}
               className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
               <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -718,7 +718,7 @@ function SearchContent() {
               </div>
             </Link>
             <Link
-              href={`/recommendations?origin=${originCode}&dest=${destCode}&date=${date}${cabinClass !== "ECONOMY" ? `&cabin=${cabinClass}` : ""}`}
+              href={`/recommendations?${new URLSearchParams({ origin: originCode, dest: destCode, date, ...(cabinClass !== "ECONOMY" ? { cabin: cabinClass } : {}) }).toString()}`}
               className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
               <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -730,7 +730,7 @@ function SearchContent() {
               </div>
             </Link>
             <Link
-              href="/alerts"
+              href={`/alerts?${new URLSearchParams({ origin: originCode, dest: destCode, date, ...(minPrice > 0 ? { target: String(Math.round(minPrice)) } : {}) }).toString()}`}
               className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
               <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
