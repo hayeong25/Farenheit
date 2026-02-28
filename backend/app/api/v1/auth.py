@@ -13,7 +13,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)) ->
     service = AuthService(db)
     user = await service.register(user_data)
     if not user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다.")
     return user
 
 
@@ -22,5 +22,5 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)) -> T
     service = AuthService(db)
     token = await service.login(credentials)
     if not token:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
     return token
