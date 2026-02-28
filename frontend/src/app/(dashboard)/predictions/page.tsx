@@ -107,8 +107,9 @@ function PredictionsContent() {
     setError(null);
 
     // Update URL
-    const cabinParam = cabinClass !== "ECONOMY" ? `&cabin=${cabinClass}` : "";
-    router.replace(`/predictions?origin=${origin}&dest=${dest}&date=${depDate}${cabinParam}`, { scroll: false });
+    const urlParams = new URLSearchParams({ origin, dest, date: depDate });
+    if (cabinClass !== "ECONOMY") urlParams.set("cabin", cabinClass);
+    router.replace(`/predictions?${urlParams.toString()}`, { scroll: false });
 
     try {
       const result = await predictionsApi.get({

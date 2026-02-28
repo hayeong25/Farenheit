@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
 
@@ -129,7 +130,8 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete }: {
   );
 }
 
-export default function AlertsPage() {
+function AlertsContent() {
+  const searchParams = useSearchParams();
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,13 +156,21 @@ export default function AlertsPage() {
     }, 50);
     return () => document.removeEventListener("keydown", handleEsc);
   }, [showCreate]);
-  const [originCode, setOriginCode] = useState("");
-  const [destCode, setDestCode] = useState("");
-  const [targetPrice, setTargetPrice] = useState("");
+  const [originCode, setOriginCode] = useState(searchParams.get("origin") || "");
+  const [destCode, setDestCode] = useState(searchParams.get("dest") || "");
+  const [targetPrice, setTargetPrice] = useState(searchParams.get("target") || "");
   const [cabinClass, setCabinClass] = useState("ECONOMY");
-  const [departureDate, setDepartureDate] = useState("");
+  const [departureDate, setDepartureDate] = useState(searchParams.get("date") || "");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Auto-open create modal if URL has pre-fill params
+  useEffect(() => {
+    if (searchParams.get("origin") && searchParams.get("dest")) {
+      setShowCreate(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -446,5 +456,22 @@ export default function AlertsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AlertsPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-6">
+        <div className="h-8 w-28 bg-[var(--muted)] rounded animate-pulse" />
+        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => <div key={i} className="h-16 bg-[var(--muted)] rounded-lg animate-pulse" />)}
+          </div>
+        </div>
+      </div>
+    }>
+      <AlertsContent />
+    </Suspense>
   );
 }
