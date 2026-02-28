@@ -112,7 +112,7 @@ function RecommendationsContent() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, cabinClass]);
 
   // Auto-search on mount if URL params present
   useEffect(() => {
@@ -304,7 +304,7 @@ function RecommendationsContent() {
                 </div>
                 {recommendation.predicted_low && (
                   <a
-                    href={`/alerts?origin=${recommendation.origin}&dest=${recommendation.destination}&target=${Math.round(recommendation.predicted_low)}&date=${recommendation.departure_date}`}
+                    href={`/alerts?${new URLSearchParams({ origin: recommendation.origin, dest: recommendation.destination, target: String(Math.round(recommendation.predicted_low)), date: recommendation.departure_date }).toString()}`}
                     className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-yellow-600 text-white text-sm font-medium hover:bg-yellow-700 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -340,7 +340,7 @@ function RecommendationsContent() {
           <p className="text-xs text-blue-600 mt-2">먼저 항공편을 검색하면 가격 수집이 시작되고, 약 1시간 후 AI 분석이 가능합니다.</p>
           <a
             href={originCode && destCode && date
-              ? `/search?origin=${originCode}&dest=${destCode}&date=${date}`
+              ? `/search?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`
               : "/search"}
             className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors text-sm"
           >

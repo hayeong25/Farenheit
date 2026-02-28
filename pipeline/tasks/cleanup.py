@@ -7,9 +7,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import delete
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from pipeline.config import pipeline_settings
+from pipeline.db import session_factory as _session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +18,12 @@ if str(_project_root / "backend") not in sys.path:
     sys.path.insert(0, str(_project_root / "backend"))
 
 
-def _get_session_factory() -> async_sessionmaker[AsyncSession]:
-    engine = create_async_engine(pipeline_settings.DATABASE_URL)
-    return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-
 async def _cleanup() -> dict:
     """Remove data older than retention period."""
     from app.models.flight_price import FlightPrice
     from app.models.prediction import Prediction
 
-    session_factory = _get_session_factory()
+    session_factory = _session_factory
 
     # Keep 180 days of price data, 30 days of predictions
     price_cutoff = datetime.now(timezone.utc) - timedelta(days=180)

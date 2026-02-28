@@ -96,7 +96,7 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete }: {
       <div className="flex items-center gap-2 shrink-0">
         {isTriggered && alert.origin && alert.destination && (
           <Link
-            href={`/search?origin=${alert.origin}&dest=${alert.destination}&date=${searchDate}`}
+            href={`/search?${new URLSearchParams({ origin: alert.origin, dest: alert.destination, date: searchDate }).toString()}`}
             className="text-sm text-white bg-farenheit-500 hover:bg-farenheit-600 px-4 py-1.5 rounded-lg font-medium transition-colors"
           >
             지금 검색

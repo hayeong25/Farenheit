@@ -5,18 +5,13 @@ import logging
 from datetime import date, timedelta
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pipeline.collectors.amadeus_collector import AmadeusCollector
 from pipeline.collectors.base import PriceObservation
-from pipeline.config import pipeline_settings
+from pipeline.db import session_factory as _session_factory
 
 logger = logging.getLogger(__name__)
-
-
-def _get_session_factory() -> async_sessionmaker[AsyncSession]:
-    engine = create_async_engine(pipeline_settings.DATABASE_URL)
-    return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 async def _collect_route(
@@ -103,7 +98,7 @@ async def collect_all_routes_async() -> dict:
 
     from app.models.route import Route
 
-    session_factory = _get_session_factory()
+    session_factory = _session_factory
     collector = AmadeusCollector()
 
     # Get active routes

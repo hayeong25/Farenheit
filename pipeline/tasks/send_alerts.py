@@ -7,9 +7,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from pipeline.config import pipeline_settings
+from pipeline.db import session_factory as _session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +18,12 @@ if str(_project_root / "backend") not in sys.path:
     sys.path.insert(0, str(_project_root / "backend"))
 
 
-def _get_session_factory() -> async_sessionmaker[AsyncSession]:
-    engine = create_async_engine(pipeline_settings.DATABASE_URL)
-    return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-
 async def _check_alerts() -> dict:
     """Check all active alerts against latest prices."""
     from app.models.alert import PriceAlert
     from app.models.flight_price import FlightPrice
 
-    session_factory = _get_session_factory()
+    session_factory = _session_factory
     triggered = 0
 
     async with session_factory() as session:

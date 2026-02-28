@@ -137,7 +137,7 @@ function PredictionsContent() {
     } finally {
       setHeatmapLoading(false);
     }
-  }, [router]);
+  }, [router, cabinClass]);
 
   // Auto-search on mount if URL params present
   useEffect(() => {
@@ -313,7 +313,7 @@ function PredictionsContent() {
           </p>
           <a
             href={originCode && destCode && date
-              ? `/search?origin=${originCode}&dest=${destCode}&date=${date}`
+              ? `/search?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`
               : "/search"}
             className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors text-sm"
           >

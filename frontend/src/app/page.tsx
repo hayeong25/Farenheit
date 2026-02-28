@@ -263,7 +263,12 @@ export default function HomePage() {
                 {recentSearches.slice(0, 4).map((s, i) => (
                   <Link
                     key={i}
-                    href={`/search?origin=${s.origin}&dest=${s.dest}&date=${s.date}${s.returnDate ? `&return_date=${s.returnDate}` : ""}${s.cabinClass !== "ECONOMY" ? `&cabin=${s.cabinClass}` : ""}`}
+                    href={(() => {
+                      const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: s.date });
+                      if (s.returnDate) p.set("return_date", s.returnDate);
+                      if (s.cabinClass !== "ECONOMY") p.set("cabin", s.cabinClass);
+                      return `/search?${p.toString()}`;
+                    })()}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
                   >
                     <span className="font-medium">{s.originDisplay} → {s.destDisplay}</span>

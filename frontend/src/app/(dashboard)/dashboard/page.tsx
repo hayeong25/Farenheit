@@ -49,7 +49,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     Promise.all([
-      statsApi.get().catch(() => { setStatsError(true); return null; }),
+      statsApi.get().then(data => {
+        if (data?.error) setStatsError(true);
+        return data;
+      }).catch(() => { setStatsError(true); return null; }),
       alertsApi.list().catch(() => []),
       routesApi.popular(8).catch(() => null),
     ]).then(([statsData, alertsData, routesData]) => {
@@ -165,7 +168,12 @@ export default function DashboardPage() {
             {recentSearches.slice(0, 4).map((s, i) => (
               <Link
                 key={i}
-                href={`/search?origin=${s.origin}&dest=${s.dest}&date=${s.date}${s.returnDate ? `&return_date=${s.returnDate}` : ""}${s.cabinClass !== "ECONOMY" ? `&cabin=${s.cabinClass}` : ""}`}
+                href={(() => {
+                  const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: s.date });
+                  if (s.returnDate) p.set("return_date", s.returnDate);
+                  if (s.cabinClass !== "ECONOMY") p.set("cabin", s.cabinClass);
+                  return `/search?${p.toString()}`;
+                })()}
                 className="flex flex-col px-4 py-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50/50 transition-all group"
               >
                 <span className="text-sm font-medium">{s.originDisplay} → {s.destDisplay}</span>
@@ -192,7 +200,7 @@ export default function DashboardPage() {
           {popularRoutes.map((route) => (
             <Link
               key={`${route.origin}-${route.dest}`}
-              href={`/search?origin=${route.origin}&dest=${route.dest}&date=${defaultDate}`}
+              href={`/search?${new URLSearchParams({ origin: route.origin, dest: route.dest, date: defaultDate }).toString()}`}
               className="flex items-center justify-between px-4 py-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50/50 transition-all group"
             >
               <span className="text-sm font-medium">{route.label}</span>

@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pandas as pd
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from pipeline.config import pipeline_settings
+from pipeline.db import session_factory as _session_factory
 from pipeline.ml.models.statistical_model import StatisticalPredictor
 
 logger = logging.getLogger(__name__)
@@ -22,18 +22,13 @@ if str(_project_root / "backend") not in sys.path:
     sys.path.insert(0, str(_project_root / "backend"))
 
 
-def _get_session_factory() -> async_sessionmaker[AsyncSession]:
-    engine = create_async_engine(pipeline_settings.DATABASE_URL)
-    return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-
 async def _predict_all_routes() -> dict:
     """Run predictions for all active routes with sufficient data."""
     from app.models.flight_price import FlightPrice
     from app.models.prediction import Prediction
     from app.models.route import Route
 
-    session_factory = _get_session_factory()
+    session_factory = _session_factory
     predictor = StatisticalPredictor()
 
     predictions_created = 0
@@ -91,6 +86,7 @@ async def _predict_all_routes() -> dict:
                 # Run statistical prediction
                 result_pred = predictor.predict(relevant, forecast_days=14)
                 if result_pred is None:
+                    logger.warning(f"Route {route.origin_code}->{route.dest_code} date {dep_date}: prediction returned None with {len(relevant)} data points")
                     continue
 
                 # Ensure non-negative prices

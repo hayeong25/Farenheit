@@ -58,4 +58,5 @@ async def get_stats(db: AsyncSession = Depends(get_db)) -> dict:
             "airports": 0,
             "last_price_collected_at": None,
             "last_predicted_at": None,
+            "error": True,
         }
