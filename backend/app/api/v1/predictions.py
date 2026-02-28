@@ -11,6 +11,8 @@ from app.services.prediction_service import PredictionService
 
 router = APIRouter()
 
+VALID_CABIN_CLASSES = {"ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"}
+
 
 @router.get("", response_model=PredictionResponse)
 async def get_prediction(
@@ -27,6 +29,8 @@ async def get_prediction(
     if dest:
         dest = dest.upper()
     cabin_class = cabin_class.upper()
+    if cabin_class not in VALID_CABIN_CLASSES:
+        raise HTTPException(status_code=400, detail="유효하지 않은 좌석 등급입니다.")
 
     # Resolve route_id from origin/dest if not provided
     if route_id is None and origin and dest:
@@ -66,5 +70,7 @@ async def get_heatmap(
     origin = origin.upper()
     dest = dest.upper()
     cabin_class = cabin_class.upper()
+    if cabin_class not in VALID_CABIN_CLASSES:
+        raise HTTPException(status_code=400, detail="유효하지 않은 좌석 등급입니다.")
     service = PredictionService(db)
     return await service.get_heatmap(origin, dest, month, cabin_class)
