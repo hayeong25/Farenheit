@@ -206,7 +206,11 @@ class FlightService:
                 logger.info(f"Auto-created route: {origin} -> {dest}")
             except Exception:
                 await self.db.rollback()
-                route = None
+                # Race condition: another request may have created it
+                result = await self.db.execute(
+                    select(Route).where(Route.origin_code == origin, Route.dest_code == dest)
+                )
+                route = result.scalar_one_or_none()
         return route
 
     async def _store_search_results(
