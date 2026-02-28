@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useId } from "react";
 
 interface Airport {
   iata_code: string;
@@ -30,6 +30,9 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const instanceId = useId();
+  const inputId = `airport-input-${instanceId}`;
+  const listboxId = `airport-listbox-${instanceId}`;
 
   useEffect(() => {
     if (value && value !== query) setQuery(value);
@@ -119,11 +122,17 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
 
   return (
     <div ref={wrapperRef} className="relative">
-      <label className="block text-sm font-medium mb-1 text-left">{label}</label>
+      <label htmlFor={inputId} className="block text-sm font-medium mb-1 text-left">{label}</label>
       <div className="relative">
         <input
           ref={inputRef}
+          id={inputId}
           type="text"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls={listboxId}
+          aria-activedescendant={highlightIdx >= 0 ? `${listboxId}-option-${highlightIdx}` : undefined}
+          aria-autocomplete="list"
           value={query}
           onChange={handleChange}
           onFocus={() => { if (results.length > 0 && !selectedCode) setIsOpen(true); }}
@@ -155,7 +164,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
       </div>
 
       {isOpen && (
-        <ul className="absolute z-50 w-full mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <ul id={listboxId} role="listbox" aria-label={label} className="absolute z-50 w-full mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {isLoading ? (
             <li className="px-4 py-3 text-sm text-[var(--muted-foreground)]">검색 중...</li>
           ) : fetchError ? (
@@ -166,6 +175,9 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
             results.map((airport, idx) => (
               <li
                 key={airport.iata_code}
+                id={`${listboxId}-option-${idx}`}
+                role="option"
+                aria-selected={idx === highlightIdx}
                 onClick={() => handleSelect(airport)}
                 className={`px-4 py-3 cursor-pointer transition-colors ${
                   idx === highlightIdx
@@ -177,7 +189,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
                   <img
                     src={`https://flagcdn.com/w40/${airport.country_code.toLowerCase()}.png`}
                     srcSet={`https://flagcdn.com/w80/${airport.country_code.toLowerCase()}.png 2x`}
-                    alt={airport.country_code}
+                    alt=""
                     className="w-7 h-5 object-cover rounded-sm shrink-0"
                     loading="lazy"
                   />

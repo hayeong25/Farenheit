@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("ko-KR", {
+  const d = dateStr.includes("T") ? new Date(dateStr) : new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("ko-KR", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -138,6 +139,21 @@ export default function AlertsPage() {
 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
+  const modalRef = useRef<HTMLFormElement>(null);
+
+  // Escape key to close modal
+  useEffect(() => {
+    if (!showCreate) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowCreate(false);
+    };
+    document.addEventListener("keydown", handleEsc);
+    // Focus first input when modal opens
+    setTimeout(() => {
+      modalRef.current?.querySelector<HTMLElement>("input, button")?.focus();
+    }, 50);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [showCreate]);
   const [originCode, setOriginCode] = useState("");
   const [destCode, setDestCode] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
@@ -341,6 +357,7 @@ export default function AlertsPage() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCreate(false)}>
           <form
+            ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-alert-title"
@@ -368,6 +385,7 @@ export default function AlertsPage() {
                 <label className="block text-sm font-medium mb-1">목표 가격 (KRW)</label>
                 <input
                   type="number"
+                  min="1"
                   value={targetPrice}
                   onChange={(e) => setTargetPrice(e.target.value)}
                   placeholder="예: 500000"

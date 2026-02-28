@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -57,6 +57,11 @@ class RecommendationService:
         # Determine signal based on prediction
         signal = self._determine_signal(pred)
 
+        # Find the date with lowest predicted price (for WAIT signal)
+        predicted_low_date = await self._find_lowest_price_date(
+            route.id, cabin_class, departure_date
+        )
+
         return RecommendationResponse(
             origin=origin,
             destination=dest,
@@ -66,9 +71,32 @@ class RecommendationService:
             best_airline=pred.airline_code,
             current_price=pred.predicted_price,
             predicted_low=pred.confidence_low,
+            predicted_low_date=predicted_low_date,
             confidence=pred.confidence_score,
             reasoning=self._generate_reasoning(signal, pred),
         )
+
+    async def _find_lowest_price_date(
+        self, route_id: int, cabin_class: str, departure_date: date
+    ) -> date | None:
+        """Find the future prediction date with the lowest predicted price."""
+        now = datetime.now(timezone.utc)
+        today = date.today()
+
+        result = await self.db.execute(
+            select(Prediction)
+            .where(
+                Prediction.route_id == route_id,
+                Prediction.cabin_class == cabin_class,
+                Prediction.departure_date > today,
+                Prediction.valid_until >= now,
+                Prediction.predicted_price.isnot(None),
+            )
+            .order_by(Prediction.predicted_price.asc())
+            .limit(1)
+        )
+        lowest = result.scalar_one_or_none()
+        return lowest.departure_date if lowest else None
 
     def _determine_signal(self, pred: Prediction) -> str:
         has_confidence = pred.confidence_score and pred.confidence_score > Decimal("0.6")
@@ -78,6 +106,9 @@ class RecommendationService:
         elif pred.price_direction == "DOWN" and has_confidence:
             # Price going down → wait for lower prices
             return "WAIT"
+        elif pred.price_direction == "STABLE" and has_confidence:
+            # Stable with high confidence → no reason to wait, buy now
+            return "BUY"
         return "HOLD"
 
     def _generate_reasoning(self, signal: str, pred: Prediction) -> str:
@@ -85,7 +116,12 @@ class RecommendationService:
         direction = direction_kr.get(pred.price_direction, pred.price_direction)
         confidence_pct = int(float(pred.confidence_score or 0) * 100)
 
-        if signal == "BUY":
+        if signal == "BUY" and pred.price_direction == "STABLE":
+            return (
+                f"가격이 {direction} 상태입니다 (신뢰도 {confidence_pct}%). "
+                f"큰 변동이 없으므로 지금 구매해도 좋습니다."
+            )
+        elif signal == "BUY":
             return (
                 f"가격이 {direction} 추세입니다 (신뢰도 {confidence_pct}%). "
                 f"지금 구매하는 것이 유리합니다. 더 기다리면 가격이 오를 가능성이 높습니다."

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  AreaChart,
+  ComposedChart,
   Area,
   Line,
   XAxis,
@@ -25,9 +25,15 @@ export function PredictionBand({ data }: PredictionBandProps) {
     );
   }
 
+  // Transform data: compute band as [confidence_low, confidence_high] range
+  const chartData = data.map((d) => ({
+    ...d,
+    band: [d.confidence_low, d.confidence_high],
+  }));
+
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <AreaChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+      <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
         <XAxis
           dataKey="date"
@@ -37,29 +43,25 @@ export function PredictionBand({ data }: PredictionBandProps) {
           tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
           tickFormatter={(value) => `₩${Math.round(value).toLocaleString()}`}
           width={75}
+          domain={["auto", "auto"]}
         />
         <Tooltip
-          formatter={(value: number, name: string) => {
-            const labels: Record<string, string> = { predicted_price: "예측가", confidence_high: "예측 상한", confidence_low: "예측 하한" };
-            return [`₩${Math.round(value).toLocaleString()}`, labels[name] || name];
+          formatter={(value: number | number[], name: string) => {
+            if (name === "band" && Array.isArray(value)) {
+              return [`₩${Math.round(value[0]).toLocaleString()} ~ ₩${Math.round(value[1]).toLocaleString()}`, "예측 범위"];
+            }
+            const labels: Record<string, string> = { predicted_price: "예측가" };
+            const v = typeof value === "number" ? value : value[0];
+            return [`₩${Math.round(v).toLocaleString()}`, labels[name] || name];
           }}
           contentStyle={{ fontSize: 13, borderRadius: 8, border: "1px solid var(--border)" }}
         />
         <Area
           type="monotone"
-          dataKey="confidence_high"
-          stackId="band"
+          dataKey="band"
           stroke="none"
           fill="#fee2e2"
           fillOpacity={0.5}
-        />
-        <Area
-          type="monotone"
-          dataKey="confidence_low"
-          stackId="band"
-          stroke="none"
-          fill="#ffffff"
-          fillOpacity={1}
         />
         <Line
           type="monotone"
@@ -68,7 +70,7 @@ export function PredictionBand({ data }: PredictionBandProps) {
           strokeWidth={2}
           dot={false}
         />
-      </AreaChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }
