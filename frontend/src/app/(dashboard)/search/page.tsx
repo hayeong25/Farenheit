@@ -62,6 +62,7 @@ function SearchContent() {
     origin: string; dest: string; date: string; returnDate?: string; tripType: string;
   } | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistoryResponse | null>(null);
+  const [dataSource, setDataSource] = useState<string>("live");
   const [validationMsg, setValidationMsg] = useState("");
 
   // Swap support
@@ -106,6 +107,7 @@ function SearchContent() {
       }
       const result = await flightsApi.search(params as any);
       setOffers(result.offers);
+      setDataSource(result.data_source || "live");
       setAvailableAirlines(result.available_airlines);
       setSelectedAirlines(new Set(result.available_airlines.map(a => a.code)));
 
@@ -436,6 +438,11 @@ function SearchContent() {
                   {directCount > 0 && ` | 직항 ${directCount}개`}
                   {minPrice > 0 && ` | 최저가 ${formatPrice(minPrice, "KRW")}`}
                 </p>
+                {dataSource === "cached" && (
+                  <p className="text-xs text-yellow-600 mt-0.5">
+                    실시간 조회 실패 — 이전에 수집된 캐시 데이터입니다
+                  </p>
+                )}
               </div>
               <div className="flex gap-3">
                 <select

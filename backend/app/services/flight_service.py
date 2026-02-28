@@ -281,8 +281,11 @@ class FlightService:
             await self._store_search_results(route, offers, cabin_class)
 
         # If Amadeus returned nothing, fall back to DB cache
+        data_source = "live"
         if not offers:
             offers = await self._search_from_db(origin, dest, departure_date, cabin_class)
+            if offers:
+                data_source = "cached"
 
         # Deduplicate: keep cheapest per (airline, stops, duration bucket)
         offers = self._deduplicate_offers(offers)
@@ -322,6 +325,7 @@ class FlightService:
             total_count=len(offers),
             available_airlines=available_airlines,
             route_id=route.id if route else None,
+            data_source=data_source,
         )
 
     @staticmethod

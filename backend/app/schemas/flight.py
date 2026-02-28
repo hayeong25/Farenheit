@@ -42,6 +42,7 @@ class FlightSearchResponse(BaseModel):
     total_count: int
     available_airlines: list[AirlineInfo] = []
     route_id: int | None = None
+    data_source: str = "live"  # "live" (API) or "cached" (DB fallback)
 
 
 class PricePoint(BaseModel):

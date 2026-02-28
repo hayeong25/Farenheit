@@ -78,6 +78,7 @@ export interface FlightSearchResponse {
   total_count: number;
   available_airlines: AirlineInfo[];
   route_id: number | null;
+  data_source: string;
 }
 
 export interface PriceHistoryResponse {

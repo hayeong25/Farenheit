@@ -1,6 +1,7 @@
 """APScheduler-based task scheduler (replaces Celery + Redis)."""
 
 import logging
+import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -14,23 +15,31 @@ scheduler = BackgroundScheduler()
 def _run_collect_prices() -> None:
     """Scheduled job: collect prices for all active routes."""
     logger.info("Scheduler: Starting price collection...")
+    start = time.monotonic()
     try:
         from pipeline.tasks.collect_prices import collect_all_routes_sync
         result = collect_all_routes_sync()
-        logger.info(f"Scheduler: Collection complete - {result}")
+        elapsed = time.monotonic() - start
+        logger.info(f"Scheduler: Collection complete in {elapsed:.1f}s - {result}")
+        if elapsed > 300:
+            logger.warning(f"Scheduler: Collection took {elapsed:.0f}s (>5min)")
     except Exception as e:
-        logger.error(f"Scheduler: Collection failed - {e}")
+        elapsed = time.monotonic() - start
+        logger.error(f"Scheduler: Collection failed after {elapsed:.1f}s - {e}")
 
 
 def _run_predictions() -> None:
     """Scheduled job: run ML predictions, then generate recommendations and check alerts."""
     logger.info("Scheduler: Running predictions...")
+    start = time.monotonic()
     try:
         from pipeline.tasks.run_prediction import predict_all_active_sync
         result = predict_all_active_sync()
-        logger.info(f"Scheduler: Predictions complete - {result}")
+        elapsed = time.monotonic() - start
+        logger.info(f"Scheduler: Predictions complete in {elapsed:.1f}s - {result}")
     except Exception as e:
-        logger.error(f"Scheduler: Predictions failed - {e}")
+        elapsed = time.monotonic() - start
+        logger.error(f"Scheduler: Predictions failed after {elapsed:.1f}s - {e}")
 
     # Check alerts after predictions
     try:
