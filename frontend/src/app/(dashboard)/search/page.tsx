@@ -46,9 +46,9 @@ function SearchContent() {
   );
   const [cabinClass, setCabinClass] = useState(searchParams.get("cabin") || "ECONOMY");
 
-  // Filters
-  const [maxStops, setMaxStops] = useState<string>("any");
-  const [sortBy, setSortBy] = useState("price");
+  // Filters (read from URL for refresh persistence)
+  const [maxStops, setMaxStops] = useState<string>(searchParams.get("stops") || "any");
+  const [sortBy, setSortBy] = useState(searchParams.get("sort") || "price");
 
   // Airline filter (client-side)
   const [selectedAirlines, setSelectedAirlines] = useState<Set<string>>(new Set());
@@ -86,9 +86,12 @@ function SearchContent() {
       tripType: retDate ? "round_trip" : "one_way",
     });
 
-    // Update URL
+    // Update URL (include filters for refresh persistence)
     const urlParams = new URLSearchParams({ origin, dest, date: depDate });
     if (retDate) urlParams.set("return_date", retDate);
+    if (cabin !== "ECONOMY") urlParams.set("cabin", cabin);
+    if (sort !== "price") urlParams.set("sort", sort);
+    if (stops !== "any") urlParams.set("stops", stops);
     router.replace(`/search?${urlParams.toString()}`, { scroll: false });
 
     try {
@@ -660,7 +663,7 @@ function SearchContent() {
       )}
 
       {/* Price History Summary */}
-      {!isLoading && searched && priceHistory && priceHistory.prices.length > 1 && (
+      {!isLoading && searched && priceHistory && priceHistory.prices.length > 0 && priceHistory.min_price != null && (
         <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
           <h3 className="text-sm font-semibold mb-3">이 노선 가격 추이 (최근 30일)</h3>
           <div className="grid grid-cols-3 gap-4 mb-3">

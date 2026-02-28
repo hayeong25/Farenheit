@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { statsApi, StatsResponse, alertsApi, AlertResponse, routesApi } from "@/lib/api-client";
-import { getRecentSearches, type RecentSearch } from "@/lib/utils";
+import { getRecentSearches, formatRelativeTime, type RecentSearch } from "@/lib/utils";
 
 interface PopularRoute {
   origin: string;
@@ -26,17 +26,6 @@ function getDefaultDate(): string {
   const d = new Date();
   d.setDate(d.getDate() + 14);
   return d.toLocaleDateString("sv-SE");
-}
-
-function formatRelative(isoStr: string): string {
-  const diff = Date.now() - new Date(isoStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "방금 전";
-  if (mins < 60) return `${mins}분 전`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  return `${days}일 전`;
 }
 
 export default function DashboardPage() {
@@ -130,13 +119,13 @@ export default function DashboardPage() {
           {stats.last_price_collected_at && (
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-              마지막 가격 수집: {formatRelative(stats.last_price_collected_at)}
+              마지막 가격 수집: {formatRelativeTime(stats.last_price_collected_at)}
             </span>
           )}
           {stats.last_predicted_at && (
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              마지막 예측: {formatRelative(stats.last_predicted_at)}
+              마지막 예측: {formatRelativeTime(stats.last_predicted_at)}
             </span>
           )}
         </div>

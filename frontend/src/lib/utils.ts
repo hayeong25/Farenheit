@@ -49,6 +49,17 @@ export function getLocalToday(): string {
   return new Date().toLocaleDateString("sv-SE");
 }
 
+export function formatRelativeTime(isoStr: string): string {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "방금 전";
+  if (mins < 60) return `${mins}분 전`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  return `${days}일 전`;
+}
+
 // Recent searches (localStorage)
 export interface RecentSearch {
   origin: string;
@@ -70,7 +81,18 @@ export function getRecentSearches(): RecentSearch[] {
   try {
     const raw = localStorage.getItem(RECENT_SEARCHES_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as RecentSearch[];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Validate each entry has required fields
+    return parsed.filter(
+      (s: unknown): s is RecentSearch =>
+        typeof s === "object" && s !== null &&
+        typeof (s as RecentSearch).origin === "string" &&
+        typeof (s as RecentSearch).dest === "string" &&
+        typeof (s as RecentSearch).date === "string" &&
+        typeof (s as RecentSearch).originDisplay === "string" &&
+        typeof (s as RecentSearch).destDisplay === "string"
+    );
   } catch {
     return [];
   }
@@ -80,9 +102,9 @@ export function saveRecentSearch(search: Omit<RecentSearch, "timestamp">): void 
   if (typeof window === "undefined") return;
   try {
     const existing = getRecentSearches();
-    // Remove duplicate (same origin+dest+date)
+    // Remove duplicate (same origin+dest+date+cabin)
     const filtered = existing.filter(
-      s => !(s.origin === search.origin && s.dest === search.dest && s.date === search.date)
+      s => !(s.origin === search.origin && s.dest === search.dest && s.date === search.date && s.cabinClass === search.cabinClass)
     );
     const updated = [{ ...search, timestamp: Date.now() }, ...filtered].slice(0, MAX_RECENT);
     localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
