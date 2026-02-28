@@ -34,12 +34,24 @@ async def get_prediction(
             select(Route).where(Route.origin_code == origin, Route.dest_code == dest)
         )
         route = result.scalar_one_or_none()
-        route_id = route.id if route else -1
-
-    if route_id is None:
-        route_id = -1
+        route_id = route.id if route else None
 
     service = PredictionService(db)
+    if route_id is None:
+        return PredictionResponse(
+            route_id=0,
+            departure_date=departure_date,
+            cabin_class=cabin_class,
+            predicted_price=None,
+            confidence_low=None,
+            confidence_high=None,
+            price_direction="STABLE",
+            confidence_score=None,
+            model_version="none",
+            predicted_at=None,
+            forecast_series=[],
+        )
+
     return await service.get_prediction(route_id, departure_date, cabin_class)
 
 

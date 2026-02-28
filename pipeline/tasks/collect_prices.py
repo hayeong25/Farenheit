@@ -127,11 +127,14 @@ async def collect_all_routes_async() -> dict:
     )
 
     all_observations: list[PriceObservation] = []
-    for route in routes:
+    for i, route in enumerate(routes):
         observations = await _collect_route(
             collector, route.origin_code, route.dest_code, departure_dates
         )
         all_observations.extend(observations)
+        # Rate limit between routes
+        if i < len(routes) - 1:
+            await asyncio.sleep(0.5)
 
     # Store in database
     stored = await _store_observations(session_factory, all_observations)

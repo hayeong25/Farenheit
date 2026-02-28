@@ -66,7 +66,8 @@ async def _predict_all_routes() -> dict:
             price_rows = prices_result.scalars().all()
 
             if len(price_rows) < 3:
-                continue  # Not enough data
+                logger.debug(f"Route {route.origin}->{route.destination}: skipped (only {len(price_rows)} price points)")
+                continue
 
             # Build DataFrame
             price_df = pd.DataFrame([
@@ -91,6 +92,11 @@ async def _predict_all_routes() -> dict:
                 result_pred = predictor.predict(relevant, forecast_days=14)
                 if result_pred is None:
                     continue
+
+                # Ensure non-negative prices
+                for key in ("predicted_price", "confidence_low", "confidence_high"):
+                    if result_pred[key] < 0:
+                        result_pred[key] = Decimal("0")
 
                 # Upsert prediction
                 existing = await session.execute(

@@ -357,7 +357,9 @@ class FlightService:
         )
 
         result = await self.db.execute(
-            select(FlightPrice).join(
+            select(FlightPrice)
+            .where(FlightPrice.route_id == route.id)
+            .join(
                 subq,
                 (FlightPrice.airline_code == subq.c.airline_code)
                 & (FlightPrice.time == subq.c.latest_time),

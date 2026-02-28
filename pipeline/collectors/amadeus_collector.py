@@ -108,6 +108,9 @@ class AmadeusCollector(AbstractCollector):
         now: datetime,
     ) -> PriceObservation | None:
         price = Decimal(offer["price"]["total"])
+        if price <= 0:
+            logger.warning(f"Skipping offer with non-positive price: {price}")
+            return None
         currency = offer["price"].get("currency", "USD")
 
         # Get airline from first segment

@@ -46,7 +46,32 @@ async def get_alerts(
         .order_by(PriceAlert.created_at.desc())
     )
     alerts = result.scalars().all()
-    return [await _enrich_alert(a, db) for a in alerts]
+
+    # Batch load routes to avoid N+1 queries
+    route_ids = list({a.route_id for a in alerts})
+    routes_map: dict[int, Route] = {}
+    if route_ids:
+        routes_result = await db.execute(
+            select(Route).where(Route.id.in_(route_ids))
+        )
+        routes_map = {r.id: r for r in routes_result.scalars().all()}
+
+    responses = []
+    for a in alerts:
+        route = routes_map.get(a.route_id)
+        responses.append(AlertResponse(
+            id=a.id,
+            route_id=a.route_id,
+            origin=route.origin_code if route else None,
+            destination=route.dest_code if route else None,
+            target_price=a.target_price,
+            cabin_class=a.cabin_class,
+            departure_date=a.departure_date,
+            is_triggered=a.is_triggered,
+            triggered_at=a.triggered_at,
+            created_at=a.created_at,
+        ))
+    return responses
 
 
 @router.post("", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)

@@ -1,15 +1,22 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 
 class AlertCreate(BaseModel):
     origin: str
     destination: str
-    target_price: Decimal
-    cabin_class: str = "ECONOMY"
+    target_price: Decimal = Field(gt=0)
+    cabin_class: Literal["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] = "ECONOMY"
     departure_date: date | None = None
+
+    @model_validator(mode="after")
+    def validate_departure_not_past(self) -> "AlertCreate":
+        if self.departure_date and self.departure_date < date.today():
+            raise ValueError("출발일은 과거일 수 없습니다.")
+        return self
 
 
 class AlertResponse(BaseModel):

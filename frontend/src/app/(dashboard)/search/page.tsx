@@ -86,9 +86,9 @@ function SearchContent() {
     });
 
     // Update URL
-    let url = `/search?origin=${origin}&dest=${dest}&date=${depDate}`;
-    if (retDate) url += `&return_date=${retDate}`;
-    router.replace(url, { scroll: false });
+    const urlParams = new URLSearchParams({ origin, dest, date: depDate });
+    if (retDate) urlParams.set("return_date", retDate);
+    router.replace(`/search?${urlParams.toString()}`, { scroll: false });
 
     try {
       const params: Record<string, string> = {

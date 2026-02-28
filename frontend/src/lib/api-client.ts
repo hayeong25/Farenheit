@@ -22,12 +22,17 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
     throw new ApiError(res.status, await res.json().catch(() => null));
   }
 
+  // Handle 204 No Content (e.g., DELETE responses)
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json();
 }
 
-function qs(params: Record<string, string | number | boolean | undefined>): string {
+function qs(params: Record<string, string | number | boolean | null | undefined>): string {
   const entries = Object.entries(params).filter(
-    ([, v]) => v !== undefined && v !== ""
+    ([, v]) => v !== undefined && v !== null && v !== ""
   );
   return new URLSearchParams(
     entries.map(([k, v]) => [k, String(v)])

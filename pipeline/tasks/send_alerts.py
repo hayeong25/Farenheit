@@ -39,13 +39,16 @@ async def _check_alerts() -> dict:
         alerts = result.scalars().all()
 
         for alert in alerts:
-            # Get the latest minimum price for this route
-            price_result = await session.execute(
-                select(func.min(FlightPrice.price_amount)).where(
-                    FlightPrice.route_id == alert.route_id,
-                    FlightPrice.cabin_class == alert.cabin_class,
-                )
+            # Get the latest minimum price for this route and departure date
+            price_query = select(func.min(FlightPrice.price_amount)).where(
+                FlightPrice.route_id == alert.route_id,
+                FlightPrice.cabin_class == alert.cabin_class,
             )
+            if alert.departure_date is not None:
+                price_query = price_query.where(
+                    FlightPrice.departure_date == alert.departure_date
+                )
+            price_result = await session.execute(price_query)
             min_price = price_result.scalar()
 
             if min_price is not None and min_price <= alert.target_price:

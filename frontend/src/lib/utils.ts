@@ -15,7 +15,9 @@ export function formatPrice(amount: number, currency = "USD"): string {
 }
 
 export function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString("ko-KR", {
+  // Append T00:00:00 for date-only strings to avoid UTC midnight shift
+  const d = date.includes("T") ? new Date(date) : new Date(date + "T00:00:00");
+  return d.toLocaleDateString("ko-KR", {
     year: "numeric",
     month: "short",
     day: "numeric",

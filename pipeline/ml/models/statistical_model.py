@@ -105,7 +105,8 @@ class StatisticalPredictor:
             recent_prices = prices[-direction_window:]
             weights = np.linspace(0.5, 1.0, len(recent_prices))
             weighted_trend = np.polyfit(np.arange(len(recent_prices)), recent_prices, 1, w=weights)
-            pct_change = weighted_trend[0] * len(recent_prices) / recent_prices.mean()
+            mean_price = recent_prices.mean()
+            pct_change = weighted_trend[0] * len(recent_prices) / max(mean_price, 1.0)
 
             if pct_change > 0.015:
                 direction = "UP"
@@ -151,18 +152,18 @@ class StatisticalPredictor:
 
             forecast_series.append({
                 "date": forecast_date.isoformat(),
-                "predicted_price": round(predicted, 0),
-                "confidence_low": round(low, 0),
-                "confidence_high": round(high, 0),
+                "predicted_price": round(max(predicted, 0), 0),
+                "confidence_low": round(max(low, 0), 0),
+                "confidence_high": round(max(high, 0), 0),
             })
 
         mid_idx = forecast_days // 2
         mid = forecast_series[mid_idx]
 
         return {
-            "predicted_price": Decimal(str(int(mid["predicted_price"]))),
-            "confidence_low": Decimal(str(int(mid["confidence_low"]))),
-            "confidence_high": Decimal(str(int(mid["confidence_high"]))),
+            "predicted_price": Decimal(str(max(int(mid["predicted_price"]), 0))),
+            "confidence_low": Decimal(str(max(int(mid["confidence_low"]), 0))),
+            "confidence_high": Decimal(str(max(int(mid["confidence_high"]), 0))),
             "price_direction": direction,
             "confidence_score": confidence,
             "forecast_series": forecast_series,

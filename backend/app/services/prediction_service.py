@@ -20,6 +20,43 @@ class PredictionService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def _build_forecast_series(
+        self, route_id: int, cabin_class: str
+    ) -> list[ForecastPoint]:
+        """Query future predictions for the same route/cabin and return deduplicated series."""
+        today = date.today()
+        now = datetime.now(timezone.utc)
+
+        result = await self.db.execute(
+            select(Prediction)
+            .where(
+                Prediction.route_id == route_id,
+                Prediction.cabin_class == cabin_class,
+                Prediction.departure_date > today,
+                Prediction.valid_until >= now,
+                Prediction.predicted_price.isnot(None),
+            )
+            .order_by(Prediction.departure_date, Prediction.predicted_at.desc())
+        )
+        rows = result.scalars().all()
+
+        # Deduplicate by departure_date — keep the first (latest predicted_at) per date
+        seen: set[date] = set()
+        points: list[ForecastPoint] = []
+        for row in rows:
+            if row.departure_date in seen:
+                continue
+            seen.add(row.departure_date)
+            points.append(
+                ForecastPoint(
+                    date=row.departure_date,
+                    predicted_price=row.predicted_price,
+                    confidence_low=row.confidence_low or row.predicted_price,
+                    confidence_high=row.confidence_high or row.predicted_price,
+                )
+            )
+        return points
+
     async def get_prediction(
         self, route_id: int, departure_date: date, cabin_class: str
     ) -> PredictionResponse:
@@ -35,6 +72,8 @@ class PredictionService:
         )
         pred = result.scalar_one_or_none()
 
+        forecast = await self._build_forecast_series(route_id, cabin_class)
+
         if not pred:
             return PredictionResponse(
                 route_id=route_id,
@@ -47,7 +86,7 @@ class PredictionService:
                 confidence_score=None,
                 model_version="none",
                 predicted_at=None,
-                forecast_series=[],
+                forecast_series=forecast,
             )
 
         return PredictionResponse(
@@ -61,7 +100,7 @@ class PredictionService:
             confidence_score=pred.confidence_score,
             model_version=pred.model_version,
             predicted_at=pred.predicted_at,
-            forecast_series=[],
+            forecast_series=forecast,
         )
 
     async def get_heatmap(
@@ -91,6 +130,7 @@ class PredictionService:
         month_start = date(year, mon, 1)
         month_end = date(year, mon, days_in_month)
 
+        now = datetime.now(timezone.utc)
         result = await self.db.execute(
             select(Prediction)
             .where(
@@ -98,13 +138,20 @@ class PredictionService:
                 Prediction.departure_date >= month_start,
                 Prediction.departure_date <= month_end,
                 Prediction.cabin_class == cabin_class,
+                Prediction.valid_until >= now,
+                Prediction.predicted_price.isnot(None),
             )
-            .order_by(Prediction.departure_date)
+            .order_by(Prediction.departure_date, Prediction.predicted_at.desc())
         )
-        predictions = result.scalars().all()
+        all_predictions = result.scalars().all()
 
-        # Filter out predictions with null prices
-        predictions = [p for p in predictions if p.predicted_price is not None]
+        # Deduplicate by departure_date — keep latest predicted_at per date
+        seen_dates: set[date] = set()
+        predictions: list[Prediction] = []
+        for p in all_predictions:
+            if p.departure_date not in seen_dates:
+                seen_dates.add(p.departure_date)
+                predictions.append(p)
 
         # If we have predictions, use them
         if predictions:
