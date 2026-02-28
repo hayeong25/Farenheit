@@ -286,6 +286,9 @@ class FlightService:
             offers = await self._search_from_db(origin, dest, departure_date, cabin_class)
             if offers:
                 data_source = "cached"
+                logger.info(f"Search fallback to cache: {origin}->{dest} ({len(offers)} cached offers)")
+            else:
+                logger.info(f"No results for {origin}->{dest} on {departure_date} (API + cache empty)")
 
         # Deduplicate: keep cheapest per (airline, stops, duration bucket)
         offers = self._deduplicate_offers(offers)

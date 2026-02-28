@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -8,6 +8,8 @@ from app.schemas.recommendation import RecommendationResponse
 from app.services.recommendation_service import RecommendationService
 
 router = APIRouter()
+
+VALID_CABIN_CLASSES = {"ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"}
 
 
 @router.get("", response_model=RecommendationResponse)
@@ -21,5 +23,7 @@ async def get_recommendation(
     origin = origin.upper()
     dest = dest.upper()
     cabin_class = cabin_class.upper()
+    if cabin_class not in VALID_CABIN_CLASSES:
+        raise HTTPException(status_code=400, detail="유효하지 않은 좌석 등급입니다.")
     service = RecommendationService(db)
     return await service.get_recommendation(origin, dest, departure_date, cabin_class)

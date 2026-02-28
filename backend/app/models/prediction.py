@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -13,6 +13,7 @@ class Prediction(Base):
         UniqueConstraint(
             "route_id", "airline_code", "departure_date", "cabin_class", "model_version"
         ),
+        Index("idx_pred_route_date_cabin", "route_id", "departure_date", "cabin_class"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
