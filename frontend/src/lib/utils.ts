@@ -45,6 +45,10 @@ export function getTemperatureColor(pricePosition: number): string {
   return "bg-farenheit-500 text-white";
 }
 
+export function getLocalToday(): string {
+  return new Date().toLocaleDateString("sv-SE");
+}
+
 // Recent searches (localStorage)
 export interface RecentSearch {
   origin: string;

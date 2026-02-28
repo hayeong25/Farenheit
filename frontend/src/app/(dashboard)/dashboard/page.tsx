@@ -28,6 +28,17 @@ function getDefaultDate(): string {
   return d.toLocaleDateString("sv-SE");
 }
 
+function formatRelative(isoStr: string): string {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "방금 전";
+  if (mins < 60) return `${mins}분 전`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  return `${days}일 전`;
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
@@ -107,6 +118,24 @@ export default function DashboardPage() {
           >
             다시 시도
           </button>
+        </div>
+      )}
+
+      {/* Pipeline status */}
+      {stats && (stats.last_price_collected_at || stats.last_predicted_at) && (
+        <div className="flex flex-wrap gap-4 text-xs text-[var(--muted-foreground)]">
+          {stats.last_price_collected_at && (
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              마지막 가격 수집: {formatRelative(stats.last_price_collected_at)}
+            </span>
+          )}
+          {stats.last_predicted_at && (
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              마지막 예측: {formatRelative(stats.last_predicted_at)}
+            </span>
+          )}
         </div>
       )}
 

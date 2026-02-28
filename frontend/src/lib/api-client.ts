@@ -96,6 +96,7 @@ export interface StatsResponse {
   predictions: number;
   airports: number;
   last_price_collected_at: string | null;
+  last_predicted_at: string | null;
 }
 
 export interface Airport {
