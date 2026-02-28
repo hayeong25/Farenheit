@@ -70,7 +70,8 @@ def start_scheduler() -> None:
         id="collect_prices",
         name="Collect flight prices",
         replace_existing=True,
-        max_instances=1,  # Prevent overlapping
+        max_instances=1,
+        misfire_grace_time=300,  # Skip if > 5min late
     )
 
     # Run predictions periodically
@@ -82,6 +83,7 @@ def start_scheduler() -> None:
         name="Run ML predictions + alerts",
         replace_existing=True,
         max_instances=1,
+        misfire_grace_time=300,
     )
 
     # Daily cleanup at 4 AM
