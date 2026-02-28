@@ -34,11 +34,16 @@ export function PredictionBand({ data }: PredictionBandProps) {
           tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
         />
         <YAxis
-          tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-          tickFormatter={(value) => `$${value}`}
+          tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+          tickFormatter={(value) => `₩${Math.round(value).toLocaleString()}`}
+          width={75}
         />
         <Tooltip
-          formatter={(value: number) => `$${value.toFixed(2)}`}
+          formatter={(value: number, name: string) => {
+            const labels: Record<string, string> = { predicted_price: "예측가", confidence_high: "예측 상한", confidence_low: "예측 하한" };
+            return [`₩${Math.round(value).toLocaleString()}`, labels[name] || name];
+          }}
+          contentStyle={{ fontSize: 13, borderRadius: 8, border: "1px solid var(--border)" }}
         />
         <Area
           type="monotone"

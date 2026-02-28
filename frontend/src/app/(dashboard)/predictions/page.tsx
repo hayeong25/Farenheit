@@ -201,7 +201,7 @@ function PredictionsContent() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              min={new Date().toISOString().split("T")[0]}
+              min={new Date().toLocaleDateString("sv-SE")}
               className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             />
           </div>
@@ -300,25 +300,27 @@ function PredictionsContent() {
       )}
 
       {searched && !loading && !error && !hasPredictionData && (
-        <div className="rounded-xl p-8 border-2 border-dashed border-[var(--border)] text-center">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[var(--muted)] flex items-center justify-center">
-            <svg className="w-7 h-7 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+        <div className="rounded-xl p-8 border-2 border-blue-200 bg-blue-50 text-center">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+            <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
             </svg>
           </div>
-          <p className="font-semibold text-[var(--foreground)]">예측 데이터 준비 중</p>
-          <p className="text-sm text-[var(--muted-foreground)] mt-2 max-w-md mx-auto">
-            이 노선의 가격 데이터가 아직 충분하지 않습니다.
-            항공편 검색을 하면 가격 수집이 시작되고, 약 1시간 내에 AI 예측이 생성됩니다.
+          <p className="font-semibold text-blue-800">이 노선의 가격 데이터를 수집 중입니다</p>
+          <p className="text-sm text-blue-700 mt-2 max-w-md mx-auto">
+            약 1시간 후 AI 예측이 생성됩니다. 먼저 항공편을 검색하여 가격 데이터를 수집하세요.
           </p>
-          {originCode && destCode && date && (
-            <a
-              href={`/search?origin=${originCode}&dest=${destCode}&date=${date}`}
-              className="inline-block mt-4 px-5 py-2.5 rounded-lg bg-farenheit-500 text-white font-medium hover:bg-farenheit-600 transition-colors text-sm"
-            >
-              이 노선 검색하기
-            </a>
-          )}
+          <a
+            href={originCode && destCode && date
+              ? `/search?origin=${originCode}&dest=${destCode}&date=${date}`
+              : "/search"}
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            항공편 검색하러 가기
+          </a>
         </div>
       )}
 
@@ -408,7 +410,14 @@ function PredictionsContent() {
 export default function PredictionsPage() {
   return (
     <Suspense fallback={
-      <div className="text-center py-12 text-[var(--muted-foreground)]">로딩 중...</div>
+      <div className="space-y-6">
+        <div className="h-8 w-28 bg-[var(--muted)] rounded animate-pulse" />
+        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-[var(--muted)] rounded-lg animate-pulse" />)}
+          </div>
+        </div>
+      </div>
     }>
       <PredictionsContent />
     </Suspense>

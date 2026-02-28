@@ -106,7 +106,7 @@ function RecommendationsContent() {
       }) as RecommendationResult;
       setRecommendation(result);
     } catch {
-      setError("서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.");
+      setError("추천 정보를 불러올 수 없습니다. 다시 시도해주세요.");
       setRecommendation(null);
     } finally {
       setLoading(false);
@@ -197,7 +197,7 @@ function RecommendationsContent() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              min={new Date().toISOString().split("T")[0]}
+              min={new Date().toLocaleDateString("sv-SE")}
               className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             />
           </div>
@@ -324,27 +324,30 @@ function RecommendationsContent() {
       )}
 
       {!loading && searched && (!recommendation || isInsufficient) && !error && (
-        <div className="rounded-xl p-8 border-2 border-dashed border-[var(--border)] text-center">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[var(--muted)] flex items-center justify-center">
-            <svg className="w-7 h-7 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+        <div className="rounded-xl p-8 border-2 border-blue-200 bg-blue-50 text-center">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+            <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
             </svg>
           </div>
-          <p className="font-semibold text-[var(--foreground)]">데이터가 부족합니다</p>
-          <p className="text-sm text-[var(--muted-foreground)] mt-1">
+          <p className="font-semibold text-blue-800">아직 분석할 가격 데이터가 부족합니다</p>
+          <p className="text-sm text-blue-700 mt-1">
             {isInsufficient && recommendation?.reasoning
               ? recommendation.reasoning
               : "이 노선의 가격 데이터가 충분히 수집되지 않아 추천을 생성할 수 없습니다."}
           </p>
-          <p className="text-xs text-[var(--muted-foreground)] mt-2">먼저 항공편을 검색하면 가격 수집이 시작되고, 약 1시간 후 AI 분석이 가능합니다.</p>
-          {originCode && destCode && date && (
-            <a
-              href={`/search?origin=${originCode}&dest=${destCode}&date=${date}`}
-              className="inline-block mt-4 px-5 py-2.5 rounded-lg bg-farenheit-500 text-white font-medium hover:bg-farenheit-600 transition-colors text-sm"
-            >
-              이 노선 검색하기
-            </a>
-          )}
+          <p className="text-xs text-blue-600 mt-2">먼저 항공편을 검색하면 가격 수집이 시작되고, 약 1시간 후 AI 분석이 가능합니다.</p>
+          <a
+            href={originCode && destCode && date
+              ? `/search?origin=${originCode}&dest=${destCode}&date=${date}`
+              : "/search"}
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            항공편 검색하러 가기
+          </a>
         </div>
       )}
 
@@ -365,7 +368,17 @@ function RecommendationsContent() {
 export default function RecommendationsPage() {
   return (
     <Suspense fallback={
-      <div className="text-center py-12 text-[var(--muted-foreground)]">로딩 중...</div>
+      <div className="space-y-6">
+        <div className="h-8 w-28 bg-[var(--muted)] rounded animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-[var(--muted)] rounded-xl animate-pulse" />)}
+        </div>
+        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-[var(--muted)] rounded-lg animate-pulse" />)}
+          </div>
+        </div>
+      </div>
     }>
       <RecommendationsContent />
     </Suspense>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
@@ -16,38 +16,52 @@ export default function HomePage() {
   const [returnDate, setReturnDate] = useState("");
   const [tripType, setTripType] = useState<"round_trip" | "one_way">("round_trip");
   const [cabinClass, setCabinClass] = useState("ECONOMY");
+  const [isSearching, setIsSearching] = useState(false);
 
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [validationMsg, setValidationMsg] = useState("");
+  const validationTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  useEffect(() => {
-    setRecentSearches(getRecentSearches());
+  const showValidation = useCallback((msg: string) => {
+    setValidationMsg(msg);
+    if (validationTimerRef.current) clearTimeout(validationTimerRef.current);
+    validationTimerRef.current = setTimeout(() => setValidationMsg(""), 5000);
   }, []);
+
+  // Set default date (14 days from now) on client to avoid hydration mismatch
+  useEffect(() => {
+    if (!date) {
+      const d = new Date();
+      d.setDate(d.getDate() + 14);
+      setDate(d.toLocaleDateString("sv-SE"));
+    }
+    setRecentSearches(getRecentSearches());
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refs for resetting AirportSearch components
   const originKeyRef = useRef(0);
   const destKeyRef = useRef(0);
 
-  const handleSearch = () => {
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (isSearching) return;
+
     const missing: string[] = [];
     if (!originCode) missing.push("출발지");
     if (!destCode) missing.push("도착지");
     if (!date) missing.push("출발일");
     if (tripType === "round_trip" && !returnDate) missing.push("귀국일");
     if (missing.length > 0) {
-      setValidationMsg(`${missing.join(", ")}을(를) 입력해주세요.`);
+      showValidation(`${missing.join(", ")}을(를) 입력해주세요.`);
       return;
     }
     setValidationMsg("");
+    setIsSearching(true);
 
-    let url = `/search?origin=${originCode}&dest=${destCode}&date=${date}`;
-    if (tripType === "round_trip" && returnDate) {
-      url += `&return_date=${returnDate}`;
-    }
-    if (cabinClass !== "ECONOMY") {
-      url += `&cabin=${cabinClass}`;
-    }
-    router.push(url);
+    const params = new URLSearchParams({ origin: originCode, dest: destCode, date });
+    if (tripType === "round_trip" && returnDate) params.set("return_date", returnDate);
+    if (cabinClass !== "ECONOMY") params.set("cabin", cabinClass);
+    router.push(`/search?${params.toString()}`);
   };
 
   const handleSwap = () => {
@@ -97,10 +111,11 @@ export default function HomePage() {
           </p>
 
           {/* Search Form */}
-          <div className="bg-[var(--muted)] rounded-2xl p-6 max-w-2xl mx-auto">
+          <form onSubmit={handleSearch} className="bg-[var(--muted)] rounded-2xl p-6 max-w-2xl mx-auto">
             {/* Trip Type Toggle */}
             <div className="flex gap-1 mb-4 bg-[var(--background)] rounded-lg p-1 w-fit mx-auto">
               <button
+                type="button"
                 onClick={() => setTripType("round_trip")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   tripType === "round_trip"
@@ -111,6 +126,7 @@ export default function HomePage() {
                 왕복
               </button>
               <button
+                type="button"
                 onClick={() => { setTripType("one_way"); setReturnDate(""); }}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   tripType === "one_way"
@@ -132,6 +148,7 @@ export default function HomePage() {
                 onSelect={(code, display) => { setOriginCode(code); setOriginDisplay(display || ""); setValidationMsg(""); }}
               />
               <button
+                type="button"
                 onClick={handleSwap}
                 disabled={!originCode && !destCode}
                 className="hidden md:flex w-10 h-10 mx-1 mb-0.5 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed self-end"
@@ -142,6 +159,7 @@ export default function HomePage() {
                 </svg>
               </button>
               <button
+                type="button"
                 onClick={handleSwap}
                 disabled={!originCode && !destCode}
                 className="md:hidden w-full py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
@@ -173,9 +191,10 @@ export default function HomePage() {
                     setValidationMsg("");
                     if (returnDate && e.target.value > returnDate) {
                       setReturnDate("");
+                      showValidation("출발일이 귀국일보다 늦어 귀국일이 초기화되었습니다.");
                     }
                   }}
-                  min={new Date().toISOString().split("T")[0]}
+                  min={new Date().toLocaleDateString("sv-SE")}
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 />
               </div>
@@ -186,7 +205,7 @@ export default function HomePage() {
                     type="date"
                     value={returnDate}
                     onChange={(e) => { setReturnDate(e.target.value); setValidationMsg(""); }}
-                    min={date || new Date().toISOString().split("T")[0]}
+                    min={date || new Date().toLocaleDateString("sv-SE")}
                     className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                   />
                 </div>
@@ -206,15 +225,35 @@ export default function HomePage() {
               </div>
             </div>
             <button
-              onClick={handleSearch}
-              className="block w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors text-center"
+              type="submit"
+              disabled={isSearching}
+              className={`block w-full py-3 rounded-lg font-semibold transition-colors text-center ${
+                isSearching
+                  ? "bg-farenheit-400 text-white/80 cursor-wait"
+                  : "bg-farenheit-500 text-white hover:bg-farenheit-600"
+              }`}
             >
-              가격 분석하기
+              {isSearching ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-25" />
+                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                  검색 중...
+                </span>
+              ) : (
+                "가격 분석하기"
+              )}
             </button>
             {validationMsg && (
-              <p className="text-sm text-red-500 mt-2 text-left">{validationMsg}</p>
+              <div className="flex items-center gap-2 mt-3 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600">
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+                </svg>
+                <p className="text-sm font-medium">{validationMsg}</p>
+              </div>
             )}
-          </div>
+          </form>
 
           {/* Recent Searches for returning users */}
           {recentSearches.length > 0 && (

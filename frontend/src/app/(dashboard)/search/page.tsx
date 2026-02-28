@@ -330,7 +330,7 @@ function SearchContent() {
                   setReturnDate("");
                 }
               }}
-              min={new Date().toISOString().split("T")[0]}
+              min={new Date().toLocaleDateString("sv-SE")}
               className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             />
           </div>
@@ -341,7 +341,7 @@ function SearchContent() {
                 type="date"
                 value={returnDate}
                 onChange={(e) => { setReturnDate(e.target.value); setValidationMsg(""); }}
-                min={date || new Date().toISOString().split("T")[0]}
+                min={date || new Date().toLocaleDateString("sv-SE")}
                 className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
               />
             </div>
@@ -532,7 +532,20 @@ function SearchContent() {
               ) : (
                 <>
                   <p className="text-lg mb-2">필터 조건에 맞는 항공편이 없습니다</p>
-                  <p className="text-sm">항공사 필터나 경유 조건을 변경해보세요.</p>
+                  <p className="text-sm mb-4">
+                    현재 필터로는 {offers.length}개 항공편이 모두 숨겨져 있습니다.
+                    {maxStops !== "any" && ` (경유 ${maxStops}회 이하)`}
+                    {selectedAirlines.size < availableAirlines.length && ` (항공사 ${selectedAirlines.size}/${availableAirlines.length}개 선택)`}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setMaxStops("any");
+                      setSelectedAirlines(new Set(availableAirlines.map(a => a.code)));
+                    }}
+                    className="px-5 py-2 rounded-lg border border-farenheit-500 text-farenheit-500 text-sm font-medium hover:bg-farenheit-50 transition-colors"
+                  >
+                    필터 초기화
+                  </button>
                 </>
               )}
             </div>
@@ -739,7 +752,7 @@ function SearchContent() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
           </svg>
           <p className="text-lg mb-2">출발지, 도착지, 날짜를 입력하고 검색하세요</p>
-          <p className="text-sm">Amadeus API로 전 세계 항공편을 실시간 검색합니다</p>
+          <p className="text-sm">전 세계 항공편 가격을 실시간으로 검색합니다</p>
         </div>
       )}
     </div>
@@ -749,7 +762,14 @@ function SearchContent() {
 export default function SearchPage() {
   return (
     <Suspense fallback={
-      <div className="text-center py-12 text-[var(--muted-foreground)]">로딩 중...</div>
+      <div className="space-y-6">
+        <div className="h-8 w-32 bg-[var(--muted)] rounded animate-pulse" />
+        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => <div key={i} className="h-12 bg-[var(--muted)] rounded-lg animate-pulse" />)}
+          </div>
+        </div>
+      </div>
     }>
       <SearchContent />
     </Suspense>

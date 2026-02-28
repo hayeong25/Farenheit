@@ -55,7 +55,7 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete }: {
   const destName = useResolvedCityName(alert.destination);
   const isTriggered = alert.is_triggered;
 
-  const searchDate = alert.departure_date || new Date().toISOString().split("T")[0];
+  const searchDate = alert.departure_date || new Date().toLocaleDateString("sv-SE");
 
   return (
     <div
@@ -340,11 +340,15 @@ export default function AlertsPage() {
       {/* Create Modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCreate(false)}>
-          <div
+          <form
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-alert-title"
             className="bg-[var(--background)] rounded-xl p-6 w-full max-w-lg border border-[var(--border)] shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => { e.preventDefault(); handleCreate(); }}
           >
-            <h2 className="text-xl font-bold mb-4">가격 알림 추가</h2>
+            <h2 id="create-alert-title" className="text-xl font-bold mb-4">가격 알림 추가</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <AirportSearch
@@ -393,7 +397,7 @@ export default function AlertsPage() {
                     type="date"
                     value={departureDate}
                     onChange={(e) => setDepartureDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
+                    min={new Date().toLocaleDateString("sv-SE")}
                     className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                   />
                 </div>
@@ -406,20 +410,21 @@ export default function AlertsPage() {
             </div>
             <div className="flex gap-3 mt-6">
               <button
+                type="button"
                 onClick={() => { setShowCreate(false); setCreateError(null); }}
                 className="flex-1 py-2.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] transition-colors"
               >
                 취소
               </button>
               <button
-                onClick={handleCreate}
+                type="submit"
                 disabled={!originCode || !destCode || !targetPrice || creating}
                 className="flex-1 py-2.5 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50"
               >
                 {creating ? "생성 중..." : "알림 추가"}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </div>

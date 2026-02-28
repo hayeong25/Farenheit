@@ -25,7 +25,7 @@ const fallbackRoutes: PopularRoute[] = [
 function getDefaultDate(): string {
   const d = new Date();
   d.setDate(d.getDate() + 14);
-  return d.toISOString().split("T")[0];
+  return d.toLocaleDateString("sv-SE");
 }
 
 export default function DashboardPage() {

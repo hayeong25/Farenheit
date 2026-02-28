@@ -44,12 +44,14 @@ export function PriceLineChart({ data, airlines = [] }: PriceLineChartProps) {
           tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
         />
         <YAxis
-          tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-          tickFormatter={(value) => `$${value}`}
+          tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+          tickFormatter={(value) => `₩${Math.round(value).toLocaleString()}`}
+          width={75}
         />
         <Tooltip
-          formatter={(value: number) => [`$${value.toFixed(2)}`, "Price"]}
-          labelFormatter={(label) => `Time: ${label}`}
+          formatter={(value: number) => [`₩${Math.round(value).toLocaleString()}`, "가격"]}
+          labelFormatter={(label) => `시점: ${label}`}
+          contentStyle={{ fontSize: 13, borderRadius: 8, border: "1px solid var(--border)" }}
         />
         <Legend />
         {airlines.length > 0 ? (
