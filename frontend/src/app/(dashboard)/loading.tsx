@@ -18,9 +18,9 @@ export default function DashboardLoading() {
       <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
         <div className="h-5 w-32 bg-[var(--muted)] rounded mb-4" />
         <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-16 bg-[var(--muted)] rounded-lg" />
-          ))}
+          <div className="h-14 bg-[var(--muted)] rounded-lg" />
+          <div className="h-10 bg-[var(--muted)] rounded-lg" />
+          <div className="h-12 bg-[var(--muted)] rounded-lg" />
         </div>
       </div>
     </div>
