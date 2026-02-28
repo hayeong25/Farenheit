@@ -298,7 +298,7 @@ function RecommendationsContent() {
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <p className="text-sm font-medium text-yellow-800">
-                    예상 최저가 시점: {new Date(recommendation.predicted_low_date).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}경
+                    예상 최저가 시점: {new Date(recommendation.predicted_low_date + "T00:00:00").toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}경
                   </p>
                   <p className="text-xs text-yellow-700 mt-1">이 시점까지 대기하면 더 저렴한 가격을 기대할 수 있습니다.</p>
                 </div>
