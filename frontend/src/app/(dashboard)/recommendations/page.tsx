@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { recommendationsApi, routesApi, type RecommendationResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES } from "@/lib/utils";
 
 const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string; icon: string }> = {
   BUY: {
@@ -47,8 +47,8 @@ function RecommendationsContent() {
   const [destCode, setDestCode] = useState(searchParams.get("dest") || "");
   const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState(searchParams.get("date") || "");
-  const validCabins = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"];
   const cabinParam = searchParams.get("cabin") || "ECONOMY";
+  const validCabins: readonly string[] = VALID_CABIN_CLASSES;
   const [cabinClass] = useState(validCabins.includes(cabinParam) ? cabinParam : "ECONOMY");
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);

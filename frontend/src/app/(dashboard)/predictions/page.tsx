@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { predictionsApi, routesApi, type PredictionResponse, type HeatmapResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, formatRelativeTime } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, formatRelativeTime, VALID_CABIN_CLASSES } from "@/lib/utils";
 
 const DIRECTION_CONFIG: Record<string, { color: string; text: string; arrow: string }> = {
   UP: { color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800", text: "상승 예상", arrow: "↑" },
@@ -31,8 +31,8 @@ function PredictionsContent() {
   const [destCode, setDestCode] = useState(searchParams.get("dest") || "");
   const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState(searchParams.get("date") || "");
-  const validCabins = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"];
   const cabinParam = searchParams.get("cabin") || "ECONOMY";
+  const validCabins: readonly string[] = VALID_CABIN_CLASSES;
   const [cabinClass] = useState(validCabins.includes(cabinParam) ? cabinParam : "ECONOMY");
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   const [loading, setLoading] = useState(false);

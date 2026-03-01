@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import Link from "next/link";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater } from "@/lib/utils";
+import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES } from "@/lib/utils";
 
 function formatDuration(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return "-";
@@ -56,8 +56,8 @@ function SearchContent() {
   const [tripType, setTripType] = useState<"round_trip" | "one_way">(
     searchParams.get("return_date") ? "round_trip" : "one_way"
   );
-  const validCabins = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"];
   const cabinParam = searchParams.get("cabin") || "ECONOMY";
+  const validCabins: readonly string[] = VALID_CABIN_CLASSES;
   const [cabinClass, setCabinClass] = useState(validCabins.includes(cabinParam) ? cabinParam : "ECONOMY");
 
   // Filters (read from URL for refresh persistence, validate against known values)

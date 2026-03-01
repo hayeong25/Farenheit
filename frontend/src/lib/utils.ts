@@ -5,23 +5,36 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+export const VALID_CABIN_CLASSES = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] as const;
+
+export function formatPrice(amount: number, currency = "KRW"): string {
+  if (!Number.isFinite(amount)) return "-";
+  try {
+    return new Intl.NumberFormat("ko-KR", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: currency === "KRW" ? 0 : 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toLocaleString()}`;
+  }
 }
 
 export function formatDate(date: string): string {
-  // Append T00:00:00 for date-only strings to avoid UTC midnight shift
-  const d = date.includes("T") ? new Date(date) : new Date(date + "T00:00:00");
-  return d.toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  if (!date) return "-";
+  try {
+    // Append T00:00:00 for date-only strings to avoid UTC midnight shift
+    const d = date.includes("T") ? new Date(date) : new Date(date + "T00:00:00");
+    if (isNaN(d.getTime())) return date;
+    return d.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return date;
+  }
 }
 
 export function getSignalColor(signal: string): string {
@@ -32,6 +45,8 @@ export function getSignalColor(signal: string): string {
       return "text-yellow-600 bg-yellow-50";
     case "HOLD":
       return "text-gray-500 bg-gray-50";
+    case "INSUFFICIENT":
+      return "text-blue-500 bg-blue-50";
     default:
       return "text-gray-500 bg-gray-50";
   }
@@ -49,8 +64,18 @@ export function getLocalToday(): string {
   return new Date().toLocaleDateString("sv-SE");
 }
 
+export function getDateOneYearLater(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 1);
+  return d.toLocaleDateString("sv-SE");
+}
+
 export function formatRelativeTime(isoStr: string): string {
-  const diff = Date.now() - new Date(isoStr).getTime();
+  if (!isoStr) return "-";
+  const timestamp = new Date(isoStr).getTime();
+  if (isNaN(timestamp)) return "-";
+  const diff = Date.now() - timestamp;
+  if (diff < 0) return "방금 전";
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "방금 전";
   if (mins < 60) return `${mins}분 전`;
@@ -84,14 +109,21 @@ export function getRecentSearches(): RecentSearch[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     // Validate each entry has required fields
+    const validCabins: readonly string[] = VALID_CABIN_CLASSES;
     return parsed.filter(
-      (s: unknown): s is RecentSearch =>
-        typeof s === "object" && s !== null &&
-        typeof (s as RecentSearch).origin === "string" &&
-        typeof (s as RecentSearch).dest === "string" &&
-        typeof (s as RecentSearch).date === "string" &&
-        typeof (s as RecentSearch).originDisplay === "string" &&
-        typeof (s as RecentSearch).destDisplay === "string"
+      (s: unknown): s is RecentSearch => {
+        if (typeof s !== "object" || s === null) return false;
+        const r = s as RecentSearch;
+        return (
+          typeof r.origin === "string" && r.origin.length > 0 &&
+          typeof r.dest === "string" && r.dest.length > 0 &&
+          typeof r.date === "string" && r.date.length > 0 &&
+          typeof r.originDisplay === "string" &&
+          typeof r.destDisplay === "string" &&
+          typeof r.cabinClass === "string" && validCabins.includes(r.cabinClass) &&
+          typeof r.timestamp === "number" && Number.isFinite(r.timestamp)
+        );
+      }
     );
   } catch {
     return [];
