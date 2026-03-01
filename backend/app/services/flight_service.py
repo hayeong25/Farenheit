@@ -1,9 +1,11 @@
+import asyncio
 import logging
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 import httpx
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -30,26 +32,34 @@ class AmadeusClient:
         self.client_secret = settings.AMADEUS_CLIENT_SECRET
         self._access_token: str | None = None
         self._token_expires_at: datetime | None = None
+        self._token_lock = asyncio.Lock()
 
-    async def _get_token(self, client: httpx.AsyncClient) -> str:
-        if self._access_token and self._token_expires_at:
-            if datetime.now(timezone.utc) < self._token_expires_at:
+    async def _get_token(self, client: httpx.AsyncClient, force_refresh: bool = False) -> str:
+        async with self._token_lock:
+            if not force_refresh and self._access_token and self._token_expires_at:
+                if datetime.now(timezone.utc) < self._token_expires_at:
+                    return self._access_token
+
+            try:
+                resp = await client.post(
+                    f"{self.base_url}/v1/security/oauth2/token",
+                    data={
+                        "grant_type": "client_credentials",
+                        "client_id": self.client_id,
+                        "client_secret": self.client_secret,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                self._access_token = data["access_token"]
+                expires_in = data.get("expires_in", 600)
+                self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=max(expires_in - 60, 60))
                 return self._access_token
-
-        resp = await client.post(
-            f"{self.base_url}/v1/security/oauth2/token",
-            data={
-                "grant_type": "client_credentials",
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        self._access_token = data["access_token"]
-        expires_in = data.get("expires_in", 1799)
-        self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
-        return self._access_token
+            except Exception:
+                # Clear stale token state so next request triggers a fresh fetch
+                self._access_token = None
+                self._token_expires_at = None
+                raise
 
     async def search_flights(
         self,
@@ -80,6 +90,17 @@ class AmadeusClient:
                     params=params,
                     headers={"Authorization": f"Bearer {token}"},
                 )
+
+                # Retry once on 401 (token may have expired mid-request)
+                if resp.status_code == 401:
+                    logger.info("Amadeus token expired, refreshing...")
+                    token = await self._get_token(client, force_refresh=True)
+                    resp = await client.get(
+                        f"{self.base_url}/v2/shopping/flight-offers",
+                        params=params,
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+
                 if resp.status_code == 200:
                     data = resp.json()
                     carriers = data.get("dictionaries", {}).get("carriers", {})
@@ -89,8 +110,10 @@ class AmadeusClient:
                         )
                         if parsed:
                             offers.append(parsed)
+                elif resp.status_code == 429:
+                    logger.warning("Amadeus rate limit reached, returning empty results")
                 else:
-                    logger.warning(f"Amadeus search failed: {resp.status_code} - {resp.text[:200]}")
+                    logger.warning(f"Amadeus search failed: {resp.status_code}")
         except Exception as e:
             logger.error(f"Amadeus search error: {e}")
         return offers
@@ -164,24 +187,33 @@ class AmadeusClient:
                 return_stops=return_stops,
                 return_duration_minutes=return_duration_minutes,
             )
-        except (KeyError, ValueError) as e:
+        except (KeyError, ValueError, InvalidOperation) as e:
             logger.warning(f"Failed to parse offer: {e}")
             return None
 
     @staticmethod
     def _parse_duration(duration_str: str) -> int | None:
-        if not duration_str or not duration_str.startswith("PT"):
+        """Parse ISO 8601 duration (e.g., 'PT13H45M' or 'P1DT2H30M') to minutes."""
+        if not duration_str or not duration_str.startswith("P"):
             return None
-        duration_str = duration_str[2:]
-        hours = minutes = 0
-        if "H" in duration_str:
-            h_part, duration_str = duration_str.split("H")
-            hours = int(h_part)
-        if "M" in duration_str:
-            m_part = duration_str.replace("M", "")
-            if m_part:
-                minutes = int(m_part)
-        return hours * 60 + minutes
+        try:
+            remainder = duration_str[1:]
+            days = hours = minutes = 0
+            if "D" in remainder:
+                d_part, remainder = remainder.split("D", 1)
+                days = int(d_part)
+            if remainder.startswith("T"):
+                remainder = remainder[1:]
+            if "H" in remainder:
+                h_part, remainder = remainder.split("H", 1)
+                hours = int(h_part)
+            if "M" in remainder:
+                m_part, remainder = remainder.split("M", 1)
+                if m_part:
+                    minutes = int(m_part)
+            return days * 24 * 60 + hours * 60 + minutes
+        except (ValueError, TypeError):
+            return None
 
 
 # Singleton
@@ -204,7 +236,7 @@ class FlightService:
                 self.db.add(route)
                 await self.db.flush()
                 logger.info(f"Auto-created route: {origin} -> {dest}")
-            except Exception:
+            except IntegrityError:
                 await self.db.rollback()
                 # Race condition: another request may have created it
                 result = await self.db.execute(
@@ -270,6 +302,12 @@ class FlightService:
     ) -> FlightSearchResponse:
         # Ensure route exists for future data collection
         route = await self._ensure_route(origin, dest)
+        # Commit route creation separately so it survives any downstream rollback
+        if route:
+            try:
+                await self.db.commit()
+            except Exception:
+                pass  # Already committed or no pending changes
 
         # Search Amadeus API for live results
         offers = await _amadeus_client.search_flights(
@@ -290,10 +328,17 @@ class FlightService:
             else:
                 logger.info(f"No results for {origin}->{dest} on {departure_date} (API + cache empty)")
 
+        # Filter out invalid prices (0, negative, or non-finite)
+        offers = [o for o in offers if o.price_amount > 0 and o.price_amount.is_finite()]
+
         # Deduplicate: keep cheapest per (airline, stops, duration bucket)
         offers = self._deduplicate_offers(offers)
 
-        # Collect available airlines before filtering
+        # Filter by stops
+        if max_stops is not None:
+            offers = [o for o in offers if o.stops <= max_stops]
+
+        # Collect available airlines after stop filtering
         airline_set: dict[str, str] = {}
         for o in offers:
             if o.airline_code not in airline_set:
@@ -302,10 +347,6 @@ class FlightService:
             AirlineInfo(code=code, name=name)
             for code, name in sorted(airline_set.items(), key=lambda x: x[1])
         ]
-
-        # Filter by stops
-        if max_stops is not None:
-            offers = [o for o in offers if o.stops <= max_stops]
 
         # Sort
         if sort_by == "duration":
@@ -369,7 +410,11 @@ class FlightService:
 
         result = await self.db.execute(
             select(FlightPrice)
-            .where(FlightPrice.route_id == route.id)
+            .where(
+                FlightPrice.route_id == route.id,
+                FlightPrice.departure_date == departure_date,
+                FlightPrice.cabin_class == cabin_class,
+            )
             .join(
                 subq,
                 (FlightPrice.airline_code == subq.c.airline_code)
@@ -449,6 +494,6 @@ class FlightService:
             min_price=min(amounts) if amounts else None,
             max_price=max(amounts) if amounts else None,
             avg_price=(
-                sum(amounts) / len(amounts) if amounts else None
+                sum(amounts) / Decimal(len(amounts)) if amounts else None
             ),
         )

@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import Link from "next/link";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { saveRecentSearch, getLocalToday, getDateOneYearLater } from "@/lib/utils";
+import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater } from "@/lib/utils";
 
 function formatDuration(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return "-";
@@ -13,21 +13,6 @@ function formatDuration(minutes: number | null | undefined): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m > 0 ? `${h}시간 ${m}분` : `${h}시간`;
-}
-
-function formatPrice(amount: number, currency: string): string {
-  if (!Number.isFinite(amount)) return "-";
-  try {
-    return new Intl.NumberFormat("ko-KR", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: currency === "KRW" ? 0 : 2,
-    }).format(amount);
-  } catch {
-    // Fallback for unknown currency codes
-    return `${currency} ${amount.toLocaleString()}`;
-  }
 }
 
 function formatDateKr(dateStr: string): string {

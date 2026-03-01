@@ -1,6 +1,7 @@
+import asyncio
 import logging
 from datetime import date, datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 import httpx
 
@@ -19,33 +20,45 @@ class AmadeusCollector(AbstractCollector):
         self.client_secret = pipeline_settings.AMADEUS_CLIENT_SECRET
         self._access_token: str | None = None
         self._token_expires_at: datetime | None = None
+        self._token_lock = asyncio.Lock()
 
-    async def _get_access_token(self, client: httpx.AsyncClient) -> str:
-        if self._access_token and self._token_expires_at:
+    async def _get_access_token(self, client: httpx.AsyncClient, force_refresh: bool = False) -> str:
+        # Quick check without lock
+        if not force_refresh and self._access_token and self._token_expires_at:
             if datetime.now(timezone.utc) < self._token_expires_at:
                 return self._access_token
 
-        response = await client.post(
-            f"{self.base_url}/v1/security/oauth2/token",
-            data={
-                "grant_type": "client_credentials",
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
+        async with self._token_lock:
+            # Re-check after acquiring lock (another coroutine may have refreshed)
+            if not force_refresh and self._access_token and self._token_expires_at:
+                if datetime.now(timezone.utc) < self._token_expires_at:
+                    return self._access_token
 
-        self._access_token = data["access_token"]
-        expires_in = data.get("expires_in", 1799)
-        self._token_expires_at = datetime.now(timezone.utc).replace(
-            second=0, microsecond=0
-        )
-        from datetime import timedelta
+            from datetime import timedelta
 
-        self._token_expires_at += timedelta(seconds=expires_in - 60)
+            try:
+                response = await client.post(
+                    f"{self.base_url}/v1/security/oauth2/token",
+                    data={
+                        "grant_type": "client_credentials",
+                        "client_id": self.client_id,
+                        "client_secret": self.client_secret,
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
 
-        return self._access_token
+                self._access_token = data["access_token"]
+                expires_in = data.get("expires_in", 600)
+                self._token_expires_at = datetime.now(timezone.utc) + timedelta(
+                    seconds=max(expires_in - 60, 60)
+                )
+
+                return self._access_token
+            except Exception:
+                self._access_token = None
+                self._token_expires_at = None
+                raise
 
     async def collect(
         self,
@@ -78,6 +91,16 @@ class AmadeusCollector(AbstractCollector):
                 headers={"Authorization": f"Bearer {token}"},
             )
 
+            # Retry once on 401 (token may have expired mid-collection)
+            if response.status_code == 401:
+                logger.info("Amadeus collector token expired, refreshing...")
+                token = await self._get_access_token(client, force_refresh=True)
+                response = await client.get(
+                    f"{self.base_url}/v2/shopping/flight-offers",
+                    params=params,
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+
             if response.status_code == 200:
                 data = response.json()
                 now = datetime.now(timezone.utc)
@@ -107,11 +130,18 @@ class AmadeusCollector(AbstractCollector):
         cabin_class: str,
         now: datetime,
     ) -> PriceObservation | None:
-        price = Decimal(offer["price"]["total"])
+        price_data = offer.get("price")
+        if not price_data or "total" not in price_data:
+            return None
+        try:
+            price = Decimal(str(price_data["total"]))
+        except (InvalidOperation, TypeError):
+            logger.warning(f"Invalid price value: {price_data.get('total')}")
+            return None
         if price <= 0:
             logger.warning(f"Skipping offer with non-positive price: {price}")
             return None
-        currency = offer["price"].get("currency", "USD")
+        currency = price_data.get("currency", "KRW")
 
         # Get airline from first segment
         itineraries = offer.get("itineraries", [])
@@ -124,6 +154,8 @@ class AmadeusCollector(AbstractCollector):
             return None
 
         airline_code = segments[0].get("carrierCode", "")
+        if not airline_code or len(airline_code) != 2:
+            return None  # Skip offers without valid 2-char IATA airline code
         stops = len(segments) - 1
 
         # Parse duration
@@ -148,23 +180,34 @@ class AmadeusCollector(AbstractCollector):
 
     @staticmethod
     def _parse_duration(duration_str: str) -> int | None:
-        """Parse ISO 8601 duration (e.g., 'PT13H45M') to minutes."""
-        if not duration_str or not duration_str.startswith("PT"):
+        """Parse ISO 8601 duration (e.g., 'PT13H45M' or 'P1DT2H30M') to minutes."""
+        if not duration_str:
             return None
-
-        duration_str = duration_str[2:]
-        hours = 0
-        minutes = 0
-
-        if "H" in duration_str:
-            h_part, duration_str = duration_str.split("H")
-            hours = int(h_part)
-        if "M" in duration_str:
-            m_part = duration_str.replace("M", "")
-            if m_part:
-                minutes = int(m_part)
-
-        return hours * 60 + minutes
+        try:
+            remainder = duration_str
+            days = hours = minutes = 0
+            # Strip P prefix
+            if remainder.startswith("P"):
+                remainder = remainder[1:]
+            else:
+                return None
+            # Handle day component (e.g., P1DT2H30M)
+            if "D" in remainder:
+                d_part, remainder = remainder.split("D", 1)
+                days = int(d_part)
+            # Strip T separator
+            if remainder.startswith("T"):
+                remainder = remainder[1:]
+            if "H" in remainder:
+                h_part, remainder = remainder.split("H", 1)
+                hours = int(h_part)
+            if "M" in remainder:
+                m_part, remainder = remainder.split("M", 1)
+                if m_part:
+                    minutes = int(m_part)
+            return days * 24 * 60 + hours * 60 + minutes
+        except (ValueError, TypeError):
+            return None
 
     async def health_check(self) -> bool:
         try:
