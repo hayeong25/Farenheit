@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
-import { formatDate, getLocalToday, getDateOneYearLater } from "@/lib/utils";
+import { formatDate, formatRelativeTime, getLocalToday, getDateOneYearLater } from "@/lib/utils";
 
 const cabinLabels: Record<string, string> = {
   ECONOMY: "이코노미",
@@ -359,14 +359,7 @@ function AlertsContent() {
               <p className="text-xs mt-2 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                 <span className="text-green-600 font-medium">
-                  마지막 수집: {(() => {
-                    const diff = Date.now() - new Date(lastCollected).getTime();
-                    const mins = Math.floor(diff / 60000);
-                    if (mins < 1) return "방금 전";
-                    if (mins < 60) return `${mins}분 전`;
-                    const hours = Math.floor(mins / 60);
-                    return `${hours}시간 전`;
-                  })()}
+                  마지막 수집: {formatRelativeTime(lastCollected)}
                 </span>
               </p>
             )}
@@ -524,7 +517,7 @@ function AlertsContent() {
                 </div>
               </div>
               {createError && (
-                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+                <div role="alert" className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
                   {createError}
                 </div>
               )}

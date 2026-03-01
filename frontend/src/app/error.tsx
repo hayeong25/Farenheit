@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 
 interface ErrorProps {
@@ -13,7 +14,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-4 bg-[var(--background)]">
+    <div role="alert" className="flex flex-col items-center justify-center min-h-screen gap-6 px-4 bg-[var(--background)]">
       <div className="flex flex-col items-center gap-5 max-w-md text-center">
         {/* Icon */}
         <div className="w-20 h-20 rounded-full bg-farenheit-50 flex items-center justify-center ring-4 ring-farenheit-100">
@@ -59,12 +60,12 @@ export default function GlobalError({ error, reset }: ErrorProps) {
           >
             다시 시도
           </button>
-          <a
+          <Link
             href="/"
             className="px-6 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium hover:bg-[var(--muted)] transition-colors text-center focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
           >
             홈으로 돌아가기
-          </a>
+          </Link>
         </div>
       </div>
     </div>
