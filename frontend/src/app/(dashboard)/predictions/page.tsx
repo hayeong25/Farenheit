@@ -270,7 +270,7 @@ function PredictionsContent() {
 
       {/* Prediction Result */}
       {searched && !loading && hasPredictionData && (
-        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)] space-y-4">
+        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)] space-y-4" aria-live="polite">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-lg font-semibold">예측 결과</h2>
             <DirectionBadge direction={prediction.price_direction} />

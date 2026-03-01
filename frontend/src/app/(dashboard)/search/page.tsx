@@ -470,7 +470,7 @@ function SearchContent() {
 
       {/* Results */}
       {!isLoading && searched && (
-        <div className="space-y-4">
+        <div className="space-y-4" aria-live="polite">
           {/* Result Header + Filters */}
           <div className="bg-[var(--background)] rounded-xl p-4 border border-[var(--border)]">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

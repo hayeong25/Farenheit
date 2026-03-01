@@ -277,7 +277,7 @@ function RecommendationsContent() {
       )}
 
       {!loading && searched && recommendation && signal && (
-        <div className={`rounded-xl p-6 border-2 ${signal.bgColor}`}>
+        <div className={`rounded-xl p-6 border-2 ${signal.bgColor}`} aria-live="polite">
           <div className="flex items-center gap-4 mb-4">
             <span className={`text-4xl font-black ${signal.color}`}>
               {signal.label}
