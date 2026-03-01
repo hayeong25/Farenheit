@@ -24,8 +24,8 @@ class PredictionService:
         self, route_id: int, cabin_class: str
     ) -> list[ForecastPoint]:
         """Query future predictions for the same route/cabin and return deduplicated series."""
-        today = datetime.now(timezone.utc).date()
         now = datetime.now(timezone.utc)
+        today = now.date()
 
         result = await self.db.execute(
             select(Prediction)
@@ -145,6 +145,7 @@ class PredictionService:
         month_end = date(year, mon, days_in_month)
 
         now = datetime.now(timezone.utc)
+        today = now.date()
         result = await self.db.execute(
             select(Prediction)
             .where(
@@ -166,9 +167,6 @@ class PredictionService:
             if p.departure_date not in seen_dates:
                 seen_dates.add(p.departure_date)
                 predictions.append(p)
-
-        # If we have predictions, use them
-        today = datetime.now(timezone.utc).date()
         if predictions:
             ZERO = Decimal("0")
             # Get min/max for price level categorization
