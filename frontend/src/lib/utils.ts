@@ -1,11 +1,10 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+export const VALID_CABIN_CLASSES = ["ECONOMY", "BUSINESS", "FIRST"] as const;
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-export const VALID_CABIN_CLASSES = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] as const;
+export const CABIN_CLASS_LABELS: Record<string, string> = {
+  ECONOMY: "이코노미",
+  BUSINESS: "비즈니스",
+  FIRST: "퍼스트",
+};
 
 export function formatPrice(amount: number, currency = "KRW"): string {
   if (!Number.isFinite(amount)) return "-";
