@@ -23,7 +23,7 @@ class FlightPrice(Base):
     cabin_class: Mapped[str] = mapped_column(String(20), primary_key=True, default="ECONOMY")
     return_date: Mapped[date | None] = mapped_column()
     price_amount: Mapped[Decimal] = mapped_column()
-    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    currency: Mapped[str] = mapped_column(String(3), default="KRW")
     stops: Mapped[int] = mapped_column(default=0)
     duration_minutes: Mapped[int | None] = mapped_column()
     source: Mapped[str] = mapped_column(String(50))

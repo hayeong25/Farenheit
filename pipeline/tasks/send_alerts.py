@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from sqlalchemy import select, func, or_
 

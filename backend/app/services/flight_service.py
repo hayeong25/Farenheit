@@ -287,7 +287,7 @@ class FlightService:
                 await self.db.commit()
                 logger.info(f"Stored {stored} price observations from search")
             except Exception as e:
-                logger.warning(f"Failed to commit search prices: {e}")
+                logger.error(f"Failed to commit search prices: {e}")
                 await self.db.rollback()
 
     async def search(
