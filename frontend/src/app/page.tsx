@@ -293,7 +293,7 @@ export default function HomePage() {
                   const searchReturnDate = s.returnDate && s.returnDate >= searchDate ? s.returnDate : undefined;
                   return (
                   <Link
-                    key={i}
+                    key={`${s.origin}-${s.dest}-${s.date}`}
                     href={(() => {
                       const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: searchDate });
                       if (searchReturnDate) p.set("return_date", searchReturnDate);
