@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,13 +30,14 @@ async def search_flights(
     if origin == dest:
         raise HTTPException(status_code=400, detail="출발지와 도착지가 같습니다.")
 
-    if departure_date < date.today():
+    today = datetime.now(timezone.utc).date()
+    if departure_date < today:
         raise HTTPException(status_code=400, detail="출발일은 오늘 또는 이후여야 합니다.")
 
     if return_date and return_date < departure_date:
         raise HTTPException(status_code=400, detail="귀국일은 출발일 이후여야 합니다.")
 
-    max_date = date.today() + timedelta(days=365)
+    max_date = today + timedelta(days=365)
     if departure_date > max_date:
         raise HTTPException(status_code=400, detail="출발일은 1년 이내여야 합니다.")
     if return_date and return_date > max_date:

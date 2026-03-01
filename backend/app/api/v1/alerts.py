@@ -1,5 +1,8 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -44,6 +47,7 @@ async def get_alerts(
         select(PriceAlert)
         .where(PriceAlert.user_id.is_(None))
         .order_by(PriceAlert.created_at.desc())
+        .limit(200)
     )
     alerts = result.scalars().all()
 
@@ -91,7 +95,23 @@ async def create_alert(
     if not route:
         route = Route(origin_code=origin, dest_code=destination, is_active=True)
         db.add(route)
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            # Retry lookup with exponential backoff
+            delay = 0.05
+            for _ in range(4):
+                route_result = await db.execute(
+                    select(Route).where(Route.origin_code == origin, Route.dest_code == destination)
+                )
+                route = route_result.scalar_one_or_none()
+                if route:
+                    break
+                await asyncio.sleep(delay)
+                delay *= 2
+            if not route:
+                raise HTTPException(status_code=500, detail="노선 생성에 실패했습니다.")
 
     alert = PriceAlert(
         user_id=None,
@@ -101,10 +121,20 @@ async def create_alert(
         departure_date=alert_data.departure_date,
     )
     db.add(alert)
-    await db.flush()
     await db.commit()
     await db.refresh(alert)
-    return await _enrich_alert(alert, db)
+    return AlertResponse(
+        id=alert.id,
+        route_id=alert.route_id,
+        origin=route.origin_code,
+        destination=route.dest_code,
+        target_price=alert.target_price,
+        cabin_class=alert.cabin_class,
+        departure_date=alert.departure_date,
+        is_triggered=alert.is_triggered,
+        triggered_at=alert.triggered_at,
+        created_at=alert.created_at,
+    )
 
 
 @router.delete("/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
