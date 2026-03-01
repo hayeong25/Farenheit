@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 export default function GlobalError({
   error,
   reset,
@@ -7,6 +9,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") console.error("[GlobalError]", error);
+  }, [error]);
+
   return (
     <html lang="ko">
       <body className="antialiased">
