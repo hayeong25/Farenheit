@@ -34,7 +34,7 @@ export default function GlobalError({
           <div className="flex gap-3">
             <button
               onClick={() => reset()}
-              className="px-6 py-2.5 rounded-lg bg-orange-500 text-white font-medium border-none cursor-pointer hover:bg-orange-600 transition-colors"
+              className="px-6 py-2.5 rounded-lg bg-farenheit-500 text-white font-medium border-none cursor-pointer hover:bg-farenheit-600 transition-colors"
             >
               다시 시도
             </button>
