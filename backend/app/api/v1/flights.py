@@ -1,15 +1,14 @@
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import VALID_CABIN_CLASSES
 from app.db.session import get_db
 from app.schemas.flight import FlightSearchResponse, PriceHistoryResponse
 from app.services.flight_service import FlightService
 
 router = APIRouter()
-
-VALID_CABIN_CLASSES = {"ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"}
 VALID_SORT_OPTIONS = {"price", "duration", "stops"}
 
 
@@ -32,10 +31,16 @@ async def search_flights(
         raise HTTPException(status_code=400, detail="출발지와 도착지가 같습니다.")
 
     if departure_date < date.today():
-        raise HTTPException(status_code=400, detail="출발일은 오늘 이후여야 합니다.")
+        raise HTTPException(status_code=400, detail="출발일은 오늘 또는 이후여야 합니다.")
 
     if return_date and return_date < departure_date:
         raise HTTPException(status_code=400, detail="귀국일은 출발일 이후여야 합니다.")
+
+    max_date = date.today() + timedelta(days=365)
+    if departure_date > max_date:
+        raise HTTPException(status_code=400, detail="출발일은 1년 이내여야 합니다.")
+    if return_date and return_date > max_date:
+        raise HTTPException(status_code=400, detail="귀국일은 1년 이내여야 합니다.")
 
     cabin_class = cabin_class.upper()
     if cabin_class not in VALID_CABIN_CLASSES:
@@ -53,11 +58,13 @@ async def search_flights(
 
 @router.get("/prices/history", response_model=PriceHistoryResponse)
 async def price_history(
-    route_id: int = Query(...),
+    route_id: int = Query(..., ge=1),
     departure_date: date = Query(...),
-    airline_code: str | None = Query(None),
+    airline_code: str | None = Query(None, max_length=2, pattern=r"^[A-Za-z0-9]{2}$"),
     days: int = Query(30, ge=1, le=90),
     db: AsyncSession = Depends(get_db),
 ) -> PriceHistoryResponse:
+    if airline_code:
+        airline_code = airline_code.upper()
     service = FlightService(db)
     return await service.get_price_history(route_id, departure_date, airline_code, days)

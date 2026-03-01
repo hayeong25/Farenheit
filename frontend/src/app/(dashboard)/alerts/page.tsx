@@ -5,14 +5,21 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
+import { getLocalToday, getDateOneYearLater } from "@/lib/utils";
 
 function formatDate(dateStr: string): string {
-  const d = dateStr.includes("T") ? new Date(dateStr) : new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  if (!dateStr) return "-";
+  try {
+    const d = dateStr.includes("T") ? new Date(dateStr) : new Date(dateStr + "T00:00:00");
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
 }
 
 const cabinLabels: Record<string, string> = {
@@ -57,13 +64,13 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete }: {
   const destName = useResolvedCityName(alert.destination);
   const isTriggered = alert.is_triggered;
 
-  const searchDate = alert.departure_date || new Date().toLocaleDateString("sv-SE");
+  const searchDate = alert.departure_date || getLocalToday();
 
   return (
     <div
       className={`flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg border transition-colors ${
         isTriggered
-          ? "border-green-300 bg-green-50/50"
+          ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
           : "border-[var(--border)] hover:border-farenheit-200"
       }`}
     >
@@ -77,14 +84,14 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete }: {
           </span>
           <span className={`text-xs px-2 py-0.5 rounded font-medium ${
             isTriggered
-              ? "bg-green-100 text-green-700"
-              : "bg-yellow-100 text-yellow-700"
+              ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+              : "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300"
           }`}>
             {isTriggered ? "목표가 도달" : "모니터링 중"}
           </span>
         </div>
         <div className="flex items-center gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
-          <span>목표가: ₩{Number(alert.target_price).toLocaleString()}</span>
+          <span>목표가: ₩{Number.isFinite(Number(alert.target_price)) ? Number(alert.target_price).toLocaleString() : "-"}</span>
           {alert.departure_date && <span>출발일: {alert.departure_date}</span>}
           {!alert.departure_date && <span className="text-xs italic">모든 출발일 모니터링</span>}
           {isTriggered && alert.triggered_at
@@ -120,7 +127,7 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete }: {
         ) : (
           <button
             onClick={() => onConfirmDelete(alert.id)}
-            className="text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded border border-red-200 hover:bg-red-50 transition-colors"
+            className="text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-3 py-1.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
           >
             삭제
           </button>
@@ -143,26 +150,78 @@ function AlertsContent() {
   const [showCreate, setShowCreate] = useState(false);
   const modalRef = useRef<HTMLFormElement>(null);
 
-  // Escape key to close modal
+  // Escape key to close modal + focus trap
   useEffect(() => {
     if (!showCreate) return;
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowCreate(false);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowCreate(false);
+        return;
+      }
+      // Focus trap: cycle Tab within modal
+      if (e.key === "Tab" && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'input:not([type="hidden"]):not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
-    document.addEventListener("keydown", handleEsc);
+    document.addEventListener("keydown", handleKeyDown);
     // Focus first input when modal opens
-    setTimeout(() => {
+    const focusTimer = setTimeout(() => {
       modalRef.current?.querySelector<HTMLElement>("input, button")?.focus();
     }, 50);
-    return () => document.removeEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      clearTimeout(focusTimer);
+    };
   }, [showCreate]);
   const [originCode, setOriginCode] = useState(searchParams.get("origin") || "");
+  const [originDisplay, setOriginDisplay] = useState(searchParams.get("origin") || "");
   const [destCode, setDestCode] = useState(searchParams.get("dest") || "");
+  const [destDisplay, setDestDisplay] = useState(searchParams.get("dest") || "");
   const [targetPrice, setTargetPrice] = useState(searchParams.get("target") || "");
   const [cabinClass, setCabinClass] = useState("ECONOMY");
   const [departureDate, setDepartureDate] = useState(searchParams.get("date") || "");
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Cleanup toast timer on unmount
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  // Resolve IATA codes from URL to display names
+  useEffect(() => {
+    const o = searchParams.get("origin");
+    const d = searchParams.get("dest");
+    if (o) {
+      routesApi.searchAirports(o).then((airports) => {
+        const match = airports.find(a => a.iata_code === o);
+        if (match) setOriginDisplay(`${match.city_ko || match.city} (${o})`);
+      }).catch(() => {});
+    }
+    if (d) {
+      routesApi.searchAirports(d).then((airports) => {
+        const match = airports.find(a => a.iata_code === d);
+        if (match) setDestDisplay(`${match.city_ko || match.city} (${d})`);
+      }).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-open create modal if URL has pre-fill params
   useEffect(() => {
@@ -174,7 +233,8 @@ function AlertsContent() {
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   };
 
   const loadAlerts = useCallback(async () => {
@@ -196,7 +256,21 @@ function AlertsContent() {
   }, [loadAlerts]);
 
   const handleCreate = async () => {
+    if (creating) return;
     if (!originCode || !destCode || !targetPrice) return;
+    if (originCode === destCode) {
+      setCreateError("출발지와 도착지가 같습니다.");
+      return;
+    }
+    const priceNum = Number(targetPrice);
+    if (!Number.isFinite(priceNum) || priceNum <= 0) {
+      setCreateError("유효한 목표 가격을 입력해주세요.");
+      return;
+    }
+    if (priceNum > 100_000_000) {
+      setCreateError("목표 가격이 너무 큽니다.");
+      return;
+    }
     setCreating(true);
     setCreateError(null);
     try {
@@ -209,20 +283,36 @@ function AlertsContent() {
       });
       setShowCreate(false);
       setOriginCode("");
+      setOriginDisplay("");
       setDestCode("");
+      setDestDisplay("");
       setTargetPrice("");
       setDepartureDate("");
       setCabinClass("ECONOMY");
       await loadAlerts();
       showToast("가격 알림이 설정되었습니다.");
-    } catch {
-      setCreateError("알림 생성에 실패했습니다. 입력 정보를 확인해주세요.");
+    } catch (err) {
+      let msg = "알림 생성에 실패했습니다. 입력 정보를 확인해주세요.";
+      const apiErr = err as { data?: { detail?: string | { msg?: string }[] } };
+      const detail = apiErr?.data?.detail;
+      if (typeof detail === "string") {
+        msg = detail;
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        const firstMsg = detail[0]?.msg;
+        if (firstMsg && typeof firstMsg === "string") {
+          msg = firstMsg.replace(/^Value error, /, "");
+        }
+      }
+      setCreateError(msg);
     } finally {
       setCreating(false);
     }
   };
 
   const handleDelete = async (id: number) => {
+    if (deleting) return;
+    setDeleting(true);
+    setError(null);
     try {
       await alertsApi.delete(id);
       setAlerts((prev) => prev.filter((a) => a.id !== id));
@@ -231,6 +321,8 @@ function AlertsContent() {
     } catch {
       setDeleteConfirm(null);
       setError("알림 삭제에 실패했습니다.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -244,7 +336,9 @@ function AlertsContent() {
         <button
           onClick={() => {
             setOriginCode("");
+            setOriginDisplay("");
             setDestCode("");
+            setDestDisplay("");
             setTargetPrice("");
             setDepartureDate("");
             setCabinClass("ECONOMY");
@@ -301,11 +395,11 @@ function AlertsContent() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between gap-3">
-          <p className="text-red-700 text-sm">{error}</p>
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
           <button
             onClick={loadAlerts}
-            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
           >
             다시 시도
           </button>
@@ -356,16 +450,14 @@ function AlertsContent() {
         </div>
       )}
 
-      {/* Toast Notification */}
-      {toast && (
-        <div role="status" aria-live="polite" className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-lg bg-[var(--foreground)] text-[var(--background)] text-sm font-medium shadow-lg animate-[fadeInUp_0.2s_ease-out]">
-          {toast}
-        </div>
-      )}
+      {/* Toast Notification - always present in DOM for screen reader announcements */}
+      <div role="status" aria-live="polite" className={`fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-lg bg-[var(--foreground)] text-[var(--background)] text-sm font-medium shadow-lg transition-opacity duration-200 ${toast ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        {toast || ""}
+      </div>
 
       {/* Create Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCreate(false)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCreate(false)}>
           <form
             ref={modalRef}
             role="dialog"
@@ -381,23 +473,31 @@ function AlertsContent() {
                 <AirportSearch
                   label="출발지"
                   placeholder="도시 또는 공항 검색"
-                  value=""
-                  onSelect={(code) => setOriginCode(code)}
+                  value={originDisplay}
+                  onSelect={(code, display) => { setOriginCode(code); setOriginDisplay(display || ""); setCreateError(null); }}
                 />
                 <AirportSearch
                   label="도착지"
                   placeholder="도시 또는 공항 검색"
-                  value=""
-                  onSelect={(code) => setDestCode(code)}
+                  value={destDisplay}
+                  onSelect={(code, display) => { setDestCode(code); setDestDisplay(display || ""); setCreateError(null); }}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">목표 가격 (KRW)</label>
+                <label htmlFor="alert-target-price" className="block text-sm font-medium mb-1">목표 가격 (KRW)</label>
                 <input
+                  id="alert-target-price"
                   type="number"
                   min="1"
+                  max="100000000"
+                  step="1000"
                   value={targetPrice}
-                  onChange={(e) => setTargetPrice(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Prevent absurdly long inputs
+                    if (val.length > 12) return;
+                    setTargetPrice(val);
+                  }}
                   placeholder="예: 500000"
                   className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 />
@@ -407,8 +507,9 @@ function AlertsContent() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">좌석 등급</label>
+                  <label htmlFor="alert-cabin-class" className="block text-sm font-medium mb-1">좌석 등급</label>
                   <select
+                    id="alert-cabin-class"
                     value={cabinClass}
                     onChange={(e) => setCabinClass(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
@@ -420,18 +521,23 @@ function AlertsContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">출발일 (선택)</label>
+                  <label htmlFor="alert-departure-date" className="block text-sm font-medium mb-1">출발일 (선택)</label>
                   <input
+                    id="alert-departure-date"
                     type="date"
                     value={departureDate}
                     onChange={(e) => setDepartureDate(e.target.value)}
-                    min={new Date().toLocaleDateString("sv-SE")}
+                    min={getLocalToday()}
+                    max={getDateOneYearLater()}
                     className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                   />
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                    비워두면 이 노선의 모든 출발일 가격을 모니터링합니다
+                  </p>
                 </div>
               </div>
               {createError && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
                   {createError}
                 </div>
               )}
