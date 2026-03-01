@@ -37,29 +37,6 @@ export function formatDate(date: string): string {
   }
 }
 
-export function getSignalColor(signal: string): string {
-  switch (signal) {
-    case "BUY":
-      return "text-green-600 bg-green-50";
-    case "WAIT":
-      return "text-yellow-600 bg-yellow-50";
-    case "HOLD":
-      return "text-gray-500 bg-gray-50";
-    case "INSUFFICIENT":
-      return "text-blue-500 bg-blue-50";
-    default:
-      return "text-gray-500 bg-gray-50";
-  }
-}
-
-export function getTemperatureColor(pricePosition: number): string {
-  // 0 = coolest (best price), 1 = hottest (worst price)
-  if (pricePosition < 0.25) return "bg-cool-500 text-white";
-  if (pricePosition < 0.5) return "bg-cool-300";
-  if (pricePosition < 0.75) return "bg-farenheit-300";
-  return "bg-farenheit-500 text-white";
-}
-
 export function getLocalToday(): string {
   return new Date().toLocaleDateString("sv-SE");
 }
