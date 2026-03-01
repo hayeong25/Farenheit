@@ -100,6 +100,7 @@ def start_scheduler() -> None:
         id="cleanup",
         name="Data cleanup",
         replace_existing=True,
+        misfire_grace_time=3600,  # Allow up to 1hr late for daily cleanup
     )
 
     scheduler.start()

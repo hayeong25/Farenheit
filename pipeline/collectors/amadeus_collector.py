@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 
 import httpx
@@ -33,8 +33,6 @@ class AmadeusCollector(AbstractCollector):
             if not force_refresh and self._access_token and self._token_expires_at:
                 if datetime.now(timezone.utc) < self._token_expires_at:
                     return self._access_token
-
-            from datetime import timedelta
 
             try:
                 response = await client.post(
