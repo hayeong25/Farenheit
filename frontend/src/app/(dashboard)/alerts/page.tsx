@@ -185,8 +185,11 @@ function AlertsContent() {
     };
   }, []);
 
-  // Resolve IATA codes from URL to display names
+  // Resolve IATA codes from URL to display names + auto-open modal (once only)
+  const initRef = useRef(false);
   useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
     const o = searchParams.get("origin");
     const d = searchParams.get("dest");
     if (o) {
@@ -201,16 +204,10 @@ function AlertsContent() {
         if (match) setDestDisplay(`${match.city_ko || match.city} (${d})`);
       }).catch(() => {});
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Auto-open create modal if URL has pre-fill params
-  useEffect(() => {
-    if (searchParams.get("origin") && searchParams.get("dest")) {
+    if (o && d) {
       setShowCreate(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   const showToast = (msg: string) => {
     setToast(msg);

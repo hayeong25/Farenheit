@@ -28,17 +28,16 @@ export default function HomePage() {
     validationTimerRef.current = setTimeout(() => setValidationMsg(""), 5000);
   }, []);
 
-  // Set default date (14 days from now) on client to avoid hydration mismatch
+  // Set default date + initialize client state (once only)
+  const mountedRef = useRef(false);
   useEffect(() => {
-    if (!date) {
-      const d = new Date();
-      d.setDate(d.getDate() + 14);
-      setDate(d.toLocaleDateString("sv-SE"));
-    }
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    setDate(d.toLocaleDateString("sv-SE"));
     setRecentSearches(getRecentSearches());
-    // Reset searching state when returning to this page via back navigation
     setIsSearching(false);
-    // Also reset on page visibility change (back/forward cache)
     const handleVisibility = () => {
       if (document.visibilityState === "visible") setIsSearching(false);
     };
@@ -47,7 +46,7 @@ export default function HomePage() {
       if (validationTimerRef.current) clearTimeout(validationTimerRef.current);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  });
 
   // Refs for resetting AirportSearch components
   const originKeyRef = useRef(0);
