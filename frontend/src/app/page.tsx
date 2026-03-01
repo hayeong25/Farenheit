@@ -285,7 +285,7 @@ export default function HomePage() {
             <div className="mt-8 max-w-2xl mx-auto">
               <p className="text-sm text-[var(--muted-foreground)] mb-3">최근 검색</p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {recentSearches.slice(0, 4).map((s, i) => {
+                {recentSearches.slice(0, 4).map((s) => {
                   // If date is in the past, use 14 days from now
                   const today = getLocalToday();
                   const fallbackDate = new Date(); fallbackDate.setDate(fallbackDate.getDate() + 14);

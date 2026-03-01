@@ -158,7 +158,7 @@ export default function DashboardPage() {
         <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
           <h2 className="text-lg font-semibold mb-4">내 최근 검색</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {recentSearches.slice(0, 4).map((s, i) => {
+            {recentSearches.slice(0, 4).map((s) => {
               const today = getLocalToday();
               const searchDate = s.date >= today ? s.date : defaultDate;
               const searchReturnDate = s.returnDate && s.returnDate >= searchDate ? s.returnDate : undefined;
