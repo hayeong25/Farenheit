@@ -172,8 +172,11 @@ function SearchContent() {
     }
   }, [originDisplay, destDisplay, router]);
 
-  // Resolve IATA codes to display names and auto-search on URL params
+  // Resolve IATA codes to display names and auto-search on URL params (once only)
+  const resolvedRef = useRef(false);
   useEffect(() => {
+    if (resolvedRef.current) return;
+    resolvedRef.current = true;
     const o = searchParams.get("origin");
     const d = searchParams.get("dest");
     const dt = searchParams.get("date");
@@ -181,12 +184,10 @@ function SearchContent() {
 
     if (o) {
       setOriginCode(o);
-      // Resolve to city name
       routesApi.searchAirports(o).then((airports) => {
         const match = airports.find(a => a.iata_code === o);
         if (match) {
-          const name = match.city_ko || match.city;
-          setOriginDisplay(`${name} (${o})`);
+          setOriginDisplay(`${(match.city_ko || match.city)} (${o})`);
           originKeyRef.current += 1;
         } else {
           setOriginDisplay(o);
@@ -198,8 +199,7 @@ function SearchContent() {
       routesApi.searchAirports(d).then((airports) => {
         const match = airports.find(a => a.iata_code === d);
         if (match) {
-          const name = match.city_ko || match.city;
-          setDestDisplay(`${name} (${d})`);
+          setDestDisplay(`${(match.city_ko || match.city)} (${d})`);
           destKeyRef.current += 1;
         } else {
           setDestDisplay(d);
@@ -214,8 +214,7 @@ function SearchContent() {
     if (o && d && dt && !searched) {
       handleSearch(o, d, dt, cabinClass, maxStops, sortBy, rt || undefined);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams, searched, handleSearch, cabinClass, maxStops, sortBy]);
 
   // Re-search when filters change (including cabin class) - skip on initial mount
   useEffect(() => {
