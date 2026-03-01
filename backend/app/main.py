@@ -1,9 +1,11 @@
 import logging
+import time
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
 from app.api.router import api_router
@@ -36,6 +38,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await engine.dispose()
 
 
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start = time.monotonic()
+        response = await call_next(request)
+        elapsed_ms = (time.monotonic() - start) * 1000
+        if elapsed_ms > 1000:
+            logger.warning(
+                f"Slow request: {request.method} {request.url.path} "
+                f"-> {response.status_code} ({elapsed_ms:.0f}ms)"
+            )
+        return response
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Farenheit API",
@@ -48,9 +63,11 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
     )
+
+    app.add_middleware(RequestLoggingMiddleware)
 
     app.include_router(api_router, prefix="/api")
 

@@ -42,22 +42,28 @@ def _run_predictions() -> None:
         logger.error(f"Scheduler: Predictions failed after {elapsed:.1f}s - {e}")
 
     # Check alerts after predictions
+    alert_start = time.monotonic()
     try:
         from pipeline.tasks.send_alerts import check_and_send_sync
         alert_result = check_and_send_sync()
-        logger.info(f"Scheduler: Alerts checked - {alert_result}")
+        alert_elapsed = time.monotonic() - alert_start
+        logger.info(f"Scheduler: Alerts checked in {alert_elapsed:.1f}s - {alert_result}")
     except Exception as e:
-        logger.error(f"Scheduler: Alert check failed - {e}")
+        alert_elapsed = time.monotonic() - alert_start
+        logger.error(f"Scheduler: Alert check failed after {alert_elapsed:.1f}s - {e}")
 
 
 def _run_cleanup() -> None:
     """Scheduled job: clean up old data."""
+    start = time.monotonic()
     try:
         from pipeline.tasks.cleanup import apply_retention_policy_sync
         result = apply_retention_policy_sync()
-        logger.info(f"Scheduler: Cleanup complete - {result}")
+        elapsed = time.monotonic() - start
+        logger.info(f"Scheduler: Cleanup complete in {elapsed:.1f}s - {result}")
     except Exception as e:
-        logger.error(f"Scheduler: Cleanup failed - {e}")
+        elapsed = time.monotonic() - start
+        logger.error(f"Scheduler: Cleanup failed after {elapsed:.1f}s - {e}")
 
 
 def start_scheduler() -> None:
