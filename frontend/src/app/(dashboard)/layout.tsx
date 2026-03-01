@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
+
 import { Sidebar } from "@/components/layout/Sidebar";
+
+export const metadata: Metadata = {
+  title: {
+    template: "%s | Farenheit",
+    default: "대시보드 | Farenheit",
+  },
+};
 
 export default function DashboardLayout({
   children,

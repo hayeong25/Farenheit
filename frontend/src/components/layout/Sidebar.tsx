@@ -75,7 +75,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav aria-label="메인 내비게이션" className="flex-1 p-4 space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -105,7 +105,7 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)] border-t border-[var(--border)] flex justify-around py-2 px-1 pb-safe">
+      <nav aria-label="모바일 내비게이션" className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)] border-t border-[var(--border)] flex justify-around py-2 px-1 pb-safe">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -113,14 +113,14 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-xs transition-colors ${
+              className={`flex flex-col items-center gap-0.5 px-2 py-2 min-w-[48px] min-h-[48px] justify-center rounded-lg text-xs transition-colors ${
                 isActive
                   ? "text-farenheit-600 font-medium"
                   : "text-[var(--muted-foreground)]"
               }`}
             >
               {item.icon}
-              <span className="text-[10px]">{item.mobileLabel}</span>
+              <span className="text-[11px]">{item.mobileLabel}</span>
             </Link>
           );
         })}

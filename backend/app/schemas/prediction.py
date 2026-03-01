@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -18,7 +19,7 @@ class PredictionResponse(BaseModel):
     predicted_price: Decimal | None
     confidence_low: Decimal | None
     confidence_high: Decimal | None
-    price_direction: str  # UP, DOWN, STABLE
+    price_direction: Literal["UP", "DOWN", "STABLE"]
     confidence_score: Decimal | None
     model_version: str
     predicted_at: datetime | None
@@ -29,7 +30,7 @@ class HeatmapCell(BaseModel):
     departure_date: date
     weeks_before: int
     predicted_price: Decimal
-    price_level: str  # LOW, MEDIUM, HIGH
+    price_level: Literal["LOW", "MEDIUM", "HIGH"]
 
 
 class HeatmapResponse(BaseModel):

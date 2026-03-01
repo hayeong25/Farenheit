@@ -1,7 +1,7 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Index, String, UniqueConstraint, func
+from sqlalchemy import ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -27,5 +27,5 @@ class Prediction(Base):
     price_direction: Mapped[str] = mapped_column(String(10))  # UP, DOWN, STABLE
     confidence_score: Mapped[Decimal | None] = mapped_column()
     model_version: Mapped[str] = mapped_column(String(50))
-    predicted_at: Mapped[datetime] = mapped_column(default=func.now())
+    predicted_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
     valid_until: Mapped[datetime] = mapped_column()

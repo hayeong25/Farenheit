@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -9,7 +10,7 @@ class RecommendationResponse(BaseModel):
     destination: str
     departure_date: date
     cabin_class: str
-    signal: str  # BUY, WAIT, HOLD, INSUFFICIENT
+    signal: Literal["BUY", "WAIT", "HOLD", "INSUFFICIENT"]
     best_airline: str | None = None
     current_price: Decimal | None = None
     predicted_low: Decimal | None = None

@@ -2,6 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -49,7 +50,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)) -> dict:
             "last_price_collected_at": last_collected.isoformat() if last_collected else None,
             "last_predicted_at": last_predicted.isoformat() if last_predicted else None,
         }
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Stats query failed: {e}")
         return {
             "routes": 0,

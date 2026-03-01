@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -9,10 +9,14 @@ from app.models.base import Base, TimestampMixin
 
 class PriceAlert(Base, TimestampMixin):
     __tablename__ = "price_alerts"
+    __table_args__ = (
+        Index("idx_alert_user_created", "user_id", "created_at"),
+        Index("idx_alert_triggered", "is_triggered", "departure_date"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
-    route_id: Mapped[int] = mapped_column(ForeignKey("routes.id"), index=True)
+    route_id: Mapped[int] = mapped_column(ForeignKey("routes.id", ondelete="CASCADE"), index=True)
     target_price: Mapped[Decimal] = mapped_column()
     cabin_class: Mapped[str] = mapped_column(String(20), default="ECONOMY")
     departure_date: Mapped[date | None] = mapped_column()

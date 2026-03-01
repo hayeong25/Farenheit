@@ -1,5 +1,6 @@
 from sqlalchemy import select, or_, case, literal
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.models.airport import Airport
 from app.models.route import Route
@@ -29,15 +30,47 @@ class RouteService:
         self.db = db
 
     async def get_popular_routes(self, limit: int) -> list[RouteResponse]:
+        OriginAirport = aliased(Airport)
+        DestAirport = aliased(Airport)
+
         result = await self.db.execute(
-            select(Route).where(Route.is_active.is_(True)).limit(limit)
+            select(
+                Route,
+                OriginAirport.city_ko.label("origin_city_ko"),
+                OriginAirport.city.label("origin_city_en"),
+                DestAirport.city_ko.label("dest_city_ko"),
+                DestAirport.city.label("dest_city_en"),
+            )
+            .outerjoin(OriginAirport, Route.origin_code == OriginAirport.iata_code)
+            .outerjoin(DestAirport, Route.dest_code == DestAirport.iata_code)
+            .where(Route.is_active.is_(True))
+            .order_by(Route.id)
+            .limit(limit)
         )
-        routes = result.scalars().all()
-        return [RouteResponse.model_validate(r) for r in routes]
+        rows = result.all()
+        responses = []
+        for row in rows:
+            route = row[0]
+            origin_city = row.origin_city_ko or row.origin_city_en
+            dest_city = row.dest_city_ko or row.dest_city_en
+            responses.append(RouteResponse(
+                id=route.id,
+                origin_code=route.origin_code,
+                dest_code=route.dest_code,
+                origin_city=origin_city,
+                dest_city=dest_city,
+                is_active=route.is_active,
+            ))
+        return responses
 
     async def search_airports(self, query: str) -> list[AirportSearchResponse]:
-        search_term = f"%{query}%"
-        starts_with = f"{query}%"
+        query = query.strip()
+        if not query:
+            return []
+        # Escape LIKE special characters
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search_term = f"%{escaped}%"
+        starts_with = f"{escaped}%"
 
         # Priority scoring: lower = better
         # 1. city_ko starts with query (Korean city name starts with input)
