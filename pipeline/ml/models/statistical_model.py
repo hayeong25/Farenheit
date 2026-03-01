@@ -5,7 +5,7 @@ and day-of-week seasonality to generate price predictions.
 """
 
 import logging
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 import numpy as np
@@ -47,6 +47,8 @@ class StatisticalPredictor:
         """
         if price_history.empty or len(price_history) < 3:
             return None
+        if forecast_days < 1:
+            forecast_days = 14
 
         df = price_history.copy()
         df["time"] = pd.to_datetime(df["time"])
@@ -63,7 +65,10 @@ class StatisticalPredictor:
 
         # Current price metrics
         current_price = prices[-1]
-        min_observed = prices.min()
+        if current_price <= 0:
+            # Zero/negative price = corrupted data, fall back to mean
+            current_price = max(float(prices.mean()), 1.0)
+        min_observed = max(prices.min(), 0)
         max_observed = prices.max()
 
         # EMA (exponential moving average) - recent prices weighted more
@@ -90,6 +95,7 @@ class StatisticalPredictor:
             safe_mask = prev_prices > 0.01
             if safe_mask.any():
                 safe_changes = np.diff(prices)[safe_mask] / prev_prices[safe_mask]
+                safe_changes = safe_changes[np.isfinite(safe_changes)]
                 volatility = float(np.std(safe_changes)) if len(safe_changes) > 1 else 0.05
             else:
                 volatility = 0.05
@@ -120,7 +126,7 @@ class StatisticalPredictor:
         # Confidence based on data quantity, consistency, and trend strength
         data_confidence = min(n / 20, 1.0) * 0.4  # Full confidence at 20 data points
         trend_consistency = max(0, 1.0 - volatility * 3) * 0.3
-        trend_strength = min(abs(trend_per_day / (current_price + 1)) * 100, 1.0) * 0.3
+        trend_strength = min(abs(trend_per_day / max(current_price, 1.0)) * 100, 1.0) * 0.3
         confidence = round(data_confidence + trend_consistency + trend_strength, 3)
         confidence = float(np.clip(confidence, 0.1, 0.95))
 
@@ -157,8 +163,8 @@ class StatisticalPredictor:
                 "confidence_high": round(max(high, 0), 0),
             })
 
-        mid_idx = forecast_days // 2
-        mid = forecast_series[mid_idx]
+        # Use the final forecast day (closest to departure date)
+        mid = forecast_series[-1]
 
         return {
             "predicted_price": Decimal(str(max(int(mid["predicted_price"]), 0))),

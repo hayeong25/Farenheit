@@ -7,6 +7,7 @@ from decimal import Decimal
 
 import pandas as pd
 from sqlalchemy import select
+
 from pipeline.db import session_factory as _session_factory
 from pipeline.ml.models.statistical_model import StatisticalPredictor
 
