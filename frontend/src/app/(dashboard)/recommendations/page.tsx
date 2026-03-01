@@ -59,34 +59,36 @@ function RecommendationsContent() {
   const originKeyRef = useRef(0);
   const destKeyRef = useRef(0);
 
-  // Resolve IATA codes to display names on mount
+  // Resolve IATA codes to display names on mount (once only)
+  const resolvedRef = useRef(false);
   useEffect(() => {
+    if (resolvedRef.current) return;
+    resolvedRef.current = true;
     const o = searchParams.get("origin");
     const d = searchParams.get("dest");
-    if (o && !originDisplay) {
+    if (o) {
       routesApi.searchAirports(o).then((airports) => {
         const match = airports.find(a => a.iata_code === o);
         if (match) {
-          setOriginDisplay(`${match.city_ko || match.city} (${o})`);
+          setOriginDisplay(`${(match.city_ko || match.city)} (${o})`);
           originKeyRef.current += 1;
         } else {
           setOriginDisplay(o);
         }
       }).catch(() => setOriginDisplay(o));
     }
-    if (d && !destDisplay) {
+    if (d) {
       routesApi.searchAirports(d).then((airports) => {
         const match = airports.find(a => a.iata_code === d);
         if (match) {
-          setDestDisplay(`${match.city_ko || match.city} (${d})`);
+          setDestDisplay(`${(match.city_ko || match.city)} (${d})`);
           destKeyRef.current += 1;
         } else {
           setDestDisplay(d);
         }
       }).catch(() => setDestDisplay(d));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   const [validationMsg, setValidationMsg] = useState("");
 
@@ -126,16 +128,18 @@ function RecommendationsContent() {
     }
   }, [router, cabinClass]);
 
-  // Auto-search on mount if URL params present
+  // Auto-search on mount if URL params present (once only)
+  const autoSearchedRef = useRef(false);
   useEffect(() => {
+    if (autoSearchedRef.current) return;
     const o = searchParams.get("origin");
     const d = searchParams.get("dest");
     const dt = searchParams.get("date");
     if (o && d && dt && !searched) {
+      autoSearchedRef.current = true;
       handleGetRecommendation(o, d, dt);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams, searched, handleGetRecommendation]);
 
   const handleSwap = () => {
     const tc = originCode, td = originDisplay;
