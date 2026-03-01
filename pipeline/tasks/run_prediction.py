@@ -183,11 +183,3 @@ async def _predict_all_routes() -> dict:
 def predict_all_active_sync() -> dict:
     """Synchronous wrapper for APScheduler."""
     return asyncio.run(_predict_all_routes())
-
-
-def retrain_models_sync() -> dict:
-    """Retrain ML models with latest data (sync wrapper)."""
-    # Statistical model doesn't need training
-    # Prophet/GBM retraining would happen here when enough data accumulates
-    logger.info("Model retraining check - statistical model requires no training")
-    return {"status": "ok", "message": "Statistical model does not require training"}
