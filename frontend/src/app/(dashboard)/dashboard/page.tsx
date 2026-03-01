@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { statsApi, StatsResponse, alertsApi, AlertResponse, routesApi } from "@/lib/api-client";
-import { getRecentSearches, formatRelativeTime, type RecentSearch } from "@/lib/utils";
+import { statsApi, StatsResponse, alertsApi, AlertResponse, routesApi, type RouteResponse } from "@/lib/api-client";
+import { getRecentSearches, formatRelativeTime, getLocalToday, type RecentSearch } from "@/lib/utils";
 
 interface PopularRoute {
   origin: string;
@@ -36,19 +36,21 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [statsError, setStatsError] = useState(false);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
+    setLoading(true);
+    setStatsError(false);
     Promise.all([
       statsApi.get().then(data => {
-        if (data?.error) setStatsError(true);
+        if (data?.error) { setStatsError(true); return null; }
         return data;
       }).catch(() => { setStatsError(true); return null; }),
       alertsApi.list().catch(() => []),
       routesApi.popular(8).catch(() => null),
     ]).then(([statsData, alertsData, routesData]) => {
       if (statsData) setStats(statsData);
-      setAlerts(alertsData as AlertResponse[]);
+      if (Array.isArray(alertsData)) setAlerts(alertsData as AlertResponse[]);
       if (routesData && Array.isArray(routesData) && routesData.length > 0) {
-        const dynamicRoutes = (routesData as { origin_code: string; dest_code: string; origin_city: string | null; dest_city: string | null }[]).map(r => ({
+        const dynamicRoutes = (routesData as RouteResponse[]).map(r => ({
           origin: r.origin_code,
           dest: r.dest_code,
           label: `${r.origin_city || r.origin_code} → ${r.dest_city || r.dest_code}`,
@@ -58,6 +60,8 @@ export default function DashboardPage() {
     }).finally(() => setLoading(false));
     setRecentSearches(getRecentSearches());
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const hasData = stats && stats.prices > 0;
   const defaultDate = getDefaultDate();
@@ -102,11 +106,11 @@ export default function DashboardPage() {
       </div>
 
       {statsError && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between gap-3">
-          <p className="text-red-700 text-sm">서버에 연결할 수 없습니다.</p>
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-red-700 dark:text-red-300 text-sm">서버에 연결할 수 없습니다.</p>
           <button
-            onClick={() => window.location.reload()}
-            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+            onClick={loadData}
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
           >
             다시 시도
           </button>
@@ -135,15 +139,15 @@ export default function DashboardPage() {
       {triggeredAlerts.length > 0 && (
         <Link
           href="/alerts"
-          className="block bg-green-50 border border-green-200 rounded-xl p-4 hover:bg-green-100 transition-colors"
+          className="block bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-4 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
         >
           <div className="flex items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
             <div>
-              <p className="font-medium text-green-700">
+              <p className="font-medium text-green-700 dark:text-green-300">
                 {triggeredAlerts.length}건의 목표가 도달 알림이 있습니다
               </p>
-              <p className="text-sm text-green-600 mt-0.5">클릭하여 확인하세요</p>
+              <p className="text-sm text-green-600 dark:text-green-400 mt-0.5">클릭하여 확인하세요</p>
             </div>
           </div>
         </Link>
@@ -154,12 +158,16 @@ export default function DashboardPage() {
         <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
           <h2 className="text-lg font-semibold mb-4">내 최근 검색</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {recentSearches.slice(0, 4).map((s, i) => (
+            {recentSearches.slice(0, 4).map((s, i) => {
+              const today = getLocalToday();
+              const searchDate = s.date >= today ? s.date : defaultDate;
+              const searchReturnDate = s.returnDate && s.returnDate >= searchDate ? s.returnDate : undefined;
+              return (
               <Link
                 key={i}
                 href={(() => {
-                  const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: s.date });
-                  if (s.returnDate) p.set("return_date", s.returnDate);
+                  const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: searchDate });
+                  if (searchReturnDate) p.set("return_date", searchReturnDate);
                   if (s.cabinClass !== "ECONOMY") p.set("cabin", s.cabinClass);
                   return `/search?${p.toString()}`;
                 })()}
@@ -170,14 +178,15 @@ export default function DashboardPage() {
                   <span className="text-xs text-[var(--muted-foreground)]">
                     {s.date}{s.returnDate ? ` ~ ${s.returnDate}` : ""}
                   </span>
-                  {s.minPrice && (
+                  {s.minPrice != null && s.minPrice > 0 && (
                     <span className="text-xs font-medium text-farenheit-500">
                       ₩{Math.round(s.minPrice).toLocaleString()}~
                     </span>
                   )}
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -215,10 +224,10 @@ export default function DashboardPage() {
                 className="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--muted)]"
               >
                 <span className="text-sm font-medium">
-                  {alert.origin} → {alert.destination}
+                  {alert.origin || "?"} → {alert.destination || "?"}
                 </span>
                 <span className="text-sm text-[var(--muted-foreground)]">
-                  목표가 ₩{Number(alert.target_price).toLocaleString()}
+                  목표가 ₩{Number.isFinite(Number(alert.target_price)) ? Number(alert.target_price).toLocaleString() : "-"}
                 </span>
               </div>
             ))}
@@ -233,9 +242,9 @@ export default function DashboardPage() {
 
       {/* Getting Started Guide */}
       {!loading && !hasData && (
-        <div className="bg-farenheit-50 rounded-xl p-6 border border-farenheit-200">
-          <h2 className="text-lg font-semibold mb-3 text-farenheit-700">시작하기</h2>
-          <div className="space-y-2 text-sm text-farenheit-600">
+        <div className="bg-farenheit-50 dark:bg-farenheit-950/30 rounded-xl p-6 border border-farenheit-200 dark:border-farenheit-800">
+          <h2 className="text-lg font-semibold mb-3 text-farenheit-700 dark:text-farenheit-300">시작하기</h2>
+          <div className="space-y-2 text-sm text-farenheit-600 dark:text-farenheit-400">
             <p>1. 위 인기 노선을 클릭하거나, <strong>항공편 검색</strong>에서 원하는 노선을 검색하세요.</p>
             <p>2. 검색 결과에서 <strong>가격 예측</strong>과 <strong>구매 추천</strong> 링크로 AI 분석을 확인하세요.</p>
             <p>3. <strong>가격 알림</strong>을 설정하면 목표 가격에 도달했을 때 알 수 있습니다.</p>
@@ -264,9 +273,9 @@ function StatCard({
   return (
     <div className={`rounded-xl p-4 md:p-5 border ${
       highlight
-        ? "bg-green-50 border-green-200"
+        ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
         : error
-          ? "bg-red-50/50 border-red-200"
+          ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
           : "bg-[var(--background)] border-[var(--border)]"
     }`}>
       <p className="text-xs md:text-sm text-[var(--muted-foreground)]">{label}</p>

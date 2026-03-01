@@ -697,7 +697,7 @@ function SearchContent() {
                           </p>
                         </div>
                         <a
-                          href={`https://www.google.com/travel/flights?q=flights+${originCode}+to+${destCode}+on+${offer.departure_date}${isRoundTrip && offer.return_date ? `+return+${offer.return_date}` : ""}&curr=KRW`}
+                          href={`https://www.google.com/travel/flights?q=${encodeURIComponent(`flights ${originCode} to ${destCode} on ${offer.departure_date}${isRoundTrip && offer.return_date ? ` return ${offer.return_date}` : ""}`)}&curr=KRW`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors"

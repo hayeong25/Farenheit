@@ -193,6 +193,12 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
         )}
       </div>
 
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {isOpen && !isLoading && !fetchError && results.length > 0
+          ? `${results.length}개의 공항이 검색되었습니다`
+          : ""}
+      </div>
+
       {isOpen && (
         <ul id={listboxId} role="listbox" aria-label={label} className="absolute z-[60] w-full mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {isLoading ? (
