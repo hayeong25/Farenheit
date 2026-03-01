@@ -5,20 +5,39 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import Link from "next/link";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { saveRecentSearch } from "@/lib/utils";
+import { saveRecentSearch, getLocalToday, getDateOneYearLater } from "@/lib/utils";
 
-function formatDuration(minutes: number | null): string {
-  if (!minutes) return "-";
+function formatDuration(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined) return "-";
+  if (minutes <= 0) return "-";
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m > 0 ? `${h}시간 ${m}분` : `${h}시간`;
 }
 
 function formatPrice(amount: number, currency: string): string {
-  if (currency === "KRW") {
-    return `₩${Math.round(amount).toLocaleString()}`;
+  if (!Number.isFinite(amount)) return "-";
+  try {
+    return new Intl.NumberFormat("ko-KR", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: currency === "KRW" ? 0 : 2,
+    }).format(amount);
+  } catch {
+    // Fallback for unknown currency codes
+    return `${currency} ${amount.toLocaleString()}`;
   }
-  return `${currency} ${amount.toLocaleString()}`;
+}
+
+function formatDateKr(dateStr: string): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" });
+  } catch {
+    return dateStr;
+  }
 }
 
 function getStopsLabel(stops: number): string {
@@ -26,9 +45,17 @@ function getStopsLabel(stops: number): string {
   return `경유 ${stops}회`;
 }
 
-function formatTime(timeStr: string | null): string {
+function formatTime(timeStr: string | null | undefined): string {
   if (!timeStr) return "-";
-  return timeStr.slice(11, 16);
+  // Handle full ISO datetime (2024-01-01T14:30:00) and time-only (14:30)
+  if (timeStr.includes("T") && timeStr.length >= 16) {
+    return timeStr.slice(11, 16);
+  }
+  // If already HH:MM format or short string
+  if (timeStr.length >= 5 && timeStr.includes(":")) {
+    return timeStr.slice(0, 5);
+  }
+  return timeStr;
 }
 
 function SearchContent() {
@@ -44,11 +71,17 @@ function SearchContent() {
   const [tripType, setTripType] = useState<"round_trip" | "one_way">(
     searchParams.get("return_date") ? "round_trip" : "one_way"
   );
-  const [cabinClass, setCabinClass] = useState(searchParams.get("cabin") || "ECONOMY");
+  const validCabins = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"];
+  const cabinParam = searchParams.get("cabin") || "ECONOMY";
+  const [cabinClass, setCabinClass] = useState(validCabins.includes(cabinParam) ? cabinParam : "ECONOMY");
 
-  // Filters (read from URL for refresh persistence)
-  const [maxStops, setMaxStops] = useState<string>(searchParams.get("stops") || "any");
-  const [sortBy, setSortBy] = useState(searchParams.get("sort") || "price");
+  // Filters (read from URL for refresh persistence, validate against known values)
+  const validStops = ["any", "0", "1", "2"];
+  const validSorts = ["price", "price_desc", "duration", "stops"];
+  const stopsParam = searchParams.get("stops") || "any";
+  const sortParam = searchParams.get("sort") || "price";
+  const [maxStops, setMaxStops] = useState<string>(validStops.includes(stopsParam) ? stopsParam : "any");
+  const [sortBy, setSortBy] = useState(validSorts.includes(sortParam) ? sortParam : "price");
 
   // Airline filter (client-side)
   const [selectedAirlines, setSelectedAirlines] = useState<Set<string>>(new Set());
@@ -68,6 +101,8 @@ function SearchContent() {
   // Swap support
   const originKeyRef = useRef(0);
   const destKeyRef = useRef(0);
+  const searchIdRef = useRef(0);
+  const initialMountRef = useRef(true);
 
   const handleSearch = useCallback(async (
     origin: string, dest: string, depDate: string, cabin: string,
@@ -75,6 +110,7 @@ function SearchContent() {
   ) => {
     if (!origin || !dest || !depDate) return;
 
+    const currentSearchId = ++searchIdRef.current;
     setIsLoading(true);
     setError(null);
     setSearched(true);
@@ -95,28 +131,25 @@ function SearchContent() {
     router.replace(`/search?${urlParams.toString()}`, { scroll: false });
 
     try {
-      const params: Record<string, string> = {
+      const result = await flightsApi.search({
         origin,
         dest,
         departure_date: depDate,
         cabin_class: cabin,
         sort_by: sort === "price_desc" ? "price" : sort,
-      };
-      if (retDate) {
-        params.return_date = retDate;
-      }
-      if (stops !== "any") {
-        params.max_stops = stops;
-      }
-      const result = await flightsApi.search(params as any);
+        ...(retDate ? { return_date: retDate } : {}),
+        ...(stops !== "any" ? { max_stops: stops } : {}),
+      });
+      if (currentSearchId !== searchIdRef.current) return;
       setOffers(result.offers);
       setDataSource(result.data_source || "live");
       setAvailableAirlines(result.available_airlines);
       setSelectedAirlines(new Set(result.available_airlines.map(a => a.code)));
 
       // Save to recent searches
-      const lowestPrice = result.offers.length > 0
-        ? Math.min(...result.offers.map(o => Number(o.price_amount)))
+      const validPrices = result.offers.map(o => Number(o.price_amount)).filter(p => Number.isFinite(p) && p > 0);
+      const lowestPrice = validPrices.length > 0
+        ? Math.min(...validPrices)
         : undefined;
       saveRecentSearch({
         origin,
@@ -135,15 +168,22 @@ function SearchContent() {
           route_id: result.route_id,
           departure_date: depDate,
           days: 30,
-        }).then(h => setPriceHistory(h)).catch(() => setPriceHistory(null));
+        }).then(h => {
+          if (currentSearchId === searchIdRef.current) setPriceHistory(h);
+        }).catch(() => {
+          if (currentSearchId === searchIdRef.current) setPriceHistory(null);
+        });
       } else {
         setPriceHistory(null);
       }
     } catch {
+      if (currentSearchId !== searchIdRef.current) return;
       setError("서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.");
       setOffers([]);
     } finally {
-      setIsLoading(false);
+      if (currentSearchId === searchIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [originDisplay, destDisplay, router]);
 
@@ -192,8 +232,12 @@ function SearchContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-search when filters change (including cabin class)
+  // Re-search when filters change (including cabin class) - skip on initial mount
   useEffect(() => {
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      return;
+    }
     if (searched && originCode && destCode && date) {
       const retDate = tripType === "round_trip" ? returnDate : undefined;
       handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
@@ -213,8 +257,15 @@ function SearchContent() {
     return result;
   }, [offers, selectedAirlines, availableAirlines.length, sortBy]);
 
-  const minPrice = filteredOffers.length > 0 ? Math.min(...filteredOffers.map(o => o.price_amount)) : 0;
-  const directCount = filteredOffers.filter(o => o.stops === 0).length;
+  const { minPrice, directCount } = useMemo(() => {
+    let min = 0;
+    let directs = 0;
+    for (const o of filteredOffers) {
+      if (o.price_amount > 0 && (min === 0 || o.price_amount < min)) min = o.price_amount;
+      if (o.stops === 0) directs++;
+    }
+    return { minPrice: min, directCount: directs };
+  }, [filteredOffers]);
   const isRoundTrip = searchInfo?.tripType === "round_trip";
 
   const toggleAirline = (code: string) => {
@@ -290,9 +341,10 @@ function SearchContent() {
           <div className="hidden md:flex items-end pb-1">
             <button
               onClick={handleSwap}
-              disabled={!originCode && !destCode}
+              disabled={!originCode || !destCode}
               className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30"
               title="출발지/도착지 바꾸기"
+              aria-label="출발지와 도착지 바꾸기"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
@@ -309,7 +361,8 @@ function SearchContent() {
           {/* Mobile swap */}
           <button
             onClick={handleSwap}
-            disabled={!originCode && !destCode}
+            disabled={!originCode || !destCode}
+            aria-label="출발지와 도착지 바꾸기"
             className="md:hidden w-full py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
           >
             <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -324,8 +377,9 @@ function SearchContent() {
           tripType === "round_trip" ? "md:grid-cols-4" : "md:grid-cols-3"
         }`}>
           <div>
-            <label className="block text-sm font-medium mb-1">출발일</label>
+            <label htmlFor="search-departure-date" className="block text-sm font-medium mb-1">출발일</label>
             <input
+              id="search-departure-date"
               type="date"
               value={date}
               onChange={(e) => {
@@ -333,27 +387,32 @@ function SearchContent() {
                 setValidationMsg("");
                 if (returnDate && e.target.value > returnDate) {
                   setReturnDate("");
+                  setValidationMsg("출발일이 귀국일보다 늦어 귀국일이 초기화되었습니다.");
                 }
               }}
-              min={new Date().toLocaleDateString("sv-SE")}
+              min={getLocalToday()}
+              max={getDateOneYearLater()}
               className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             />
           </div>
           {tripType === "round_trip" && (
             <div>
-              <label className="block text-sm font-medium mb-1">귀국일</label>
+              <label htmlFor="search-return-date" className="block text-sm font-medium mb-1">귀국일</label>
               <input
+                id="search-return-date"
                 type="date"
                 value={returnDate}
                 onChange={(e) => { setReturnDate(e.target.value); setValidationMsg(""); }}
-                min={date || new Date().toLocaleDateString("sv-SE")}
+                min={date || getLocalToday()}
+                max={getDateOneYearLater()}
                 className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
               />
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium mb-1">좌석 등급</label>
+            <label htmlFor="search-cabin-class" className="block text-sm font-medium mb-1">좌석 등급</label>
             <select
+              id="search-cabin-class"
               value={cabinClass}
               onChange={(e) => setCabinClass(e.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
@@ -376,6 +435,14 @@ function SearchContent() {
                   setValidationMsg(`${missing.join(", ")}을(를) 입력해주세요.`);
                   return;
                 }
+                if (tripType === "round_trip" && returnDate && returnDate < date) {
+                  setValidationMsg("귀국일은 출발일 이후여야 합니다.");
+                  return;
+                }
+                if (originCode === destCode) {
+                  setValidationMsg("출발지와 도착지가 같습니다.");
+                  return;
+                }
                 setValidationMsg("");
                 const retDate = tripType === "round_trip" ? returnDate : undefined;
                 handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
@@ -394,14 +461,14 @@ function SearchContent() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between gap-3">
-          <p className="text-red-700 text-sm">{error}</p>
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
           <button
             onClick={() => {
               const retDate = tripType === "round_trip" ? returnDate : undefined;
               handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
             }}
-            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
           >
             다시 시도
           </button>
@@ -423,15 +490,15 @@ function SearchContent() {
           <div className="bg-[var(--background)] rounded-xl p-4 border border-[var(--border)]">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold">
+                <h2 className="text-lg font-semibold min-w-0">
                   검색 결과
                   {searchInfo && (
-                    <span className="text-sm font-normal text-[var(--muted-foreground)] ml-2">
+                    <span className="text-sm font-normal text-[var(--muted-foreground)] ml-2 break-words">
                       {searchInfo.origin} → {searchInfo.dest}
                       {isRoundTrip ? " (왕복)" : " (편도)"}
                       {" | "}
-                      {searchInfo.date}
-                      {searchInfo.returnDate && ` ~ ${searchInfo.returnDate}`}
+                      {formatDateKr(searchInfo.date)}
+                      {searchInfo.returnDate && ` ~ ${formatDateKr(searchInfo.returnDate)}`}
                     </span>
                   )}
                 </h2>
@@ -447,10 +514,11 @@ function SearchContent() {
                   </p>
                 )}
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <select
                   value={maxStops}
                   onChange={(e) => setMaxStops(e.target.value)}
+                  aria-label="경유 필터"
                   className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)]"
                 >
                   <option value="any">경유 전체</option>
@@ -461,6 +529,7 @@ function SearchContent() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
+                  aria-label="정렬 기준"
                   className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)]"
                 >
                   <option value="price">가격 낮은 순</option>
@@ -561,11 +630,12 @@ function SearchContent() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredOffers.map((offer, idx) => {
-                const isLowest = offer.price_amount === minPrice;
+              {filteredOffers.slice(0, 100).map((offer, idx) => {
+                const isLowest = minPrice > 0 && offer.price_amount === minPrice;
+                const offerKey = `${offer.airline_code}-${offer.flight_number || ""}-${offer.departure_date}-${offer.stops}-${offer.price_amount}-${idx}`;
                 return (
                   <div
-                    key={idx}
+                    key={offerKey}
                     className={`bg-[var(--background)] rounded-xl p-5 border transition-shadow hover:shadow-md ${
                       isLowest ? "border-farenheit-300 ring-1 ring-farenheit-100" : "border-[var(--border)]"
                     }`}
@@ -575,14 +645,14 @@ function SearchContent() {
                       <div className="flex-1 space-y-3">
                         {/* Airline header */}
                         <div className="flex items-center gap-3 flex-wrap">
-                          <span className="font-bold text-lg">{offer.airline_name || offer.airline_code}</span>
+                          <span className="font-bold text-lg truncate max-w-[140px] sm:max-w-[200px]">{offer.airline_name || offer.airline_code}</span>
                           {isLowest && (
                             <span className="text-xs px-2 py-0.5 rounded bg-farenheit-50 text-farenheit-600 font-medium">
                               최저가
                             </span>
                           )}
                           {offer.stops === 0 && (
-                            <span className="text-xs px-2 py-0.5 rounded bg-green-50 text-green-600 font-medium">
+                            <span className="text-xs px-2 py-0.5 rounded bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 font-medium">
                               직항
                             </span>
                           )}
@@ -621,7 +691,7 @@ function SearchContent() {
                                 <span className="font-semibold">{formatTime(offer.return_arrival_time)}</span>
                                 <span className="text-[var(--muted-foreground)]">{formatDuration(offer.return_duration_minutes)}</span>
                                 <span className="text-[var(--muted-foreground)]">
-                                  {offer.return_stops !== null ? getStopsLabel(offer.return_stops) : ""}
+                                  {offer.return_stops != null ? getStopsLabel(offer.return_stops) : ""}
                                 </span>
                               </>
                             ) : (
@@ -657,37 +727,44 @@ function SearchContent() {
                   </div>
                 );
               })}
+              {filteredOffers.length > 100 && (
+                <p className="text-center text-sm text-[var(--muted-foreground)] py-4">
+                  상위 100개 결과를 표시하고 있습니다. 필터를 조정하여 결과를 좁혀보세요.
+                </p>
+              )}
             </div>
           )}
         </div>
       )}
 
       {/* Price History Summary */}
-      {!isLoading && searched && priceHistory && priceHistory.prices.length > 0 && priceHistory.min_price != null && (
+      {!isLoading && searched && priceHistory && priceHistory.prices.length > 0 && priceHistory.min_price != null && minPrice > 0 && (
         <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
           <h3 className="text-sm font-semibold mb-3">이 노선 가격 추이 (최근 30일)</h3>
           <div className="grid grid-cols-3 gap-4 mb-3">
             <div>
               <p className="text-xs text-[var(--muted-foreground)]">최저가</p>
-              <p className="text-lg font-bold text-green-600">₩{Math.round(Number(priceHistory.min_price)).toLocaleString()}</p>
+              <p className="text-lg font-bold text-green-600 dark:text-green-400">{Number.isFinite(Number(priceHistory.min_price)) ? `₩${Math.round(Number(priceHistory.min_price)).toLocaleString()}` : "-"}</p>
             </div>
             <div>
               <p className="text-xs text-[var(--muted-foreground)]">평균가</p>
-              <p className="text-lg font-bold">₩{Math.round(Number(priceHistory.avg_price)).toLocaleString()}</p>
+              <p className="text-lg font-bold">{Number.isFinite(Number(priceHistory.avg_price)) ? `₩${Math.round(Number(priceHistory.avg_price)).toLocaleString()}` : "-"}</p>
             </div>
             <div>
               <p className="text-xs text-[var(--muted-foreground)]">최고가</p>
-              <p className="text-lg font-bold text-red-600">₩{Math.round(Number(priceHistory.max_price)).toLocaleString()}</p>
+              <p className="text-lg font-bold text-red-600 dark:text-red-400">{Number.isFinite(Number(priceHistory.max_price)) ? `₩${Math.round(Number(priceHistory.max_price)).toLocaleString()}` : "-"}</p>
             </div>
           </div>
           {/* Simple sparkline visualization */}
           {(() => {
-            const prices = priceHistory.prices.map(p => Number(p.price_amount));
+            const prices = priceHistory.prices.map(p => Number(p.price_amount)).filter(p => Number.isFinite(p) && p > 0);
+            if (prices.length === 0) return null;
             const min = Math.min(...prices);
             const max = Math.max(...prices);
             const range = max - min || 1;
             const currentMin = minPrice;
             const avgNum = Number(priceHistory.avg_price);
+            if (!Number.isFinite(avgNum)) return null;
             const position = avgNum > 0 ? ((currentMin - min) / range) * 100 : 50;
             const isGoodPrice = currentMin <= avgNum;
             return (

@@ -319,6 +319,64 @@ function PredictionsContent() {
         </div>
       )}
 
+      {/* Forecast Series */}
+      {searched && !loading && prediction && prediction.forecast_series.length > 1 && (
+        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+          <h2 className="text-lg font-semibold mb-3">출발일별 가격 전망</h2>
+          <p className="text-sm text-[var(--muted-foreground)] mb-4">
+            같은 노선의 다른 출발일 예측 가격입니다. 저렴한 날짜를 비교해보세요.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)]">
+                  <th className="text-left py-2 pr-4 font-medium text-[var(--muted-foreground)]">출발일</th>
+                  <th className="text-right py-2 px-4 font-medium text-[var(--muted-foreground)]">예측 가격</th>
+                  <th className="text-right py-2 px-4 font-medium text-[var(--muted-foreground)]">하한</th>
+                  <th className="text-right py-2 pl-4 font-medium text-[var(--muted-foreground)]">상한</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prediction.forecast_series.slice(0, 15).map((fp) => {
+                  const isSelected = fp.date === prediction.departure_date;
+                  const prices = prediction.forecast_series.map(p => p.predicted_price).filter(p => Number.isFinite(p) && p > 0);
+                  const minForecast = prices.length > 0 ? Math.min(...prices) : 0;
+                  const isLowest = fp.predicted_price === minForecast && minForecast > 0;
+                  return (
+                    <tr
+                      key={fp.date}
+                      className={`border-b border-[var(--border)] last:border-0 ${
+                        isSelected ? "bg-farenheit-50/50 dark:bg-farenheit-950/20" : ""
+                      }`}
+                    >
+                      <td className="py-2 pr-4">
+                        <span className="font-medium">{fp.date.slice(5)}</span>
+                        {isSelected && <span className="text-xs text-farenheit-500 ml-1.5">선택</span>}
+                        {isLowest && <span className="text-xs text-green-600 ml-1.5">최저</span>}
+                      </td>
+                      <td className={`text-right py-2 px-4 font-semibold ${isLowest ? "text-green-600 dark:text-green-400" : ""}`}>
+                        {Number.isFinite(fp.predicted_price) ? `₩${fp.predicted_price.toLocaleString()}` : "-"}
+                      </td>
+                      <td className="text-right py-2 px-4 text-[var(--muted-foreground)]">
+                        {Number.isFinite(fp.confidence_low) ? `₩${fp.confidence_low.toLocaleString()}` : "-"}
+                      </td>
+                      <td className="text-right py-2 pl-4 text-[var(--muted-foreground)]">
+                        {Number.isFinite(fp.confidence_high) ? `₩${fp.confidence_high.toLocaleString()}` : "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {prediction.forecast_series.length > 15 && (
+            <p className="text-xs text-[var(--muted-foreground)] mt-2 text-center">
+              {prediction.forecast_series.length}개 날짜 중 15개를 표시합니다
+            </p>
+          )}
+        </div>
+      )}
+
       {searched && !loading && !error && !hasPredictionData && (
         <div className="rounded-xl p-8 border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 text-center">
           <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">

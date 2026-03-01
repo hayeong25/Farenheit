@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
-import { getRecentSearches, type RecentSearch } from "@/lib/utils";
+import { getRecentSearches, getLocalToday, getDateOneYearLater, type RecentSearch } from "@/lib/utils";
 
 export default function HomePage() {
   const router = useRouter();
@@ -36,6 +36,17 @@ export default function HomePage() {
       setDate(d.toLocaleDateString("sv-SE"));
     }
     setRecentSearches(getRecentSearches());
+    // Reset searching state when returning to this page via back navigation
+    setIsSearching(false);
+    // Also reset on page visibility change (back/forward cache)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") setIsSearching(false);
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      if (validationTimerRef.current) clearTimeout(validationTimerRef.current);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refs for resetting AirportSearch components
@@ -53,6 +64,14 @@ export default function HomePage() {
     if (tripType === "round_trip" && !returnDate) missing.push("귀국일");
     if (missing.length > 0) {
       showValidation(`${missing.join(", ")}을(를) 입력해주세요.`);
+      return;
+    }
+    if (tripType === "round_trip" && returnDate && returnDate < date) {
+      showValidation("귀국일은 출발일 이후여야 합니다.");
+      return;
+    }
+    if (originCode === destCode) {
+      showValidation("출발지와 도착지가 같습니다.");
       return;
     }
     setValidationMsg("");
@@ -150,9 +169,10 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={handleSwap}
-                disabled={!originCode && !destCode}
+                disabled={!originCode || !destCode}
                 className="hidden md:flex w-10 h-10 mx-1 mb-0.5 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed self-end"
                 title="출발지/도착지 바꾸기"
+                aria-label="출발지와 도착지 바꾸기"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
@@ -161,7 +181,8 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={handleSwap}
-                disabled={!originCode && !destCode}
+                disabled={!originCode || !destCode}
+                aria-label="출발지와 도착지 바꾸기"
                 className="md:hidden w-full py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
               >
                 <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -182,8 +203,9 @@ export default function HomePage() {
               tripType === "round_trip" ? "md:grid-cols-3" : "md:grid-cols-2"
             }`}>
               <div>
-                <label className="block text-sm font-medium mb-1 text-left">출발일</label>
+                <label htmlFor="home-departure-date" className="block text-sm font-medium mb-1 text-left">출발일</label>
                 <input
+                  id="home-departure-date"
                   type="date"
                   value={date}
                   onChange={(e) => {
@@ -194,25 +216,29 @@ export default function HomePage() {
                       showValidation("출발일이 귀국일보다 늦어 귀국일이 초기화되었습니다.");
                     }
                   }}
-                  min={new Date().toLocaleDateString("sv-SE")}
+                  min={getLocalToday()}
+                  max={getDateOneYearLater()}
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 />
               </div>
               {tripType === "round_trip" && (
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-left">귀국일</label>
+                  <label htmlFor="home-return-date" className="block text-sm font-medium mb-1 text-left">귀국일</label>
                   <input
+                    id="home-return-date"
                     type="date"
                     value={returnDate}
                     onChange={(e) => { setReturnDate(e.target.value); setValidationMsg(""); }}
-                    min={date || new Date().toLocaleDateString("sv-SE")}
+                    min={date || getLocalToday()}
+                    max={getDateOneYearLater()}
                     className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                   />
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium mb-1 text-left">좌석 등급</label>
+                <label htmlFor="home-cabin-class" className="block text-sm font-medium mb-1 text-left">좌석 등급</label>
                 <select
+                  id="home-cabin-class"
                   value={cabinClass}
                   onChange={(e) => setCabinClass(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
@@ -246,7 +272,7 @@ export default function HomePage() {
               )}
             </button>
             {validationMsg && (
-              <div className="flex items-center gap-2 mt-3 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600">
+              <div className="flex items-center gap-2 mt-3 px-3 py-2.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400">
                 <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
                 </svg>
@@ -260,12 +286,18 @@ export default function HomePage() {
             <div className="mt-8 max-w-2xl mx-auto">
               <p className="text-sm text-[var(--muted-foreground)] mb-3">최근 검색</p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {recentSearches.slice(0, 4).map((s, i) => (
+                {recentSearches.slice(0, 4).map((s, i) => {
+                  // If date is in the past, use 14 days from now
+                  const today = getLocalToday();
+                  const fallbackDate = new Date(); fallbackDate.setDate(fallbackDate.getDate() + 14);
+                  const searchDate = s.date >= today ? s.date : fallbackDate.toLocaleDateString("sv-SE");
+                  const searchReturnDate = s.returnDate && s.returnDate >= searchDate ? s.returnDate : undefined;
+                  return (
                   <Link
                     key={i}
                     href={(() => {
-                      const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: s.date });
-                      if (s.returnDate) p.set("return_date", s.returnDate);
+                      const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: searchDate });
+                      if (searchReturnDate) p.set("return_date", searchReturnDate);
                       if (s.cabinClass !== "ECONOMY") p.set("cabin", s.cabinClass);
                       return `/search?${p.toString()}`;
                     })()}
@@ -275,11 +307,12 @@ export default function HomePage() {
                     <span className="text-xs text-[var(--muted-foreground)]">
                       {s.date.slice(5)}{s.returnDate ? ` ~ ${s.returnDate.slice(5)}` : ""}
                     </span>
-                    {s.minPrice && (
+                    {s.minPrice != null && s.minPrice > 0 && (
                       <span className="text-xs text-farenheit-500">₩{Math.round(s.minPrice).toLocaleString()}</span>
                     )}
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -287,7 +320,7 @@ export default function HomePage() {
           {/* Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
             <div>
-              <div className="w-12 h-12 rounded-xl bg-farenheit-50 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-xl bg-farenheit-50 dark:bg-farenheit-950/30 flex items-center justify-center mx-auto mb-3">
                 <svg className="w-6 h-6 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                 </svg>
@@ -298,7 +331,7 @@ export default function HomePage() {
               </p>
             </div>
             <div>
-              <div className="w-12 h-12 rounded-xl bg-farenheit-50 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-xl bg-farenheit-50 dark:bg-farenheit-950/30 flex items-center justify-center mx-auto mb-3">
                 <svg className="w-6 h-6 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
                 </svg>
@@ -309,7 +342,7 @@ export default function HomePage() {
               </p>
             </div>
             <div>
-              <div className="w-12 h-12 rounded-xl bg-farenheit-50 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-xl bg-farenheit-50 dark:bg-farenheit-950/30 flex items-center justify-center mx-auto mb-3">
                 <svg className="w-6 h-6 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
