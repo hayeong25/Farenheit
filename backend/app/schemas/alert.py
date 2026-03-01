@@ -9,7 +9,7 @@ class AlertCreate(BaseModel):
     origin: str = Field(min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$")
     destination: str = Field(min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$")
     target_price: Decimal = Field(gt=0)
-    cabin_class: Literal["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] = "ECONOMY"
+    cabin_class: Literal["ECONOMY", "BUSINESS", "FIRST"] = "ECONOMY"
     departure_date: date | None = None
 
     @model_validator(mode="after")
