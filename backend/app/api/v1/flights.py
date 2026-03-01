@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG
 from app.db.session import get_db
 from app.schemas.flight import FlightSearchResponse, PriceHistoryResponse
 from app.services.flight_service import FlightService
@@ -44,7 +44,7 @@ async def search_flights(
 
     cabin_class = cabin_class.upper()
     if cabin_class not in VALID_CABIN_CLASSES:
-        raise HTTPException(status_code=400, detail=f"유효하지 않은 좌석 등급입니다. ({', '.join(sorted(VALID_CABIN_CLASSES))})")
+        raise HTTPException(status_code=400, detail=CABIN_CLASS_ERROR_MSG)
 
     if sort_by not in VALID_SORT_OPTIONS:
         sort_by = "price"

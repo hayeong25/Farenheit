@@ -726,20 +726,27 @@ function SearchContent() {
       {!isLoading && searched && priceHistory && priceHistory.prices.length > 0 && priceHistory.min_price != null && minPrice > 0 && (
         <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
           <h3 className="text-sm font-semibold mb-3">이 노선 가격 추이 (최근 30일)</h3>
-          <div className="grid grid-cols-3 gap-4 mb-3">
-            <div>
-              <p className="text-xs text-[var(--muted-foreground)]">최저가</p>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400">{Number.isFinite(Number(priceHistory.min_price)) ? `₩${Math.round(Number(priceHistory.min_price)).toLocaleString()}` : "-"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-[var(--muted-foreground)]">평균가</p>
-              <p className="text-lg font-bold">{Number.isFinite(Number(priceHistory.avg_price)) ? `₩${Math.round(Number(priceHistory.avg_price)).toLocaleString()}` : "-"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-[var(--muted-foreground)]">최고가</p>
-              <p className="text-lg font-bold text-red-600 dark:text-red-400">{Number.isFinite(Number(priceHistory.max_price)) ? `₩${Math.round(Number(priceHistory.max_price)).toLocaleString()}` : "-"}</p>
-            </div>
-          </div>
+          {(() => {
+            const minP = Number(priceHistory.min_price);
+            const avgP = Number(priceHistory.avg_price);
+            const maxP = Number(priceHistory.max_price);
+            return (
+              <div className="grid grid-cols-3 gap-4 mb-3">
+                <div>
+                  <p className="text-xs text-[var(--muted-foreground)]">최저가</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">{Number.isFinite(minP) ? `₩${Math.round(minP).toLocaleString()}` : "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--muted-foreground)]">평균가</p>
+                  <p className="text-lg font-bold">{Number.isFinite(avgP) ? `₩${Math.round(avgP).toLocaleString()}` : "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--muted-foreground)]">최고가</p>
+                  <p className="text-lg font-bold text-red-600 dark:text-red-400">{Number.isFinite(maxP) ? `₩${Math.round(maxP).toLocaleString()}` : "-"}</p>
+                </div>
+              </div>
+            );
+          })()}
           {/* Simple sparkline visualization */}
           {(() => {
             const prices = priceHistory.prices.map(p => Number(p.price_amount)).filter(p => Number.isFinite(p) && p > 0);

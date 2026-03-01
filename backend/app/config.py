@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
@@ -35,3 +34,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Shared constants
+VALID_CABIN_CLASSES = {"ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"}
+CABIN_CLASS_ERROR_MSG = f"유효하지 않은 좌석 등급입니다. 유효한 값: {', '.join(sorted(VALID_CABIN_CLASSES))}"

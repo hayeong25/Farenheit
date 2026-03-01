@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useId } from "react";
-
-interface Airport {
-  iata_code: string;
-  name: string;
-  city: string;
-  city_ko: string | null;
-  country_code: string;
-}
+import { API_BASE, type Airport } from "@/lib/api-client";
 
 interface AirportSearchProps {
   label: string;
@@ -16,8 +9,6 @@ interface AirportSearchProps {
   value: string;
   onSelect: (iataCode: string, displayName: string) => void;
 }
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000/api/v1";
 
 export function AirportSearch({ label, placeholder, value, onSelect }: AirportSearchProps) {
   const [query, setQuery] = useState(value);

@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG
 from app.db.session import get_db
 from app.schemas.recommendation import RecommendationResponse
 from app.services.recommendation_service import RecommendationService
@@ -23,7 +23,7 @@ async def get_recommendation(
     dest = dest.upper()
     cabin_class = cabin_class.upper()
     if cabin_class not in VALID_CABIN_CLASSES:
-        raise HTTPException(status_code=400, detail=f"유효하지 않은 좌석 등급입니다. ({', '.join(sorted(VALID_CABIN_CLASSES))})")
+        raise HTTPException(status_code=400, detail=CABIN_CLASS_ERROR_MSG)
     if origin == dest:
         raise HTTPException(status_code=400, detail="출발지와 도착지가 같습니다.")
     if departure_date < date.today():

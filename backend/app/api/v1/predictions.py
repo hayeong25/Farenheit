@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG
 from app.db.session import get_db
 from app.models.route import Route
 from app.schemas.prediction import PredictionResponse, HeatmapResponse
@@ -29,7 +29,7 @@ async def get_prediction(
         dest = dest.upper()
     cabin_class = cabin_class.upper()
     if cabin_class not in VALID_CABIN_CLASSES:
-        raise HTTPException(status_code=400, detail=f"유효하지 않은 좌석 등급입니다. ({', '.join(sorted(VALID_CABIN_CLASSES))})")
+        raise HTTPException(status_code=400, detail=CABIN_CLASS_ERROR_MSG)
     if origin and dest and origin == dest:
         raise HTTPException(status_code=400, detail="출발지와 도착지가 같습니다.")
     if departure_date < date.today():
@@ -76,7 +76,7 @@ async def get_heatmap(
     dest = dest.upper()
     cabin_class = cabin_class.upper()
     if cabin_class not in VALID_CABIN_CLASSES:
-        raise HTTPException(status_code=400, detail=f"유효하지 않은 좌석 등급입니다. ({', '.join(sorted(VALID_CABIN_CLASSES))})")
+        raise HTTPException(status_code=400, detail=CABIN_CLASS_ERROR_MSG)
     if origin == dest:
         raise HTTPException(status_code=400, detail="출발지와 도착지가 같습니다.")
     # Validate month semantics (YYYY-MM format already guaranteed by regex)
