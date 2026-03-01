@@ -2,19 +2,13 @@
 
 import asyncio
 import logging
-import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from sqlalchemy import delete, and_, or_
 
 from pipeline.db import session_factory as _session_factory
 
 logger = logging.getLogger(__name__)
-
-_project_root = Path(__file__).parent.parent.parent
-if str(_project_root / "backend") not in sys.path:
-    sys.path.insert(0, str(_project_root / "backend"))
 
 
 async def _cleanup() -> dict:

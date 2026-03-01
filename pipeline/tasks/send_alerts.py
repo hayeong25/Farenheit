@@ -2,20 +2,13 @@
 
 import asyncio
 import logging
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import date, datetime, timezone
 
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, or_
 
 from pipeline.db import session_factory as _session_factory
 
 logger = logging.getLogger(__name__)
-
-_project_root = Path(__file__).parent.parent.parent
-if str(_project_root / "backend") not in sys.path:
-    sys.path.insert(0, str(_project_root / "backend"))
 
 
 async def _check_alerts() -> dict:
@@ -25,28 +18,64 @@ async def _check_alerts() -> dict:
 
     session_factory = _session_factory
     triggered = 0
+    today = datetime.now(timezone.utc).date()
 
     async with session_factory() as session:
-        # Get all un-triggered alerts
+        # Get all un-triggered alerts (only for future or unset departure dates)
         result = await session.execute(
-            select(PriceAlert).where(PriceAlert.is_triggered.is_(False))
+            select(PriceAlert).where(
+                PriceAlert.is_triggered.is_(False),
+                or_(
+                    PriceAlert.departure_date.is_(None),
+                    PriceAlert.departure_date >= today,
+                ),
+            )
         )
         alerts = result.scalars().all()
 
-        for alert in alerts:
-            # Get the latest minimum price for this route and departure date
-            price_query = select(func.min(FlightPrice.price_amount)).where(
-                FlightPrice.route_id == alert.route_id,
-                FlightPrice.cabin_class == alert.cabin_class,
-            )
-            if alert.departure_date is not None:
-                price_query = price_query.where(
-                    FlightPrice.departure_date == alert.departure_date
-                )
-            price_result = await session.execute(price_query)
-            min_price = price_result.scalar()
+        # Batch: pre-fetch minimum prices for all relevant route+cabin combinations
+        if alerts:
+            route_cabin_pairs = list({(a.route_id, a.cabin_class) for a in alerts})
+            min_prices_map: dict[tuple[int, str], dict] = {}
 
-            if min_price is not None and min_price <= alert.target_price:
+            for route_id, cabin_class in route_cabin_pairs:
+                # Get min price per departure_date for this route+cabin
+                price_result = await session.execute(
+                    select(
+                        FlightPrice.departure_date,
+                        func.min(FlightPrice.price_amount).label("min_price"),
+                    ).where(
+                        FlightPrice.route_id == route_id,
+                        FlightPrice.cabin_class == cabin_class,
+                    ).group_by(FlightPrice.departure_date)
+                )
+                for row in price_result.all():
+                    min_prices_map[(route_id, cabin_class, row.departure_date)] = row.min_price
+                # Also get overall min for alerts without departure_date
+                overall_result = await session.execute(
+                    select(func.min(FlightPrice.price_amount)).where(
+                        FlightPrice.route_id == route_id,
+                        FlightPrice.cabin_class == cabin_class,
+                    )
+                )
+                overall_min = overall_result.scalar()
+                if overall_min is not None:
+                    min_prices_map[(route_id, cabin_class, None)] = overall_min
+
+        for alert in alerts:
+            if alert.departure_date is not None:
+                min_price = min_prices_map.get((alert.route_id, alert.cabin_class, alert.departure_date))
+            else:
+                min_price = min_prices_map.get((alert.route_id, alert.cabin_class, None))
+
+            if min_price is None:
+                logger.debug(
+                    f"Alert {alert.id}: no price data for route={alert.route_id}, "
+                    f"cabin={alert.cabin_class}, departure={alert.departure_date}"
+                )
+                continue
+
+            if min_price <= alert.target_price:
                 alert.is_triggered = True
                 alert.triggered_at = datetime.now(timezone.utc)
                 triggered += 1
@@ -55,7 +84,12 @@ async def _check_alerts() -> dict:
                     f"target={alert.target_price}, actual={min_price}"
                 )
 
-        await session.commit()
+        try:
+            await session.commit()
+        except Exception as e:
+            logger.error(f"Failed to commit alert updates: {e}", exc_info=True)
+            await session.rollback()
+            return {"status": "error", "checked": len(alerts), "triggered": 0}
 
     logger.info(f"Alert check: {len(alerts)} checked, {triggered} triggered")
     return {"status": "ok", "checked": len(alerts), "triggered": triggered}

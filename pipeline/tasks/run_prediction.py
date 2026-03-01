@@ -2,10 +2,8 @@
 
 import asyncio
 import logging
-import sys
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from pathlib import Path
 
 import pandas as pd
 from sqlalchemy import select
@@ -13,11 +11,6 @@ from pipeline.db import session_factory as _session_factory
 from pipeline.ml.models.statistical_model import StatisticalPredictor
 
 logger = logging.getLogger(__name__)
-
-# Ensure backend is importable
-_project_root = Path(__file__).parent.parent.parent
-if str(_project_root / "backend") not in sys.path:
-    sys.path.insert(0, str(_project_root / "backend"))
 
 
 async def _predict_all_routes() -> dict:
