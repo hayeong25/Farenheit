@@ -14,39 +14,34 @@ const cabinLabels: Record<string, string> = {
   FIRST: "퍼스트",
 };
 
-// Cache for resolved IATA → city names
+// Cache for resolved IATA → city names (persists across re-renders)
 const cityNameCache: Record<string, string> = {};
 
-function useResolvedCityName(iataCode: string | null | undefined): string {
-  const [name, setName] = useState(iataCode ? (cityNameCache[iataCode] || iataCode) : "");
-
-  useEffect(() => {
-    if (!iataCode) return;
-    if (cityNameCache[iataCode]) {
-      setName(cityNameCache[iataCode]);
-      return;
-    }
-    routesApi.searchAirports(iataCode).then((airports) => {
-      const match = airports.find(a => a.iata_code === iataCode);
-      if (match) {
-        const resolved = `${match.city_ko || match.city} (${iataCode})`;
-        cityNameCache[iataCode] = resolved;
-        setName(resolved);
-      }
-    }).catch(() => {});
-  }, [iataCode]);
-
-  return name;
+async function batchResolveCityNames(codes: string[]): Promise<Record<string, string>> {
+  const unresolved = codes.filter(c => c && !cityNameCache[c]);
+  const unique = [...new Set(unresolved)];
+  await Promise.all(
+    unique.map(code =>
+      routesApi.searchAirports(code).then(airports => {
+        const match = airports.find(a => a.iata_code === code);
+        if (match) {
+          cityNameCache[code] = `${match.city_ko || match.city} (${code})`;
+        }
+      }).catch(() => {})
+    )
+  );
+  return { ...cityNameCache };
 }
 
-function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete }: {
+function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete, cityNames }: {
   alert: AlertResponse;
   onDelete: (id: number) => void;
   confirmingId: number | null;
   onConfirmDelete: (id: number | null) => void;
+  cityNames: Record<string, string>;
 }) {
-  const originName = useResolvedCityName(alert.origin);
-  const destName = useResolvedCityName(alert.destination);
+  const originName = alert.origin ? (cityNames[alert.origin] || alert.origin) : "";
+  const destName = alert.destination ? (cityNames[alert.destination] || alert.destination) : "";
   const isTriggered = alert.is_triggered;
 
   const searchDate = alert.departure_date || getLocalToday();
@@ -125,6 +120,7 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete }: {
 function AlertsContent() {
   const searchParams = useSearchParams();
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
+  const [cityNames, setCityNames] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -228,6 +224,12 @@ function AlertsContent() {
     try {
       const data = await alertsApi.list();
       setAlerts(data);
+      // Batch resolve all IATA codes at once
+      const codes = data.flatMap(a => [a.origin, a.destination].filter((c): c is string => !!c));
+      if (codes.length > 0) {
+        const resolved = await batchResolveCityNames(codes);
+        setCityNames(resolved);
+      }
     } catch {
       setError("서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.");
     } finally {
@@ -412,7 +414,7 @@ function AlertsContent() {
         ) : (
           <div className="space-y-3">
             {activeAlerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} confirmingId={deleteConfirm} onConfirmDelete={setDeleteConfirm} />
+              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} confirmingId={deleteConfirm} onConfirmDelete={setDeleteConfirm} cityNames={cityNames} />
             ))}
           </div>
         )}
@@ -429,7 +431,7 @@ function AlertsContent() {
           </h2>
           <div className="space-y-3">
             {triggeredAlerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} confirmingId={deleteConfirm} onConfirmDelete={setDeleteConfirm} />
+              <AlertCard key={alert.id} alert={alert} onDelete={handleDelete} confirmingId={deleteConfirm} onConfirmDelete={setDeleteConfirm} cityNames={cityNames} />
             ))}
           </div>
         </div>
