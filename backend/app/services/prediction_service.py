@@ -15,6 +15,8 @@ from app.schemas.prediction import (
     PredictionResponse,
 )
 
+_ZERO = Decimal("0")
+
 
 class PredictionService:
     def __init__(self, db: AsyncSession):
@@ -41,16 +43,15 @@ class PredictionService:
         rows = result.scalars().all()
 
         # Deduplicate by departure_date — keep the first (latest predicted_at) per date
-        ZERO = Decimal("0")
         seen: set[date] = set()
         points: list[ForecastPoint] = []
         for row in rows:
             if row.departure_date in seen:
                 continue
             seen.add(row.departure_date)
-            price = max(row.predicted_price, ZERO)
-            low = max(row.confidence_low, ZERO) if row.confidence_low is not None else price
-            high = max(row.confidence_high, ZERO) if row.confidence_high is not None else price
+            price = max(row.predicted_price, _ZERO)
+            low = max(row.confidence_low, _ZERO) if row.confidence_low is not None else price
+            high = max(row.confidence_high, _ZERO) if row.confidence_high is not None else price
             # Ensure low <= price <= high
             low = min(low, price)
             high = max(high, price)
@@ -168,15 +169,14 @@ class PredictionService:
                 seen_dates.add(p.departure_date)
                 predictions.append(p)
         if predictions:
-            ZERO = Decimal("0")
             # Get min/max for price level categorization
-            prices_dec = [max(p.predicted_price, ZERO) for p in predictions]
+            prices_dec = [max(p.predicted_price, _ZERO) for p in predictions]
             min_p, max_p = min(prices_dec), max(prices_dec)
             price_range = max_p - min_p
 
             for pred in predictions:
                 weeks = max(0, (pred.departure_date - today).days // 7)
-                price_val = max(pred.predicted_price, ZERO)
+                price_val = max(pred.predicted_price, _ZERO)
 
                 # Categorize price level (all same price → all LOW)
                 if price_range > 0:

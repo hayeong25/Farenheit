@@ -8,6 +8,8 @@ from app.models.prediction import Prediction
 from app.models.route import Route
 from app.schemas.recommendation import RecommendationResponse
 
+_ZERO = Decimal("0")
+
 
 class RecommendationService:
     def __init__(self, db: AsyncSession):
@@ -71,9 +73,9 @@ class RecommendationService:
             cabin_class=cabin_class,
             signal=signal,
             best_airline=pred.airline_code,
-            current_price=max(pred.predicted_price, Decimal("0")) if pred.predicted_price else None,
-            predicted_low=max(predicted_low_price, Decimal("0")) if predicted_low_price else (
-                max(pred.confidence_low, Decimal("0")) if pred.confidence_low else None
+            current_price=max(pred.predicted_price, _ZERO) if pred.predicted_price else None,
+            predicted_low=max(predicted_low_price, _ZERO) if predicted_low_price else (
+                max(pred.confidence_low, _ZERO) if pred.confidence_low else None
             ),
             predicted_low_date=predicted_low_date,
             confidence=pred.confidence_score,
@@ -126,7 +128,7 @@ class RecommendationService:
         direction_kr = {"UP": "상승", "DOWN": "하락", "STABLE": "안정"}
         direction = direction_kr.get(pred.price_direction, pred.price_direction)
         try:
-            confidence_pct = min(int((pred.confidence_score or Decimal("0")) * 100), 100)
+            confidence_pct = min(int((pred.confidence_score or _ZERO) * 100), 100)
         except (OverflowError, ValueError):
             confidence_pct = 0
 
