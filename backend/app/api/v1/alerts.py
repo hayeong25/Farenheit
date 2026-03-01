@@ -13,32 +13,6 @@ from app.schemas.alert import AlertCreate, AlertResponse
 router = APIRouter()
 
 
-async def _enrich_alert(alert: PriceAlert, db: AsyncSession) -> AlertResponse:
-    """Add origin/destination info to alert response."""
-    origin = None
-    destination = None
-    route_result = await db.execute(
-        select(Route).where(Route.id == alert.route_id)
-    )
-    route = route_result.scalar_one_or_none()
-    if route:
-        origin = route.origin_code
-        destination = route.dest_code
-
-    return AlertResponse(
-        id=alert.id,
-        route_id=alert.route_id,
-        origin=origin,
-        destination=destination,
-        target_price=alert.target_price,
-        cabin_class=alert.cabin_class,
-        departure_date=alert.departure_date,
-        is_triggered=alert.is_triggered,
-        triggered_at=alert.triggered_at,
-        created_at=alert.created_at,
-    )
-
-
 @router.get("", response_model=list[AlertResponse])
 async def get_alerts(
     db: AsyncSession = Depends(get_db),

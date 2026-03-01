@@ -185,7 +185,6 @@ export interface RouteResponse {
   is_active: boolean;
 }
 
-// Flight APIs
 export interface AlertResponse {
   id: number;
   route_id: number;
