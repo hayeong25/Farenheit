@@ -34,10 +34,16 @@ async def _cleanup() -> dict:
         price_result = await session.execute(
             delete(FlightPrice).where(FlightPrice.time < price_cutoff)
         )
-        # Delete predictions for past departure dates only
-        # (stale valid_until is handled at query time via API filters)
+        # Delete predictions for past departure dates
+        # Also purge stale predictions (valid_until expired > 7 days ago)
+        stale_cutoff = now - timedelta(days=7)
         pred_result = await session.execute(
-            delete(Prediction).where(Prediction.departure_date < today)
+            delete(Prediction).where(
+                or_(
+                    Prediction.departure_date < today,
+                    Prediction.valid_until < stale_cutoff,
+                )
+            )
         )
 
         # Delete triggered alerts for past departure dates (no longer relevant)

@@ -41,14 +41,16 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
   }, [value]);
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
       // Cleanup on unmount: abort in-flight requests and clear debounce
       if (abortRef.current) abortRef.current.abort();
       if (debounceRef.current) clearTimeout(debounceRef.current);

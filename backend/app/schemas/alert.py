@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 
@@ -13,9 +13,15 @@ class AlertCreate(BaseModel):
     departure_date: date | None = None
 
     @model_validator(mode="after")
-    def validate_departure_not_past(self) -> "AlertCreate":
+    def validate_alert(self) -> "AlertCreate":
+        if self.origin.upper() == self.destination.upper():
+            raise ValueError("출발지와 도착지가 같습니다.")
         if self.departure_date and self.departure_date < date.today():
             raise ValueError("출발일은 과거일 수 없습니다.")
+        if self.departure_date and self.departure_date > date.today() + timedelta(days=365):
+            raise ValueError("출발일은 1년 이내여야 합니다.")
+        if self.target_price > 100_000_000:
+            raise ValueError("목표 가격이 너무 큽니다.")
         return self
 
 

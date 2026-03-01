@@ -5,22 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater } from "@/lib/utils";
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "-";
-  try {
-    const d = dateStr.includes("T") ? new Date(dateStr) : new Date(dateStr + "T00:00:00");
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
-}
+import { formatDate, getLocalToday, getDateOneYearLater } from "@/lib/utils";
 
 const cabinLabels: Record<string, string> = {
   ECONOMY: "이코노미",

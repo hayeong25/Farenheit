@@ -10,12 +10,27 @@ class ApiError extends Error {
 }
 
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 35000);
+
+  // If caller provides a signal, link it with our timeout controller
+  if (options?.signal) {
+    const externalSignal = options.signal;
+    if (externalSignal.aborted) {
+      controller.abort(externalSignal.reason);
+    } else {
+      externalSignal.addEventListener("abort", () => controller.abort(externalSignal.reason), { once: true });
+    }
+  }
+
+  try {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
     },
     ...options,
+    signal: controller.signal,
   });
 
   if (!res.ok) {
@@ -28,6 +43,9 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   return res.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function qs(params: Record<string, string | number | boolean | null | undefined>): string {
@@ -109,6 +127,64 @@ export interface Airport {
   country_code: string;
 }
 
+export interface ForecastPoint {
+  date: string;
+  predicted_price: number;
+  confidence_low: number;
+  confidence_high: number;
+}
+
+export interface PredictionResponse {
+  route_id: number;
+  departure_date: string;
+  cabin_class: string;
+  predicted_price: number | null;
+  confidence_low: number | null;
+  confidence_high: number | null;
+  price_direction: string;
+  confidence_score: number | null;
+  model_version: string;
+  predicted_at: string | null;
+  forecast_series: ForecastPoint[];
+}
+
+export interface HeatmapCell {
+  departure_date: string;
+  weeks_before: number;
+  predicted_price: number;
+  price_level: string;
+}
+
+export interface HeatmapResponse {
+  origin: string;
+  destination: string;
+  month: string;
+  cells: HeatmapCell[];
+}
+
+export interface RecommendationResponse {
+  origin: string;
+  destination: string;
+  departure_date: string;
+  cabin_class: string;
+  signal: string;
+  best_airline: string | null;
+  current_price: number | null;
+  predicted_low: number | null;
+  predicted_low_date: string | null;
+  confidence: number | null;
+  reasoning: string;
+}
+
+export interface RouteResponse {
+  id: number;
+  origin_code: string;
+  dest_code: string;
+  origin_city: string | null;
+  dest_city: string | null;
+  is_active: boolean;
+}
+
 // Flight APIs
 export interface AlertResponse {
   id: number;
@@ -149,10 +225,10 @@ export const predictionsApi = {
     dest: string;
     departure_date: string;
     cabin_class?: string;
-  }) => fetchAPI(`/predictions?${qs(params)}`),
+  }) => fetchAPI<PredictionResponse>(`/predictions?${qs(params)}`),
 
-  heatmap: (params: { origin: string; dest: string; month: string }) =>
-    fetchAPI(`/predictions/heatmap?${qs(params)}`),
+  heatmap: (params: { origin: string; dest: string; month: string; cabin_class?: string }) =>
+    fetchAPI<HeatmapResponse>(`/predictions/heatmap?${qs(params)}`),
 };
 
 // Recommendation APIs
@@ -162,13 +238,13 @@ export const recommendationsApi = {
     dest: string;
     departure_date: string;
     cabin_class?: string;
-  }) => fetchAPI(`/recommendations?${qs(params)}`),
+  }) => fetchAPI<RecommendationResponse>(`/recommendations?${qs(params)}`),
 };
 
 // Route APIs
 export const routesApi = {
   popular: (limit?: number) =>
-    fetchAPI(`/routes/popular?${qs({ limit: limit ?? 10 })}`),
+    fetchAPI<RouteResponse[]>(`/routes/popular?${qs({ limit: limit ?? 10 })}`),
 
   searchAirports: (q: string) =>
     fetchAPI<Airport[]>(`/routes/airports/search?${qs({ q })}`),

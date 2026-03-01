@@ -2,44 +2,39 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
-import { recommendationsApi, routesApi } from "@/lib/api-client";
-
-interface RecommendationResult {
-  origin: string;
-  destination: string;
-  departure_date: string;
-  cabin_class: string;
-  signal: string;
-  best_airline: string | null;
-  current_price: number | null;
-  predicted_low: number | null;
-  predicted_low_date: string | null;
-  confidence: number | null;
-  reasoning: string;
-}
+import { recommendationsApi, routesApi, type RecommendationResponse } from "@/lib/api-client";
+import { getLocalToday, getDateOneYearLater } from "@/lib/utils";
 
 const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string; icon: string }> = {
   BUY: {
-    color: "text-green-700",
-    bgColor: "bg-green-50 border-green-200",
+    color: "text-green-700 dark:text-green-300",
+    bgColor: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800",
     label: "BUY",
     description: "지금이 구매 적기입니다",
     icon: "✓",
   },
   WAIT: {
-    color: "text-yellow-700",
-    bgColor: "bg-yellow-50 border-yellow-200",
+    color: "text-yellow-700 dark:text-yellow-300",
+    bgColor: "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800",
     label: "WAIT",
     description: "가격 하락이 예상됩니다. 대기하세요",
     icon: "⏳",
   },
   HOLD: {
-    color: "text-gray-700",
-    bgColor: "bg-gray-50 border-gray-200",
+    color: "text-gray-700 dark:text-gray-300",
+    bgColor: "bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700",
     label: "HOLD",
     description: "시장이 불안정합니다. 관망하세요",
     icon: "⏸",
+  },
+  INSUFFICIENT: {
+    color: "text-blue-700 dark:text-blue-300",
+    bgColor: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
+    label: "데이터 부족",
+    description: "아직 분석할 데이터가 없습니다",
+    icon: "ℹ",
   },
 };
 
@@ -52,12 +47,15 @@ function RecommendationsContent() {
   const [destCode, setDestCode] = useState(searchParams.get("dest") || "");
   const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState(searchParams.get("date") || "");
-  const [cabinClass] = useState(searchParams.get("cabin") || "ECONOMY");
-  const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
+  const validCabins = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"];
+  const cabinParam = searchParams.get("cabin") || "ECONOMY";
+  const [cabinClass] = useState(validCabins.includes(cabinParam) ? cabinParam : "ECONOMY");
+  const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const requestIdRef = useRef(0);
   const originKeyRef = useRef(0);
   const destKeyRef = useRef(0);
 
@@ -90,11 +88,21 @@ function RecommendationsContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [validationMsg, setValidationMsg] = useState("");
+
   const handleGetRecommendation = useCallback(async (origin: string, dest: string, depDate: string) => {
     if (!origin || !dest || !depDate) return;
+    if (origin === dest) {
+      setValidationMsg("출발지와 도착지가 같습니다.");
+      return;
+    }
+    setValidationMsg("");
     setLoading(true);
     setSearched(true);
     setError(null);
+
+    const currentRequestId = ++requestIdRef.current;
+
     const urlParams = new URLSearchParams({ origin, dest, date: depDate });
     if (cabinClass !== "ECONOMY") urlParams.set("cabin", cabinClass);
     router.replace(`/recommendations?${urlParams.toString()}`, { scroll: false });
@@ -104,13 +112,17 @@ function RecommendationsContent() {
         dest,
         departure_date: depDate,
         cabin_class: cabinClass,
-      }) as RecommendationResult;
+      });
+      if (currentRequestId !== requestIdRef.current) return;
       setRecommendation(result);
     } catch {
+      if (currentRequestId !== requestIdRef.current) return;
       setError("추천 정보를 불러올 수 없습니다. 다시 시도해주세요.");
       setRecommendation(null);
     } finally {
-      setLoading(false);
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [router, cabinClass]);
 
@@ -142,25 +154,21 @@ function RecommendationsContent() {
 
       {/* Signal Legend */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {Object.entries(signalConfig).map(([key, cfg]) => (
-          <div key={key} className="bg-[var(--background)] rounded-xl p-4 border border-[var(--border)]">
-            <div className="flex items-center gap-2">
-              <span className={`w-2.5 h-2.5 rounded-full ${
-                key === "BUY" ? "bg-green-500" :
-                key === "WAIT" ? "bg-yellow-500" : "bg-gray-400"
-              }`} />
-              <span className={`font-semibold text-sm ${cfg.color}`}>{cfg.label}</span>
+        {Object.entries(signalConfig).map(([key, cfg]) => {
+          const dotColor = key === "BUY" ? "bg-green-500" :
+            key === "WAIT" ? "bg-yellow-500" :
+            key === "HOLD" ? "bg-gray-400" : "bg-blue-400";
+          const borderStyle = key === "INSUFFICIENT" ? "border-dashed border-[var(--border)]" : "border-[var(--border)]";
+          return (
+            <div key={key} className={`bg-[var(--background)] rounded-xl p-4 border ${borderStyle}`}>
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
+                <span className={`font-semibold text-sm ${cfg.color}`}>{cfg.label}</span>
+              </div>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">{cfg.description}</p>
             </div>
-            <p className="text-xs text-[var(--muted-foreground)] mt-1">{cfg.description}</p>
-          </div>
-        ))}
-        <div className="bg-[var(--background)] rounded-xl p-4 border border-dashed border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-            <span className="font-semibold text-sm text-blue-700">데이터 부족</span>
-          </div>
-          <p className="text-xs text-[var(--muted-foreground)] mt-1">아직 분석할 데이터가 없습니다</p>
-        </div>
+          );
+        })}
       </div>
 
       {/* Query Form */}
@@ -176,9 +184,10 @@ function RecommendationsContent() {
           <div className="hidden md:flex items-end pb-1">
             <button
               onClick={handleSwap}
-              disabled={!originCode && !destCode}
+              disabled={!originCode || !destCode}
               className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30"
               title="출발지/도착지 바꾸기"
+              aria-label="출발지와 도착지 바꾸기"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
@@ -193,18 +202,35 @@ function RecommendationsContent() {
             onSelect={(code, display) => { setDestCode(code); setDestDisplay(display || ""); }}
           />
           <div>
-            <label className="block text-sm font-medium mb-1">출발일</label>
+            <label htmlFor="rec-departure-date" className="block text-sm font-medium mb-1">출발일</label>
             <input
+              id="rec-departure-date"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              min={new Date().toLocaleDateString("sv-SE")}
+              min={getLocalToday()}
+              max={getDateOneYearLater()}
               className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             />
           </div>
           <div className="flex items-end">
             <button
-              onClick={() => handleGetRecommendation(originCode, destCode, date)}
+              onClick={() => {
+                const missing: string[] = [];
+                if (!originCode) missing.push("출발지");
+                if (!destCode) missing.push("도착지");
+                if (!date) missing.push("출발일");
+                if (missing.length > 0) {
+                  setValidationMsg(`${missing.join(", ")}을(를) 입력해주세요.`);
+                  return;
+                }
+                if (originCode === destCode) {
+                  setValidationMsg("출발지와 도착지가 같습니다.");
+                  return;
+                }
+                setValidationMsg("");
+                handleGetRecommendation(originCode, destCode, date);
+              }}
               disabled={!originCode || !destCode || !date || loading}
               className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
@@ -216,7 +242,7 @@ function RecommendationsContent() {
         {/* Mobile swap */}
         <button
           onClick={handleSwap}
-          disabled={!originCode && !destCode}
+          disabled={!originCode || !destCode}
           className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
         >
           <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -224,15 +250,18 @@ function RecommendationsContent() {
           </svg>
           출발지/도착지 바꾸기
         </button>
+        {validationMsg && (
+          <p role="alert" className="text-xs text-red-500 mt-2">{validationMsg}</p>
+        )}
       </div>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between gap-3">
-          <p className="text-red-700 text-sm">{error}</p>
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
           <button
             onClick={() => handleGetRecommendation(originCode, destCode, date)}
-            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
           >
             다시 시도
           </button>
@@ -262,16 +291,16 @@ function RecommendationsContent() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            {recommendation.current_price && (
+            {recommendation.current_price != null && Number.isFinite(Number(recommendation.current_price)) && (
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">현재 예측 가격</p>
-                <p className="text-lg font-bold">₩{recommendation.current_price.toLocaleString()}</p>
+                <p className="text-lg font-bold">₩{Number(recommendation.current_price).toLocaleString()}</p>
               </div>
             )}
-            {recommendation.predicted_low && (
+            {recommendation.predicted_low != null && Number.isFinite(Number(recommendation.predicted_low)) && (
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">예측 최저가</p>
-                <p className="text-lg font-bold text-green-600">₩{recommendation.predicted_low.toLocaleString()}</p>
+                <p className="text-lg font-bold text-green-600">₩{Number(recommendation.predicted_low).toLocaleString()}</p>
               </div>
             )}
             {recommendation.best_airline && (
@@ -280,30 +309,33 @@ function RecommendationsContent() {
                 <p className="text-lg font-bold">{recommendation.best_airline}</p>
               </div>
             )}
-            {recommendation.confidence && (() => {
-              const pct = recommendation.confidence * 100;
+            {recommendation.confidence != null && Number.isFinite(recommendation.confidence) && recommendation.confidence > 0 && (() => {
+              const pct = Math.round(recommendation.confidence * 100);
               const label = pct >= 85 ? "높음" : pct >= 60 ? "보통" : "낮음";
               const color = pct >= 85 ? "text-green-600" : pct >= 60 ? "text-yellow-600" : "text-red-600";
               return (
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">신뢰도</p>
-                  <p className="text-lg font-bold">{pct.toFixed(0)}% <span className={`text-sm font-medium ${color}`}>({label})</span></p>
+                  <p className="text-lg font-bold">{pct}% <span className={`text-sm font-medium ${color}`}>({label})</span></p>
                 </div>
               );
             })()}
           </div>
 
-          {recommendation.signal === "WAIT" && recommendation.predicted_low_date && (
-            <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+          {recommendation.signal === "WAIT" && recommendation.predicted_low_date && typeof recommendation.predicted_low_date === "string" && recommendation.predicted_low_date.length >= 10 && (
+            <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                  <p className="text-sm font-medium text-yellow-800">
-                    예상 최저가 시점: {new Date(recommendation.predicted_low_date + "T00:00:00").toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}경
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    예상 최저가 시점: {(() => {
+                      const d = new Date(recommendation.predicted_low_date + "T00:00:00");
+                      return isNaN(d.getTime()) ? recommendation.predicted_low_date : d.toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
+                    })()}경
                   </p>
-                  <p className="text-xs text-yellow-700 mt-1">이 시점까지 대기하면 더 저렴한 가격을 기대할 수 있습니다.</p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">이 시점까지 대기하면 더 저렴한 가격을 기대할 수 있습니다.</p>
                 </div>
                 {recommendation.predicted_low && (
-                  <a
+                  <Link
                     href={`/alerts?${new URLSearchParams({ origin: recommendation.origin, dest: recommendation.destination, target: String(Math.round(recommendation.predicted_low)), date: recommendation.departure_date }).toString()}`}
                     className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-yellow-600 text-white text-sm font-medium hover:bg-yellow-700 transition-colors"
                   >
@@ -311,7 +343,7 @@ function RecommendationsContent() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                     </svg>
                     가격 알림 설정
-                  </a>
+                  </Link>
                 )}
               </div>
             </div>
@@ -325,30 +357,30 @@ function RecommendationsContent() {
       )}
 
       {!loading && searched && (!recommendation || isInsufficient) && !error && (
-        <div className="rounded-xl p-8 border-2 border-blue-200 bg-blue-50 text-center">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
-            <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="rounded-xl p-8 border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 text-center">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+            <svg className="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
             </svg>
           </div>
-          <p className="font-semibold text-blue-800">아직 분석할 가격 데이터가 부족합니다</p>
-          <p className="text-sm text-blue-700 mt-1">
+          <p className="font-semibold text-blue-800 dark:text-blue-200">아직 분석할 가격 데이터가 부족합니다</p>
+          <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
             {isInsufficient && recommendation?.reasoning
               ? recommendation.reasoning
               : "이 노선의 가격 데이터가 충분히 수집되지 않아 추천을 생성할 수 없습니다."}
           </p>
-          <p className="text-xs text-blue-600 mt-2">먼저 항공편을 검색하면 가격 수집이 시작되고, 약 1시간 후 AI 분석이 가능합니다.</p>
-          <a
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">먼저 항공편을 검색하면 가격 수집이 시작되고, 약 1시간 후 AI 분석이 가능합니다.</p>
+          <Link
             href={originCode && destCode && date
               ? `/search?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`
               : "/search"}
-            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors text-sm"
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 dark:bg-blue-700 text-white font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
             항공편 검색하러 가기
-          </a>
+          </Link>
         </div>
       )}
 
