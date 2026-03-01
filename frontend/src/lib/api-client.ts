@@ -273,4 +273,3 @@ export const alertsApi = {
   delete: (id: number) =>
     fetchAPI(`/alerts/${id}`, { method: "DELETE" }),
 };
-

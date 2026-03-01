@@ -435,9 +435,9 @@ function PredictionsContent() {
                 <span className="ml-auto text-[10px]">같은 달 내 상대적 비교</span>
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-2">
-                {heatmap.cells.map((cell, idx) => (
+                {heatmap.cells.map((cell) => (
                   <div
-                    key={idx}
+                    key={cell.departure_date}
                     className={`p-2 rounded-lg text-center text-xs border ${
                       cell.price_level === "LOW" ? "bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800" :
                       cell.price_level === "HIGH" ? "bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800" :
