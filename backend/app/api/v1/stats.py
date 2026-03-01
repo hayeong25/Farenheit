@@ -51,7 +51,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)) -> dict:
             "last_predicted_at": last_predicted.isoformat() if last_predicted else None,
         }
     except SQLAlchemyError as e:
-        logger.error(f"Stats query failed: {e}")
+        logger.error(f"Stats query failed: {e}", exc_info=True)
         return {
             "routes": 0,
             "prices": 0,

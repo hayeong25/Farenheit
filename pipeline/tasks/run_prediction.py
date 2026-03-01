@@ -162,7 +162,7 @@ async def _predict_all_routes() -> dict:
 
             except Exception as e:
                 routes_failed += 1
-                logger.error(f"Route {route.origin_code}->{route.dest_code}: prediction failed: {e}")
+                logger.error(f"Route {route.origin_code}->{route.dest_code}: prediction failed: {e}", exc_info=True)
                 continue
 
         try:

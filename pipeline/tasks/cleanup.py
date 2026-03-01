@@ -59,7 +59,7 @@ async def _cleanup() -> dict:
         try:
             await session.commit()
         except Exception as e:
-            logger.error(f"Failed to commit cleanup: {e}")
+            logger.error(f"Failed to commit cleanup: {e}", exc_info=True)
             await session.rollback()
             return {"status": "error", "prices_deleted": 0, "predictions_deleted": 0, "alerts_deleted": 0}
 

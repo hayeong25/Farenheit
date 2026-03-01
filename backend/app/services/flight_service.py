@@ -115,7 +115,7 @@ class AmadeusClient:
                 else:
                     logger.warning(f"Amadeus search failed: {resp.status_code}")
         except Exception as e:
-            logger.error(f"Amadeus search error: {e}")
+            logger.error(f"Amadeus search error: {e}", exc_info=True)
         return offers
 
     def _parse_offer(
@@ -287,7 +287,7 @@ class FlightService:
                 await self.db.commit()
                 logger.info(f"Stored {stored} price observations from search")
             except Exception as e:
-                logger.error(f"Failed to commit search prices: {e}")
+                logger.error(f"Failed to commit search prices: {e}", exc_info=True)
                 await self.db.rollback()
 
     async def search(
