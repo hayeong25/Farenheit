@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,9 +26,10 @@ async def get_recommendation(
         raise HTTPException(status_code=400, detail=CABIN_CLASS_ERROR_MSG)
     if origin == dest:
         raise HTTPException(status_code=400, detail="출발지와 도착지가 같습니다.")
-    if departure_date < date.today():
+    today = datetime.now(timezone.utc).date()
+    if departure_date < today:
         raise HTTPException(status_code=400, detail="출발일은 오늘 또는 이후여야 합니다.")
-    if departure_date > date.today() + timedelta(days=365):
+    if departure_date > today + timedelta(days=365):
         raise HTTPException(status_code=400, detail="출발일은 1년 이내여야 합니다.")
     service = RecommendationService(db)
     return await service.get_recommendation(origin, dest, departure_date, cabin_class)

@@ -1,5 +1,5 @@
 import calendar
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import select, func
@@ -24,7 +24,7 @@ class PredictionService:
         self, route_id: int, cabin_class: str
     ) -> list[ForecastPoint]:
         """Query future predictions for the same route/cabin and return deduplicated series."""
-        today = date.today()
+        today = datetime.now(timezone.utc).date()
         now = datetime.now(timezone.utc)
 
         result = await self.db.execute(
@@ -32,7 +32,7 @@ class PredictionService:
             .where(
                 Prediction.route_id == route_id,
                 Prediction.cabin_class == cabin_class,
-                Prediction.departure_date > today,
+                Prediction.departure_date >= today,
                 Prediction.valid_until >= now,
                 Prediction.predicted_price.isnot(None),
             )
@@ -41,18 +41,25 @@ class PredictionService:
         rows = result.scalars().all()
 
         # Deduplicate by departure_date — keep the first (latest predicted_at) per date
+        ZERO = Decimal("0")
         seen: set[date] = set()
         points: list[ForecastPoint] = []
         for row in rows:
             if row.departure_date in seen:
                 continue
             seen.add(row.departure_date)
+            price = max(row.predicted_price, ZERO)
+            low = max(row.confidence_low, ZERO) if row.confidence_low is not None else price
+            high = max(row.confidence_high, ZERO) if row.confidence_high is not None else price
+            # Ensure low <= price <= high
+            low = min(low, price)
+            high = max(high, price)
             points.append(
                 ForecastPoint(
                     date=row.departure_date,
-                    predicted_price=row.predicted_price,
-                    confidence_low=row.confidence_low or row.predicted_price,
-                    confidence_high=row.confidence_high or row.predicted_price,
+                    predicted_price=price,
+                    confidence_low=low,
+                    confidence_high=high,
                 )
             )
         return points
@@ -60,12 +67,14 @@ class PredictionService:
     async def get_prediction(
         self, route_id: int, departure_date: date, cabin_class: str
     ) -> PredictionResponse:
+        now = datetime.now(timezone.utc)
         result = await self.db.execute(
             select(Prediction)
             .where(
                 Prediction.route_id == route_id,
                 Prediction.departure_date == departure_date,
                 Prediction.cabin_class == cabin_class,
+                Prediction.valid_until >= now,
             )
             .order_by(Prediction.predicted_at.desc())
             .limit(1)
@@ -120,8 +129,13 @@ class PredictionService:
         if not route:
             return HeatmapResponse(origin=origin, destination=dest, month=month, cells=[])
 
-        # Parse month
-        year, mon = int(month[:4]), int(month[5:7])
+        # Parse month with validation
+        try:
+            year, mon = int(month[:4]), int(month[5:7])
+        except (ValueError, IndexError):
+            return HeatmapResponse(origin=origin, destination=dest, month=month, cells=[])
+        if mon < 1 or mon > 12 or year < 2000 or year > 2100:
+            return HeatmapResponse(origin=origin, destination=dest, month=month, cells=[])
         _, days_in_month = calendar.monthrange(year, mon)
 
         cells: list[HeatmapCell] = []
@@ -154,28 +168,29 @@ class PredictionService:
                 predictions.append(p)
 
         # If we have predictions, use them
+        today = datetime.now(timezone.utc).date()
         if predictions:
+            ZERO = Decimal("0")
             # Get min/max for price level categorization
-            prices = [float(p.predicted_price) for p in predictions]
-            min_p, max_p = min(prices), max(prices)
-            price_range = max_p - min_p if max_p > min_p else 1
+            prices_dec = [max(p.predicted_price, ZERO) for p in predictions]
+            min_p, max_p = min(prices_dec), max(prices_dec)
+            price_range = max_p - min_p
 
             for pred in predictions:
-                today = date.today()
                 weeks = max(0, (pred.departure_date - today).days // 7)
-                price_val = float(pred.predicted_price)
+                price_val = max(pred.predicted_price, ZERO)
 
-                # Categorize price level
+                # Categorize price level (all same price → all LOW)
                 if price_range > 0:
-                    ratio = (price_val - min_p) / price_range
+                    ratio = float((price_val - min_p) / price_range)
                     level = "LOW" if ratio < 0.33 else ("MEDIUM" if ratio < 0.66 else "HIGH")
                 else:
-                    level = "MEDIUM"
+                    level = "LOW"
 
                 cells.append(HeatmapCell(
                     departure_date=pred.departure_date,
                     weeks_before=weeks,
-                    predicted_price=pred.predicted_price,
+                    predicted_price=price_val,
                     price_level=level,
                 ))
         else:
@@ -184,12 +199,12 @@ class PredictionService:
                 select(
                     FlightPrice.departure_date,
                     func.min(FlightPrice.price_amount).label("min_price"),
-                    func.avg(FlightPrice.price_amount).label("avg_price"),
                 )
                 .where(
                     FlightPrice.route_id == route.id,
                     FlightPrice.departure_date >= month_start,
                     FlightPrice.departure_date <= month_end,
+                    FlightPrice.cabin_class == cabin_class,
                 )
                 .group_by(FlightPrice.departure_date)
                 .order_by(FlightPrice.departure_date)
@@ -199,14 +214,17 @@ class PredictionService:
             if price_rows:
                 prices = [float(r.min_price) for r in price_rows]
                 min_p, max_p = min(prices), max(prices)
-                price_range = max_p - min_p if max_p > min_p else 1
+                price_range = max_p - min_p
 
                 for row in price_rows:
-                    today = date.today()
                     weeks = max(0, (row.departure_date - today).days // 7)
                     price_val = float(row.min_price)
-                    ratio = (price_val - min_p) / price_range if price_range > 0 else 0.5
-                    level = "LOW" if ratio < 0.33 else ("MEDIUM" if ratio < 0.66 else "HIGH")
+                    # All same price → all LOW
+                    if price_range > 0:
+                        ratio = (price_val - min_p) / price_range
+                        level = "LOW" if ratio < 0.33 else ("MEDIUM" if ratio < 0.66 else "HIGH")
+                    else:
+                        level = "LOW"
 
                     cells.append(HeatmapCell(
                         departure_date=row.departure_date,

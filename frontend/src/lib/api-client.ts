@@ -24,25 +24,25 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   try {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-    ...options,
-    signal: controller.signal,
-  });
+    const res = await fetch(`${API_BASE}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+      ...options,
+      signal: controller.signal,
+    });
 
-  if (!res.ok) {
-    throw new ApiError(res.status, await res.json().catch(() => null));
-  }
+    if (!res.ok) {
+      throw new ApiError(res.status, await res.json().catch(() => null));
+    }
 
-  // Handle 204 No Content (e.g., DELETE responses)
-  if (res.status === 204) {
-    return undefined as T;
-  }
+    // Handle 204 No Content (e.g., DELETE responses)
+    if (res.status === 204) {
+      return undefined as T;
+    }
 
-  return res.json();
+    return res.json();
   } finally {
     clearTimeout(timeoutId);
   }

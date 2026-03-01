@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -32,12 +32,14 @@ class RecommendationService:
             )
 
         # Get latest prediction
+        now = datetime.now(timezone.utc)
         pred_result = await self.db.execute(
             select(Prediction)
             .where(
                 Prediction.route_id == route.id,
                 Prediction.departure_date == departure_date,
                 Prediction.cabin_class == cabin_class,
+                Prediction.valid_until >= now,
             )
             .order_by(Prediction.predicted_at.desc())
             .limit(1)
@@ -58,7 +60,7 @@ class RecommendationService:
         signal = self._determine_signal(pred)
 
         # Find the date with lowest predicted price (for WAIT signal)
-        predicted_low_date = await self._find_lowest_price_date(
+        predicted_low_date, predicted_low_price = await self._find_lowest_price_date_and_price(
             route.id, cabin_class, departure_date
         )
 
@@ -70,25 +72,32 @@ class RecommendationService:
             signal=signal,
             best_airline=pred.airline_code,
             current_price=max(pred.predicted_price, Decimal("0")) if pred.predicted_price else None,
-            predicted_low=max(pred.confidence_low, Decimal("0")) if pred.confidence_low else None,
+            predicted_low=max(predicted_low_price, Decimal("0")) if predicted_low_price else (
+                max(pred.confidence_low, Decimal("0")) if pred.confidence_low else None
+            ),
             predicted_low_date=predicted_low_date,
             confidence=pred.confidence_score,
             reasoning=self._generate_reasoning(signal, pred),
         )
 
-    async def _find_lowest_price_date(
+    async def _find_lowest_price_date_and_price(
         self, route_id: int, cabin_class: str, departure_date: date
-    ) -> date | None:
-        """Find the future prediction date with the lowest predicted price."""
+    ) -> tuple[date | None, Decimal | None]:
+        """Find the lowest predicted price date within ±14 days of the requested departure."""
         now = datetime.now(timezone.utc)
-        today = date.today()
+        today = now.date()
+
+        # Search within ±14 days of departure_date for relevant recommendations
+        range_start = max(departure_date - timedelta(days=14), today)
+        range_end = departure_date + timedelta(days=14)
 
         result = await self.db.execute(
             select(Prediction)
             .where(
                 Prediction.route_id == route_id,
                 Prediction.cabin_class == cabin_class,
-                Prediction.departure_date > today,
+                Prediction.departure_date >= range_start,
+                Prediction.departure_date <= range_end,
                 Prediction.valid_until >= now,
                 Prediction.predicted_price.isnot(None),
             )
@@ -96,7 +105,9 @@ class RecommendationService:
             .limit(1)
         )
         lowest = result.scalar_one_or_none()
-        return lowest.departure_date if lowest else None
+        if lowest:
+            return lowest.departure_date, lowest.predicted_price
+        return None, None
 
     def _determine_signal(self, pred: Prediction) -> str:
         has_confidence = pred.confidence_score and pred.confidence_score > Decimal("0.6")
@@ -114,7 +125,10 @@ class RecommendationService:
     def _generate_reasoning(self, signal: str, pred: Prediction) -> str:
         direction_kr = {"UP": "상승", "DOWN": "하락", "STABLE": "안정"}
         direction = direction_kr.get(pred.price_direction, pred.price_direction)
-        confidence_pct = int(float(pred.confidence_score or 0) * 100)
+        try:
+            confidence_pct = min(int((pred.confidence_score or Decimal("0")) * 100), 100)
+        except (OverflowError, ValueError):
+            confidence_pct = 0
 
         if signal == "BUY" and pred.price_direction == "STABLE":
             return (

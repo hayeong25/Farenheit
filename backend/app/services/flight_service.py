@@ -306,8 +306,8 @@ class FlightService:
         if route:
             try:
                 await self.db.commit()
-            except Exception:
-                pass  # Already committed or no pending changes
+            except Exception as e:
+                logger.debug(f"Route commit skipped (likely already committed): {e}")
 
         # Search Amadeus API for live results
         offers = await _amadeus_client.search_flights(
