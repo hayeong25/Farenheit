@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { predictionsApi, routesApi, type PredictionResponse, type HeatmapResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, formatRelativeTime } from "@/lib/utils";
 
 const DIRECTION_CONFIG: Record<string, { color: string; text: string; arrow: string }> = {
   UP: { color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800", text: "상승 예상", arrow: "↑" },
@@ -306,15 +306,7 @@ function PredictionsContent() {
           </div>
           <p className="text-xs text-[var(--muted-foreground)]">
             모델: {prediction.model_version}
-            {prediction.predicted_at && (() => {
-              const ts = new Date(prediction.predicted_at).getTime();
-              if (!Number.isFinite(ts)) return null;
-              const diff = Date.now() - ts;
-              const mins = Math.floor(diff / 60000);
-              const hours = Math.floor(mins / 60);
-              const timeAgo = hours > 0 ? `${hours}시간 전` : mins > 0 ? `${mins}분 전` : "방금";
-              return ` | 예측 시점: ${timeAgo} (${new Date(prediction.predicted_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })})`;
-            })()}
+            {prediction.predicted_at && ` | 예측 시점: ${formatRelativeTime(prediction.predicted_at)}`}
           </p>
         </div>
       )}
@@ -337,10 +329,11 @@ function PredictionsContent() {
                 </tr>
               </thead>
               <tbody>
-                {prediction.forecast_series.slice(0, 15).map((fp) => {
+                {(() => {
+                const allPrices = prediction.forecast_series.map(p => p.predicted_price).filter(p => Number.isFinite(p) && p > 0);
+                const minForecast = allPrices.length > 0 ? Math.min(...allPrices) : 0;
+                return prediction.forecast_series.slice(0, 15).map((fp) => {
                   const isSelected = fp.date === prediction.departure_date;
-                  const prices = prediction.forecast_series.map(p => p.predicted_price).filter(p => Number.isFinite(p) && p > 0);
-                  const minForecast = prices.length > 0 ? Math.min(...prices) : 0;
                   const isLowest = fp.predicted_price === minForecast && minForecast > 0;
                   return (
                     <tr
@@ -365,7 +358,8 @@ function PredictionsContent() {
                       </td>
                     </tr>
                   );
-                })}
+                });
+              })()}
               </tbody>
             </table>
           </div>
