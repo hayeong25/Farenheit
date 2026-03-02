@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { recommendationsApi, routesApi, type RecommendationResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
 const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string; icon: string }> = {
   BUY: {
@@ -94,7 +94,7 @@ function RecommendationsContent() {
   const handleGetRecommendation = useCallback(async (origin: string, dest: string, depDate: string) => {
     if (!origin || !dest || !depDate) return;
     if (origin === dest) {
-      setValidationMsg("출발지와 도착지가 같습니다.");
+      setValidationMsg(SAME_ORIGIN_DEST_MSG);
       return;
     }
     setValidationMsg("");
@@ -228,7 +228,7 @@ function RecommendationsContent() {
                   return;
                 }
                 if (originCode === destCode) {
-                  setValidationMsg("출발지와 도착지가 같습니다.");
+                  setValidationMsg(SAME_ORIGIN_DEST_MSG);
                   return;
                 }
                 setValidationMsg("");

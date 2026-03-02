@@ -6,6 +6,8 @@ export const CABIN_CLASS_LABELS: Record<string, string> = {
   FIRST: "퍼스트",
 };
 
+export const SAME_ORIGIN_DEST_MSG = "출발지와 도착지가 같습니다.";
+
 export function formatPrice(amount: number, currency = "KRW"): string {
   if (!Number.isFinite(amount)) return "-";
   try {

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
-import { getRecentSearches, getLocalToday, getDateOneYearLater, type RecentSearch } from "@/lib/utils";
+import { getRecentSearches, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, type RecentSearch } from "@/lib/utils";
 
 export default function HomePage() {
   const router = useRouter();
@@ -70,7 +70,7 @@ export default function HomePage() {
       return;
     }
     if (originCode === destCode) {
-      showValidation("출발지와 도착지가 같습니다.");
+      showValidation(SAME_ORIGIN_DEST_MSG);
       return;
     }
     setValidationMsg("");
@@ -242,10 +242,9 @@ export default function HomePage() {
                   onChange={(e) => setCabinClass(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 >
-                  <option value="ECONOMY">이코노미</option>
-                  <option value="PREMIUM_ECONOMY">프리미엄 이코노미</option>
-                  <option value="BUSINESS">비즈니스</option>
-                  <option value="FIRST">퍼스트</option>
+                  {VALID_CABIN_CLASSES.map((c) => (
+                    <option key={c} value={c}>{CABIN_CLASS_LABELS[c]}</option>
+                  ))}
                 </select>
               </div>
             </div>

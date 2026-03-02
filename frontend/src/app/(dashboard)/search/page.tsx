@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import Link from "next/link";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS } from "@/lib/utils";
+import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
 const VALID_STOPS = ["any", "0", "1", "2"];
 const VALID_SORTS = ["price", "price_desc", "duration", "stops"];
@@ -423,7 +423,7 @@ function SearchContent() {
                   return;
                 }
                 if (originCode === destCode) {
-                  setValidationMsg("출발지와 도착지가 같습니다.");
+                  setValidationMsg(SAME_ORIGIN_DEST_MSG);
                   return;
                 }
                 setValidationMsg("");

@@ -5,14 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
-import { formatDate, formatRelativeTime, getLocalToday, getDateOneYearLater } from "@/lib/utils";
+import { formatDate, formatRelativeTime, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
-const cabinLabels: Record<string, string> = {
-  ECONOMY: "이코노미",
-  PREMIUM_ECONOMY: "프리미엄 이코노미",
-  BUSINESS: "비즈니스",
-  FIRST: "퍼스트",
-};
 
 // Cache for resolved IATA → city names (persists across re-renders)
 const cityNameCache: Record<string, string> = {};
@@ -60,7 +54,7 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete, cityNames }
             {originName} → {destName}
           </span>
           <span className="text-xs px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
-            {cabinLabels[alert.cabin_class] || alert.cabin_class}
+            {CABIN_CLASS_LABELS[alert.cabin_class] || alert.cabin_class}
           </span>
           <span className={`text-xs px-2 py-0.5 rounded font-medium ${
             isTriggered
@@ -243,7 +237,7 @@ function AlertsContent() {
     if (creating) return;
     if (!originCode || !destCode || !targetPrice) return;
     if (originCode === destCode) {
-      setCreateError("출발지와 도착지가 같습니다.");
+      setCreateError(SAME_ORIGIN_DEST_MSG);
       return;
     }
     const priceNum = Number(targetPrice);
@@ -491,10 +485,9 @@ function AlertsContent() {
                     onChange={(e) => setCabinClass(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                   >
-                    <option value="ECONOMY">이코노미</option>
-                    <option value="PREMIUM_ECONOMY">프리미엄 이코노미</option>
-                    <option value="BUSINESS">비즈니스</option>
-                    <option value="FIRST">퍼스트</option>
+                    {VALID_CABIN_CLASSES.map((c) => (
+                      <option key={c} value={c}>{CABIN_CLASS_LABELS[c]}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
