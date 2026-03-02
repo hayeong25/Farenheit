@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
-import { getRecentSearches, getLocalToday, getDefaultSearchDate, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, type RecentSearch } from "@/lib/utils";
+import { getRecentSearches, getLocalToday, getDefaultSearchDate, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, RETURN_BEFORE_DEPART_MSG, type RecentSearch } from "@/lib/utils";
 
 export default function HomePage() {
   const router = useRouter();
@@ -60,7 +60,7 @@ export default function HomePage() {
       return;
     }
     if (tripType === "round_trip" && returnDate && returnDate < date) {
-      showValidation("귀국일은 출발일 이후여야 합니다.");
+      showValidation(RETURN_BEFORE_DEPART_MSG);
       return;
     }
     if (originCode === destCode) {

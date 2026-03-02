@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import Link from "next/link";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
+import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, RETURN_BEFORE_DEPART_MSG } from "@/lib/utils";
 
 const VALID_STOPS = ["any", "0", "1", "2"];
 const VALID_SORTS = ["price", "price_desc", "duration", "stops"];
@@ -415,7 +415,7 @@ function SearchContent() {
                   return;
                 }
                 if (tripType === "round_trip" && returnDate && returnDate < date) {
-                  setValidationMsg("귀국일은 출발일 이후여야 합니다.");
+                  setValidationMsg(RETURN_BEFORE_DEPART_MSG);
                   return;
                 }
                 if (originCode === destCode) {
