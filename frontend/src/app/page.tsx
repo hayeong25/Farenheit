@@ -103,15 +103,53 @@ export default function HomePage() {
       {/* Hero */}
       <main className="flex-1 flex items-center justify-center">
         <div className="max-w-3xl mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
-            항공권 가격의
-            <br />
-            <span className="text-farenheit-500">온도</span>를 측정하다
-          </h2>
-          <p className="text-lg md:text-xl text-[var(--muted-foreground)] mb-8 leading-relaxed">
-            실시간 가격 분석과 AI 예측으로
-            <br />
-            최적의 항공권 구매 시기를 추천합니다
+          {/* Hero Illustration */}
+          <div className="flex items-center justify-center gap-6 mb-8">
+            {/* Thermometer */}
+            <div className="relative w-16 h-36 md:w-20 md:h-44">
+              <svg aria-hidden="true" viewBox="0 0 80 176" fill="none" className="w-full h-full">
+                {/* Thermometer body */}
+                <rect x="24" y="8" width="32" height="120" rx="16" className="stroke-farenheit-300 dark:stroke-farenheit-700" strokeWidth="3" fill="none" />
+                {/* Mercury fill - animated */}
+                <rect x="32" y="48" width="16" height="72" rx="8" className="fill-farenheit-500">
+                  <animate attributeName="y" values="80;48;64;48" dur="3s" repeatCount="indefinite" />
+                  <animate attributeName="height" values="40;72;56;72" dur="3s" repeatCount="indefinite" />
+                </rect>
+                {/* Bulb */}
+                <circle cx="40" cy="148" r="22" className="fill-farenheit-500" />
+                <circle cx="40" cy="148" r="16" className="fill-farenheit-400" opacity="0.6" />
+                {/* Tick marks */}
+                <line x1="58" y1="40" x2="66" y2="40" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
+                <line x1="58" y1="60" x2="66" y2="60" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
+                <line x1="58" y1="80" x2="66" y2="80" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
+                <line x1="58" y1="100" x2="66" y2="100" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
+              </svg>
+            </div>
+            {/* Plane + Price Tags */}
+            <div className="flex flex-col items-start gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-xs font-semibold text-green-700 dark:text-green-400">BUY</span>
+              </div>
+              <svg aria-hidden="true" viewBox="0 0 120 40" className="w-28 md:w-36 text-farenheit-500">
+                <path d="M10 30 Q30 10 50 20 T90 12 L110 8" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round">
+                  <animate attributeName="d" values="M10 30 Q30 10 50 20 T90 12 L110 8;M10 25 Q30 18 50 28 T90 15 L110 10;M10 30 Q30 10 50 20 T90 12 L110 8" dur="4s" repeatCount="indefinite" />
+                </path>
+                {/* Plane icon at end of line */}
+                <g transform="translate(104, 4)">
+                  <path d="M0 6 L6 0 L14 4 L6 6 L14 8 L6 12 L0 6Z" fill="currentColor" opacity="0.8">
+                    <animateTransform attributeName="transform" type="translate" values="0,0;2,-2;0,0" dur="4s" repeatCount="indefinite" />
+                  </path>
+                </g>
+              </svg>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">WAIT</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-[var(--muted-foreground)] mb-8 text-sm">
+            지금이 살 때인지, 기다려야 할 때인지 알려드립니다
           </p>
 
           {/* Search Form */}
@@ -300,40 +338,25 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-farenheit-50 dark:bg-farenheit-950/30 flex items-center justify-center mx-auto mb-3">
-                <svg aria-hidden="true" className="w-6 h-6 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-lg mb-2">실시간 가격 추적</h3>
-              <p className="text-[var(--muted-foreground)] text-sm">
-                전 세계 항공사 가격을 실시간으로 수집하고 추적합니다
-              </p>
+          {/* Feature badges */}
+          <div className="flex flex-wrap justify-center gap-3 mt-12">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--background)] border border-[var(--border)]">
+              <svg aria-hidden="true" className="w-4 h-4 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+              </svg>
+              <span className="text-sm">가격 추적</span>
             </div>
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-farenheit-50 dark:bg-farenheit-950/30 flex items-center justify-center mx-auto mb-3">
-                <svg aria-hidden="true" className="w-6 h-6 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-lg mb-2">AI 가격 예측</h3>
-              <p className="text-[var(--muted-foreground)] text-sm">
-                통계 모델로 가격 변동 추세를 분석하고 예측합니다
-              </p>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--background)] border border-[var(--border)]">
+              <svg aria-hidden="true" className="w-4 h-4 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+              </svg>
+              <span className="text-sm">변동 예측</span>
             </div>
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-farenheit-50 dark:bg-farenheit-950/30 flex items-center justify-center mx-auto mb-3">
-                <svg aria-hidden="true" className="w-6 h-6 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-lg mb-2">최적 시기 추천</h3>
-              <p className="text-[var(--muted-foreground)] text-sm">
-                BUY / WAIT / HOLD 시그널로 구매 타이밍을 알려드립니다
-              </p>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--background)] border border-[var(--border)]">
+              <svg aria-hidden="true" className="w-4 h-4 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+              <span className="text-sm">알림 설정</span>
             </div>
           </div>
         </div>
