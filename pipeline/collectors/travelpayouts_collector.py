@@ -64,7 +64,7 @@ class TravelpayoutsCollector(AbstractCollector):
                 logger.warning("Travelpayouts rate limit reached")
             else:
                 logger.error(
-                    f"Travelpayouts API error: {response.status_code} - {response.text}"
+                    f"Travelpayouts API error: {response.status_code}"
                 )
 
         return observations
