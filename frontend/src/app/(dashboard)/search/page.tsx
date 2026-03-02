@@ -5,7 +5,10 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import Link from "next/link";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES } from "@/lib/utils";
+import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS } from "@/lib/utils";
+
+const VALID_STOPS = ["any", "0", "1", "2"];
+const VALID_SORTS = ["price", "price_desc", "duration", "stops"];
 
 function formatDuration(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return "-";
@@ -57,16 +60,13 @@ function SearchContent() {
     searchParams.get("return_date") ? "round_trip" : "one_way"
   );
   const cabinParam = searchParams.get("cabin") || "ECONOMY";
-  const validCabins: readonly string[] = VALID_CABIN_CLASSES;
-  const [cabinClass, setCabinClass] = useState(validCabins.includes(cabinParam) ? cabinParam : "ECONOMY");
+  const [cabinClass, setCabinClass] = useState((VALID_CABIN_CLASSES as readonly string[]).includes(cabinParam) ? cabinParam : "ECONOMY");
 
   // Filters (read from URL for refresh persistence, validate against known values)
-  const validStops = ["any", "0", "1", "2"];
-  const validSorts = ["price", "price_desc", "duration", "stops"];
   const stopsParam = searchParams.get("stops") || "any";
   const sortParam = searchParams.get("sort") || "price";
-  const [maxStops, setMaxStops] = useState<string>(validStops.includes(stopsParam) ? stopsParam : "any");
-  const [sortBy, setSortBy] = useState(validSorts.includes(sortParam) ? sortParam : "price");
+  const [maxStops, setMaxStops] = useState<string>(VALID_STOPS.includes(stopsParam) ? stopsParam : "any");
+  const [sortBy, setSortBy] = useState(VALID_SORTS.includes(sortParam) ? sortParam : "price");
 
   // Airline filter (client-side)
   const [selectedAirlines, setSelectedAirlines] = useState<Set<string>>(new Set());
@@ -401,10 +401,9 @@ function SearchContent() {
               onChange={(e) => setCabinClass(e.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             >
-              <option value="ECONOMY">이코노미</option>
-              <option value="PREMIUM_ECONOMY">프리미엄 이코노미</option>
-              <option value="BUSINESS">비즈니스</option>
-              <option value="FIRST">퍼스트</option>
+              {VALID_CABIN_CLASSES.map((c) => (
+                <option key={c} value={c}>{CABIN_CLASS_LABELS[c]}</option>
+              ))}
             </select>
           </div>
           <div className="flex flex-col items-stretch justify-end">
