@@ -30,6 +30,18 @@ _HTTP_TIMEOUT = 30.0
 _DURATION_SORT_FALLBACK = 9999
 
 
+def _calc_arrival(departure_time_str: str | None, duration_minutes: int | None) -> str | None:
+    """Calculate arrival time from departure + duration."""
+    if not departure_time_str or not duration_minutes:
+        return None
+    try:
+        dep = datetime.fromisoformat(departure_time_str)
+        arr = dep + timedelta(minutes=duration_minutes)
+        return arr.isoformat()
+    except (ValueError, TypeError):
+        return None
+
+
 class TravelpayoutsClient:
     """Travelpayouts Data API client for flight price search."""
 
@@ -228,6 +240,9 @@ class TravelpayoutsClient:
         duration_to = offer.get("duration_to")
         duration_minutes = int(duration_to) if duration_to else None
 
+        dep_time = departure_at or None
+        arr_time = _calc_arrival(dep_time, duration_minutes)
+
         return FlightOffer(
             airline_code=airline_code,
             airline_name=None,
@@ -239,8 +254,8 @@ class TravelpayoutsClient:
             stops=stops,
             duration_minutes=duration_minutes,
             source=_SOURCE,
-            departure_time=departure_at or None,
-            arrival_time=None,
+            departure_time=dep_time,
+            arrival_time=arr_time,
             flight_number=flight_number,
             return_departure_time=return_at or None,
         )
@@ -364,8 +379,24 @@ class FlightService:
             else:
                 logger.info(f"No results for {origin}->{dest} on {departure_date} (API + cache empty)")
 
-        # Filter out invalid prices (0, negative, or non-finite)
-        offers = [o for o in offers if o.price_amount > 0 and o.price_amount.is_finite()]
+        # Filter out invalid prices and empty airline codes (OTA like Kiwi.com)
+        offers = [
+            o for o in offers
+            if o.price_amount > 0 and o.price_amount.is_finite() and o.airline_code
+        ]
+
+        # Enrich airline names from DB
+        codes_to_lookup = {o.airline_code for o in offers if not o.airline_name}
+        if codes_to_lookup:
+            result = await self.db.execute(
+                select(Airline.iata_code, Airline.name).where(
+                    Airline.iata_code.in_(list(codes_to_lookup))
+                )
+            )
+            name_map = {row.iata_code: row.name for row in result.all()}
+            for o in offers:
+                if not o.airline_name and o.airline_code in name_map:
+                    o.airline_name = name_map[o.airline_code]
 
         # Deduplicate: keep cheapest per (airline, stops, duration bucket)
         offers = self._deduplicate_offers(offers)
@@ -374,7 +405,7 @@ class FlightService:
         if max_stops is not None:
             offers = [o for o in offers if o.stops <= max_stops]
 
-        # Collect available airlines after stop filtering (skip empty airline_code from month-matrix)
+        # Collect available airlines after stop filtering
         airline_set: dict[str, str] = {}
         for o in offers:
             if o.airline_code and o.airline_code not in airline_set:
