@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
-import { formatDate, formatRelativeTime, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
+import { formatDate, formatPrice, formatRelativeTime, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
 
 // Cache for resolved IATA → city names (persists across re-renders)
@@ -65,7 +65,7 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete, cityNames }
           </span>
         </div>
         <div className="flex items-center gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
-          <span>목표가: ₩{Number.isFinite(Number(alert.target_price)) ? Number(alert.target_price).toLocaleString() : "-"}</span>
+          <span>목표가: {formatPrice(Number(alert.target_price))}</span>
           {alert.departure_date && <span>출발일: {alert.departure_date}</span>}
           {!alert.departure_date && <span className="text-xs italic">모든 출발일 모니터링</span>}
           {isTriggered && alert.triggered_at

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { statsApi, StatsResponse, alertsApi, AlertResponse, routesApi, type RouteResponse } from "@/lib/api-client";
-import { getRecentSearches, formatRelativeTime, getLocalToday, type RecentSearch } from "@/lib/utils";
+import { getRecentSearches, formatPrice, formatRelativeTime, getLocalToday, type RecentSearch } from "@/lib/utils";
 
 interface PopularRoute {
   origin: string;
@@ -180,7 +180,7 @@ export default function DashboardPage() {
                   </span>
                   {s.minPrice != null && s.minPrice > 0 && (
                     <span className="text-xs font-medium text-farenheit-500">
-                      ₩{Math.round(s.minPrice).toLocaleString()}~
+                      {formatPrice(Math.round(s.minPrice))}~
                     </span>
                   )}
                 </div>
@@ -227,7 +227,7 @@ export default function DashboardPage() {
                   {alert.origin || "?"} → {alert.destination || "?"}
                 </span>
                 <span className="text-sm text-[var(--muted-foreground)]">
-                  목표가 ₩{Number.isFinite(Number(alert.target_price)) ? Number(alert.target_price).toLocaleString() : "-"}
+                  목표가 {formatPrice(Number(alert.target_price))}
                 </span>
               </div>
             ))}

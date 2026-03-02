@@ -732,15 +732,15 @@ function SearchContent() {
               <div className="grid grid-cols-3 gap-4 mb-3">
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">최저가</p>
-                  <p className="text-lg font-bold text-green-600 dark:text-green-400">{Number.isFinite(minP) ? `₩${Math.round(minP).toLocaleString()}` : "-"}</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatPrice(Math.round(minP))}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">평균가</p>
-                  <p className="text-lg font-bold">{Number.isFinite(avgP) ? `₩${Math.round(avgP).toLocaleString()}` : "-"}</p>
+                  <p className="text-lg font-bold">{formatPrice(Math.round(avgP))}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">최고가</p>
-                  <p className="text-lg font-bold text-red-600 dark:text-red-400">{Number.isFinite(maxP) ? `₩${Math.round(maxP).toLocaleString()}` : "-"}</p>
+                  <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatPrice(Math.round(maxP))}</p>
                 </div>
               </div>
             );
@@ -763,13 +763,13 @@ function SearchContent() {
                   <div
                     className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[var(--foreground)] border-2 border-[var(--background)] shadow"
                     style={{ left: `${Math.min(Math.max(position, 5), 95)}%` }}
-                    title={`현재 최저가: ₩${currentMin.toLocaleString()}`}
+                    title={`현재 최저가: ${formatPrice(currentMin)}`}
                   />
                 </div>
                 <p className={`text-xs mt-2 font-medium ${isGoodPrice ? "text-green-600" : "text-yellow-600"}`}>
                   {isGoodPrice
-                    ? `현재 최저가(₩${currentMin.toLocaleString()})는 평균보다 저렴합니다`
-                    : `현재 최저가(₩${currentMin.toLocaleString()})는 평균보다 높습니다`}
+                    ? `현재 최저가(${formatPrice(currentMin)})는 평균보다 저렴합니다`
+                    : `현재 최저가(${formatPrice(currentMin)})는 평균보다 높습니다`}
                 </p>
               </div>
             );

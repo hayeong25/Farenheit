@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { recommendationsApi, routesApi, type RecommendationResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, formatPrice, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
 const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string; icon: string }> = {
   BUY: {
@@ -297,13 +297,13 @@ function RecommendationsContent() {
             {recommendation.current_price != null && Number.isFinite(Number(recommendation.current_price)) && (
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">현재 예측 가격</p>
-                <p className="text-lg font-bold">₩{Number(recommendation.current_price).toLocaleString()}</p>
+                <p className="text-lg font-bold">{formatPrice(Number(recommendation.current_price))}</p>
               </div>
             )}
             {recommendation.predicted_low != null && Number.isFinite(Number(recommendation.predicted_low)) && (
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">예측 최저가</p>
-                <p className="text-lg font-bold text-green-600">₩{Number(recommendation.predicted_low).toLocaleString()}</p>
+                <p className="text-lg font-bold text-green-600">{formatPrice(Number(recommendation.predicted_low))}</p>
               </div>
             )}
             {recommendation.best_airline && (

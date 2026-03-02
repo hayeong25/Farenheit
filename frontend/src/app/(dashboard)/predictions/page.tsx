@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { predictionsApi, routesApi, type PredictionResponse, type HeatmapResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, formatRelativeTime, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, formatPrice, formatRelativeTime, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
 const DIRECTION_CONFIG: Record<string, { color: string; text: string; arrow: string }> = {
   UP: { color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800", text: "상승 예상", arrow: "↑" },
@@ -279,18 +279,18 @@ function PredictionsContent() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-xs text-[var(--muted-foreground)]">예측 가격</p>
-              <p className="text-lg sm:text-xl font-bold break-all">{Number.isFinite(Number(prediction.predicted_price)) ? `₩${Number(prediction.predicted_price).toLocaleString()}` : "-"}</p>
+              <p className="text-lg sm:text-xl font-bold break-all">{formatPrice(Number(prediction.predicted_price))}</p>
             </div>
             {prediction.confidence_low != null && Number.isFinite(Number(prediction.confidence_low)) && (
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">예측 하한</p>
-                <p className="text-lg font-medium text-green-600 dark:text-green-400">₩{Number(prediction.confidence_low).toLocaleString()}</p>
+                <p className="text-lg font-medium text-green-600 dark:text-green-400">{formatPrice(Number(prediction.confidence_low))}</p>
               </div>
             )}
             {prediction.confidence_high != null && Number.isFinite(Number(prediction.confidence_high)) && (
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">예측 상한</p>
-                <p className="text-lg font-medium text-red-600 dark:text-red-400">₩{Number(prediction.confidence_high).toLocaleString()}</p>
+                <p className="text-lg font-medium text-red-600 dark:text-red-400">{formatPrice(Number(prediction.confidence_high))}</p>
               </div>
             )}
             {prediction.confidence_score != null && Number.isFinite(Number(prediction.confidence_score)) && (() => {
@@ -349,13 +349,13 @@ function PredictionsContent() {
                         {isLowest && <span className="text-xs text-green-600 ml-1.5">최저</span>}
                       </td>
                       <td className={`text-right py-2 px-4 font-semibold ${isLowest ? "text-green-600 dark:text-green-400" : ""}`}>
-                        {Number.isFinite(fp.predicted_price) ? `₩${fp.predicted_price.toLocaleString()}` : "-"}
+                        {formatPrice(fp.predicted_price)}
                       </td>
                       <td className="text-right py-2 px-4 text-[var(--muted-foreground)]">
-                        {Number.isFinite(fp.confidence_low) ? `₩${fp.confidence_low.toLocaleString()}` : "-"}
+                        {formatPrice(fp.confidence_low)}
                       </td>
                       <td className="text-right py-2 pl-4 text-[var(--muted-foreground)]">
-                        {Number.isFinite(fp.confidence_high) ? `₩${fp.confidence_high.toLocaleString()}` : "-"}
+                        {formatPrice(fp.confidence_high)}
                       </td>
                     </tr>
                   );
@@ -444,7 +444,7 @@ function PredictionsContent() {
                     }`}
                   >
                     <p className="font-medium">{cell.departure_date.slice(5)}</p>
-                    <p className="font-bold mt-0.5">₩{Number.isFinite(Number(cell.predicted_price)) ? Number(cell.predicted_price).toLocaleString() : "-"}</p>
+                    <p className="font-bold mt-0.5">{formatPrice(Number(cell.predicted_price))}</p>
                   </div>
                 ))}
               </div>
