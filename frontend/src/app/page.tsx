@@ -97,14 +97,6 @@ export default function HomePage() {
             <span className="text-farenheit-500">Faren</span>
             <span>heit</span>
           </h1>
-          <nav className="flex gap-4">
-            <Link
-              href="/search"
-              className="px-4 py-2 rounded-lg bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors text-sm font-medium"
-            >
-              검색하기
-            </Link>
-          </nav>
         </div>
       </header>
 
