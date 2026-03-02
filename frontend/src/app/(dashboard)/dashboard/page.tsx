@@ -43,9 +43,9 @@ export default function DashboardPage() {
       routesApi.popular(8).catch(() => null),
     ]).then(([statsData, alertsData, routesData]) => {
       if (statsData) setStats(statsData);
-      if (Array.isArray(alertsData)) setAlerts(alertsData as AlertResponse[]);
+      if (Array.isArray(alertsData)) setAlerts(alertsData);
       if (routesData && Array.isArray(routesData) && routesData.length > 0) {
-        const dynamicRoutes = (routesData as RouteResponse[]).map(r => ({
+        const dynamicRoutes = routesData.map(r => ({
           origin: r.origin_code,
           dest: r.dest_code,
           label: `${r.origin_city || r.origin_code} → ${r.dest_city || r.dest_code}`,
