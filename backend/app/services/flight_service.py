@@ -23,6 +23,11 @@ from app.schemas.flight import (
 logger = logging.getLogger(__name__)
 
 _TRIP_CLASS_MAP = {0: "ECONOMY", 1: "BUSINESS", 2: "FIRST"}
+_DEFAULT_CURRENCY = "KRW"
+_SOURCE = "travelpayouts"
+_SEARCH_SOURCE = "travelpayouts-search"
+_HTTP_TIMEOUT = 30.0
+_DURATION_SORT_FALLBACK = 9999
 
 
 class TravelpayoutsClient:
@@ -42,7 +47,7 @@ class TravelpayoutsClient:
     ) -> list[FlightOffer]:
         """Search multiple Travelpayouts endpoints in parallel for maximum data."""
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
                 cheap_task = self._fetch_cheap(client, origin, dest)
                 calendar_task = self._fetch_calendar(client, origin, dest, departure_date)
                 month_task = self._fetch_month_matrix(client, origin, dest, departure_date)
@@ -77,7 +82,7 @@ class TravelpayoutsClient:
         """Fetch /v1/prices/cheap (no date filter for maximum results)."""
         resp = await client.get(
             f"{self.base_url}/v1/prices/cheap",
-            params={"origin": origin, "destination": dest, "currency": "KRW", "token": self.token},
+            params={"origin": origin, "destination": dest, "currency": _DEFAULT_CURRENCY, "token": self.token},
         )
         if resp.status_code == 200:
             return resp.json()
@@ -94,7 +99,7 @@ class TravelpayoutsClient:
                 "origin": origin, "destination": dest,
                 "depart_date": departure_date.strftime("%Y-%m"),
                 "calendar_type": "departure_date",
-                "currency": "KRW", "token": self.token,
+                "currency": _DEFAULT_CURRENCY, "token": self.token,
             },
         )
         if resp.status_code == 200:
@@ -111,7 +116,7 @@ class TravelpayoutsClient:
             params={
                 "origin": origin, "destination": dest,
                 "month": departure_date.replace(day=1).isoformat(),
-                "currency": "KRW", "token": self.token,
+                "currency": _DEFAULT_CURRENCY, "token": self.token,
             },
         )
         if resp.status_code == 200:
@@ -162,10 +167,10 @@ class TravelpayoutsClient:
                     return_date=return_date,
                     cabin_class=cabin_class,
                     price_amount=price,
-                    currency="KRW",
+                    currency=_DEFAULT_CURRENCY,
                     stops=stops,
                     duration_minutes=None,
-                    source="travelpayouts",
+                    source=_SOURCE,
                     departure_time=departure_at or None,
                     arrival_time=None,
                     flight_number=flight_number,
@@ -201,10 +206,10 @@ class TravelpayoutsClient:
                     return_date=return_date,
                     cabin_class=cabin_class,
                     price_amount=price,
-                    currency="KRW",
+                    currency=_DEFAULT_CURRENCY,
                     stops=stops,
                     duration_minutes=duration_minutes,
-                    source="travelpayouts",
+                    source=_SOURCE,
                 ))
             except (KeyError, ValueError, InvalidOperation) as e:
                 logger.warning(f"Failed to parse month-matrix offer: {e}")
@@ -230,10 +235,10 @@ class TravelpayoutsClient:
             return_date=return_date,
             cabin_class=cabin_class,
             price_amount=price,
-            currency="KRW",
+            currency=_DEFAULT_CURRENCY,
             stops=stops,
             duration_minutes=duration_minutes,
-            source="travelpayouts",
+            source=_SOURCE,
             departure_time=departure_at or None,
             arrival_time=None,
             flight_number=flight_number,
@@ -306,7 +311,7 @@ class FlightService:
                     currency=offer.currency,
                     stops=offer.stops,
                     duration_minutes=offer.duration_minutes,
-                    source="travelpayouts-search",
+                    source=_SEARCH_SOURCE,
                 )
                 self.db.add(price)
                 stored += 1
@@ -381,7 +386,7 @@ class FlightService:
 
         # Sort
         if sort_by == "duration":
-            offers.sort(key=lambda o: (o.duration_minutes or 9999, o.price_amount))
+            offers.sort(key=lambda o: (o.duration_minutes or _DURATION_SORT_FALLBACK, o.price_amount))
         elif sort_by == "stops":
             offers.sort(key=lambda o: (o.stops, o.price_amount))
         else:
