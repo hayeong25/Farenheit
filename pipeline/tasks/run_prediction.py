@@ -13,6 +13,17 @@ from pipeline.ml.models.statistical_model import StatisticalPredictor
 
 logger = logging.getLogger(__name__)
 
+# Prediction configuration
+_HISTORY_DAYS = 90
+_TARGET_DATE_START = 7
+_TARGET_DATE_END = 61
+_TARGET_DATE_STEP = 3
+_MAX_FORECAST_DAYS = 14
+_VALID_UNTIL_HOURS = 2
+_MIN_DATA_POINTS = 3
+_MODEL_VERSION = "statistical-v1"
+_DEFAULT_CABIN = "ECONOMY"
+
 
 async def _predict_all_routes() -> dict:
     """Run predictions for all active routes with sufficient data."""
@@ -37,8 +48,10 @@ async def _predict_all_routes() -> dict:
 
         now_utc = datetime.now(timezone.utc)
         today = now_utc.date()
-        # Predict for departure dates 7-60 days out (every 3 days for accuracy)
-        target_dates = [today + timedelta(days=d) for d in range(7, 61, 3)]
+        target_dates = [
+            today + timedelta(days=d)
+            for d in range(_TARGET_DATE_START, _TARGET_DATE_END, _TARGET_DATE_STEP)
+        ]
 
         for route in routes:
             routes_processed += 1
@@ -49,13 +62,13 @@ async def _predict_all_routes() -> dict:
                     select(FlightPrice)
                     .where(
                         FlightPrice.route_id == route.id,
-                        FlightPrice.time >= now_utc - timedelta(days=90),
+                        FlightPrice.time >= now_utc - timedelta(days=_HISTORY_DAYS),
                     )
                     .order_by(FlightPrice.time.asc())
                 )
                 price_rows = prices_result.scalars().all()
 
-                if len(price_rows) < 3:
+                if len(price_rows) < _MIN_DATA_POINTS:
                     logger.debug(f"Route {route.origin_code}->{route.dest_code}: skipped (only {len(price_rows)} price points)")
                     continue
 
@@ -84,18 +97,18 @@ async def _predict_all_routes() -> dict:
                     dep_specific = price_df[
                         (price_df["time"] <= now_utc) & (price_df["departure_date"] == dep_date)
                     ]
-                    if len(dep_specific) >= 3:
+                    if len(dep_specific) >= _MIN_DATA_POINTS:
                         relevant = dep_specific.copy()
                     else:
                         # Fall back to all prices for this route (better than nothing)
                         relevant = price_df[price_df["time"] <= now_utc].copy()
 
-                    if len(relevant) < 3:
+                    if len(relevant) < _MIN_DATA_POINTS:
                         continue
 
                     # Adjust forecast horizon based on days until departure
                     days_until = (dep_date - today).days
-                    forecast_days = max(min(days_until, 14), 1)
+                    forecast_days = max(min(days_until, _MAX_FORECAST_DAYS), 1)
 
                     # Run statistical prediction
                     result_pred = predictor.predict(relevant, forecast_days=forecast_days)
@@ -125,13 +138,13 @@ async def _predict_all_routes() -> dict:
                             Prediction.route_id == route.id,
                             airline_filter,
                             Prediction.departure_date == dep_date,
-                            Prediction.cabin_class == "ECONOMY",
-                            Prediction.model_version == "statistical-v1",
+                            Prediction.cabin_class == _DEFAULT_CABIN,
+                            Prediction.model_version == _MODEL_VERSION,
                         )
                     )
                     pred = existing.scalar_one_or_none()
 
-                    valid_until = now_utc + timedelta(hours=2)
+                    valid_until = now_utc + timedelta(hours=_VALID_UNTIL_HOURS)
 
                     if pred:
                         pred.predicted_price = result_pred["predicted_price"]
@@ -146,13 +159,13 @@ async def _predict_all_routes() -> dict:
                             route_id=route.id,
                             airline_code=dominant_airline,
                             departure_date=dep_date,
-                            cabin_class="ECONOMY",
+                            cabin_class=_DEFAULT_CABIN,
                             predicted_price=result_pred["predicted_price"],
                             confidence_low=result_pred["confidence_low"],
                             confidence_high=result_pred["confidence_high"],
                             price_direction=result_pred["price_direction"],
                             confidence_score=Decimal(str(result_pred["confidence_score"])),
-                            model_version="statistical-v1",
+                            model_version=_MODEL_VERSION,
                             predicted_at=now_utc,
                             valid_until=valid_until,
                         )
