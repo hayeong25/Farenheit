@@ -1,5 +1,7 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000/api/v1";
 
+const FETCH_TIMEOUT_MS = 35_000;
+
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -11,7 +13,7 @@ class ApiError extends Error {
 
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000);
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   // If caller provides a signal, link it with our timeout controller
   if (options?.signal) {
