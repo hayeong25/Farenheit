@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG
 from app.db.session import get_db
 from app.models.route import Route
 from app.schemas.prediction import PredictionResponse, HeatmapResponse
@@ -31,12 +31,12 @@ async def get_prediction(
     if cabin_class not in VALID_CABIN_CLASSES:
         raise HTTPException(status_code=400, detail=CABIN_CLASS_ERROR_MSG)
     if origin and dest and origin == dest:
-        raise HTTPException(status_code=400, detail="출발지와 도착지가 같습니다.")
+        raise HTTPException(status_code=400, detail=SAME_ORIGIN_DEST_MSG)
     today = datetime.now(timezone.utc).date()
     if departure_date < today:
-        raise HTTPException(status_code=400, detail="출발일은 오늘 또는 이후여야 합니다.")
+        raise HTTPException(status_code=400, detail=DATE_PAST_MSG)
     if departure_date > today + timedelta(days=365):
-        raise HTTPException(status_code=400, detail="출발일은 1년 이내여야 합니다.")
+        raise HTTPException(status_code=400, detail=DATE_TOO_FAR_MSG)
 
     # Resolve route_id from origin/dest if not provided
     if route_id is None and origin and dest:
@@ -79,7 +79,7 @@ async def get_heatmap(
     if cabin_class not in VALID_CABIN_CLASSES:
         raise HTTPException(status_code=400, detail=CABIN_CLASS_ERROR_MSG)
     if origin == dest:
-        raise HTTPException(status_code=400, detail="출발지와 도착지가 같습니다.")
+        raise HTTPException(status_code=400, detail=SAME_ORIGIN_DEST_MSG)
     # Validate month semantics (YYYY-MM format already guaranteed by regex)
     try:
         year_val, mon_val = int(month[:4]), int(month[5:7])
