@@ -22,44 +22,15 @@ from app.schemas.flight import (
 
 logger = logging.getLogger(__name__)
 
+_TRIP_CLASS_MAP = {0: "ECONOMY", 1: "BUSINESS", 2: "FIRST"}
 
-class AmadeusClient:
-    """Lightweight Amadeus API client for real-time search."""
+
+class TravelpayoutsClient:
+    """Travelpayouts Data API client for flight price search."""
 
     def __init__(self) -> None:
-        self.base_url = settings.AMADEUS_BASE_URL
-        self.client_id = settings.AMADEUS_CLIENT_ID
-        self.client_secret = settings.AMADEUS_CLIENT_SECRET
-        self._access_token: str | None = None
-        self._token_expires_at: datetime | None = None
-        self._token_lock = asyncio.Lock()
-
-    async def _get_token(self, client: httpx.AsyncClient, force_refresh: bool = False) -> str:
-        async with self._token_lock:
-            if not force_refresh and self._access_token and self._token_expires_at:
-                if datetime.now(timezone.utc) < self._token_expires_at:
-                    return self._access_token
-
-            try:
-                resp = await client.post(
-                    f"{self.base_url}/v1/security/oauth2/token",
-                    data={
-                        "grant_type": "client_credentials",
-                        "client_id": self.client_id,
-                        "client_secret": self.client_secret,
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                self._access_token = data["access_token"]
-                expires_in = data.get("expires_in", 600)
-                self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=max(expires_in - 60, 60))
-                return self._access_token
-            except Exception:
-                # Clear stale token state so next request triggers a fresh fetch
-                self._access_token = None
-                self._token_expires_at = None
-                raise
+        self.base_url = settings.TRAVELPAYOUTS_BASE_URL
+        self.token = settings.TRAVELPAYOUTS_TOKEN
 
     async def search_flights(
         self,
@@ -69,155 +40,209 @@ class AmadeusClient:
         cabin_class: str = "ECONOMY",
         return_date: date | None = None,
     ) -> list[FlightOffer]:
-        offers: list[FlightOffer] = []
+        """Search multiple Travelpayouts endpoints in parallel for maximum data."""
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                token = await self._get_token(client)
-                params: dict = {
-                    "originLocationCode": origin,
-                    "destinationLocationCode": dest,
-                    "departureDate": departure_date.isoformat(),
-                    "adults": 1,
-                    "travelClass": cabin_class,
-                    "max": 50,
-                    "currencyCode": "KRW",
-                }
-                if return_date:
-                    params["returnDate"] = return_date.isoformat()
+                cheap_task = self._fetch_cheap(client, origin, dest)
+                calendar_task = self._fetch_calendar(client, origin, dest, departure_date)
+                month_task = self._fetch_month_matrix(client, origin, dest, departure_date)
 
-                resp = await client.get(
-                    f"{self.base_url}/v2/shopping/flight-offers",
-                    params=params,
-                    headers={"Authorization": f"Bearer {token}"},
+                cheap_resp, calendar_resp, month_resp = await asyncio.gather(
+                    cheap_task, calendar_task, month_task, return_exceptions=True,
                 )
 
-                # Retry once on 401 (token may have expired mid-request)
-                if resp.status_code == 401:
-                    logger.info("Amadeus token expired, refreshing...")
-                    token = await self._get_token(client, force_refresh=True)
-                    resp = await client.get(
-                        f"{self.base_url}/v2/shopping/flight-offers",
-                        params=params,
-                        headers={"Authorization": f"Bearer {token}"},
-                    )
+                all_offers: list[FlightOffer] = []
 
-                if resp.status_code == 200:
-                    data = resp.json()
-                    carriers = data.get("dictionaries", {}).get("carriers", {})
-                    for offer in data.get("data", []):
-                        parsed = self._parse_offer(
-                            offer, departure_date, cabin_class, carriers, return_date
-                        )
-                        if parsed:
-                            offers.append(parsed)
-                elif resp.status_code == 429:
-                    logger.warning("Amadeus rate limit reached, returning empty results")
-                else:
-                    logger.warning(f"Amadeus search failed: {resp.status_code}")
+                if isinstance(cheap_resp, dict) and cheap_resp.get("success"):
+                    all_offers.extend(self._parse_cheap(
+                        cheap_resp.get("data", {}), departure_date, cabin_class, return_date,
+                    ))
+
+                if isinstance(calendar_resp, dict) and calendar_resp.get("success"):
+                    all_offers.extend(self._parse_calendar(
+                        calendar_resp.get("data", {}), departure_date, cabin_class, return_date,
+                    ))
+
+                if isinstance(month_resp, dict) and month_resp.get("success"):
+                    all_offers.extend(self._parse_month_matrix(
+                        month_resp.get("data", []), departure_date, cabin_class, return_date,
+                    ))
+
+                return all_offers
         except Exception as e:
-            logger.error(f"Amadeus search error: {e}", exc_info=True)
+            logger.error(f"Travelpayouts search error: {e}", exc_info=True)
+            return []
+
+    async def _fetch_cheap(self, client: httpx.AsyncClient, origin: str, dest: str) -> dict:
+        """Fetch /v1/prices/cheap (no date filter for maximum results)."""
+        resp = await client.get(
+            f"{self.base_url}/v1/prices/cheap",
+            params={"origin": origin, "destination": dest, "currency": "KRW", "token": self.token},
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        logger.warning(f"Travelpayouts cheap failed: {resp.status_code}")
+        return {}
+
+    async def _fetch_calendar(
+        self, client: httpx.AsyncClient, origin: str, dest: str, departure_date: date,
+    ) -> dict:
+        """Fetch /v1/prices/calendar for day-by-day prices."""
+        resp = await client.get(
+            f"{self.base_url}/v1/prices/calendar",
+            params={
+                "origin": origin, "destination": dest,
+                "depart_date": departure_date.strftime("%Y-%m"),
+                "calendar_type": "departure_date",
+                "currency": "KRW", "token": self.token,
+            },
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        logger.warning(f"Travelpayouts calendar failed: {resp.status_code}")
+        return {}
+
+    async def _fetch_month_matrix(
+        self, client: httpx.AsyncClient, origin: str, dest: str, departure_date: date,
+    ) -> dict:
+        """Fetch /v2/prices/month-matrix for monthly price data."""
+        resp = await client.get(
+            f"{self.base_url}/v2/prices/month-matrix",
+            params={
+                "origin": origin, "destination": dest,
+                "month": departure_date.replace(day=1).isoformat(),
+                "currency": "KRW", "token": self.token,
+            },
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        logger.warning(f"Travelpayouts month-matrix failed: {resp.status_code}")
+        return {}
+
+    def _parse_cheap(
+        self, data: dict, departure_date: date, cabin_class: str, return_date: date | None,
+    ) -> list[FlightOffer]:
+        """Parse /v1/prices/cheap: {dest: {stops: offer}}."""
+        offers: list[FlightOffer] = []
+        for _dest_key, stops_dict in data.items():
+            if not isinstance(stops_dict, dict):
+                continue
+            for stops_key, offer in stops_dict.items():
+                try:
+                    parsed = self._build_offer_from_cheap(offer, int(stops_key), departure_date, cabin_class, return_date)
+                    if parsed:
+                        offers.append(parsed)
+                except (KeyError, ValueError, InvalidOperation) as e:
+                    logger.warning(f"Failed to parse cheap offer: {e}")
         return offers
 
-    def _parse_offer(
-        self,
-        offer: dict,
-        departure_date: date,
-        cabin_class: str,
-        carriers: dict,
-        return_date: date | None = None,
+    def _parse_calendar(
+        self, data: dict, departure_date: date, cabin_class: str, return_date: date | None,
+    ) -> list[FlightOffer]:
+        """Parse /v1/prices/calendar: {date_str: offer}."""
+        offers: list[FlightOffer] = []
+        for _date_key, offer in data.items():
+            if not isinstance(offer, dict):
+                continue
+            try:
+                airline_code = offer.get("airline", "")
+                if not airline_code:
+                    continue
+                price = Decimal(str(offer["price"]))
+                flight_number_raw = offer.get("flight_number")
+                flight_number = f"{airline_code}{flight_number_raw}" if flight_number_raw else None
+                stops = offer.get("transfers", 0)
+                departure_at = offer.get("departure_at", "")
+                return_at = offer.get("return_at", "")
+
+                offers.append(FlightOffer(
+                    airline_code=airline_code,
+                    airline_name=None,
+                    departure_date=departure_date,
+                    return_date=return_date,
+                    cabin_class=cabin_class,
+                    price_amount=price,
+                    currency="KRW",
+                    stops=stops,
+                    duration_minutes=None,
+                    source="travelpayouts",
+                    departure_time=departure_at or None,
+                    arrival_time=None,
+                    flight_number=flight_number,
+                    return_departure_time=return_at or None,
+                ))
+            except (KeyError, ValueError, InvalidOperation) as e:
+                logger.warning(f"Failed to parse calendar offer: {e}")
+        return offers
+
+    def _parse_month_matrix(
+        self, data: list, departure_date: date, cabin_class: str, return_date: date | None,
+    ) -> list[FlightOffer]:
+        """Parse /v2/prices/month-matrix: [{value, depart_date, ...}]."""
+        offers: list[FlightOffer] = []
+        for entry in data:
+            if not isinstance(entry, dict):
+                continue
+            try:
+                trip_class = entry.get("trip_class", 0)
+                entry_cabin = _TRIP_CLASS_MAP.get(trip_class, "ECONOMY")
+                if entry_cabin != cabin_class:
+                    continue
+                price = Decimal(str(entry["value"]))
+                stops = entry.get("number_of_changes", 0)
+                duration = entry.get("duration")
+                duration_minutes = int(duration) if duration else None
+                gate = entry.get("gate", "")
+
+                offers.append(FlightOffer(
+                    airline_code="",
+                    airline_name=gate or None,
+                    departure_date=departure_date,
+                    return_date=return_date,
+                    cabin_class=cabin_class,
+                    price_amount=price,
+                    currency="KRW",
+                    stops=stops,
+                    duration_minutes=duration_minutes,
+                    source="travelpayouts",
+                ))
+            except (KeyError, ValueError, InvalidOperation) as e:
+                logger.warning(f"Failed to parse month-matrix offer: {e}")
+        return offers
+
+    def _build_offer_from_cheap(
+        self, offer: dict, stops: int, departure_date: date,
+        cabin_class: str, return_date: date | None,
     ) -> FlightOffer | None:
-        try:
-            price = Decimal(offer["price"]["grandTotal"])
-            currency = offer["price"].get("currency", "KRW")
-            itineraries = offer.get("itineraries", [])
-            if not itineraries:
-                return None
+        price = Decimal(str(offer["price"]))
+        airline_code = offer.get("airline", "")
+        flight_number_raw = offer.get("flight_number")
+        flight_number = f"{airline_code}{flight_number_raw}" if flight_number_raw and airline_code else None
+        departure_at = offer.get("departure_at", "")
+        return_at = offer.get("return_at", "")
+        duration_to = offer.get("duration_to")
+        duration_minutes = int(duration_to) if duration_to else None
 
-            # Outbound leg
-            outbound = itineraries[0]
-            ob_segments = outbound.get("segments", [])
-            if not ob_segments:
-                return None
-
-            airline_code = ob_segments[0].get("carrierCode", "")
-            airline_name = carriers.get(airline_code, airline_code)
-            flight_number_raw = ob_segments[0].get("number", "")
-            flight_number = f"{airline_code}{flight_number_raw}" if flight_number_raw else None
-            stops = len(ob_segments) - 1
-            duration_minutes = self._parse_duration(outbound.get("duration", ""))
-            departure_time = ob_segments[0].get("departure", {}).get("at", "")
-            arrival_time = ob_segments[-1].get("arrival", {}).get("at", "")
-
-            # Return leg (round-trip)
-            return_flight_number = None
-            return_departure_time = None
-            return_arrival_time = None
-            return_stops = None
-            return_duration_minutes = None
-
-            if len(itineraries) > 1:
-                inbound = itineraries[1]
-                ib_segments = inbound.get("segments", [])
-                if ib_segments:
-                    ib_carrier = ib_segments[0].get("carrierCode", "")
-                    ib_number = ib_segments[0].get("number", "")
-                    return_flight_number = f"{ib_carrier}{ib_number}" if ib_number else None
-                    return_departure_time = ib_segments[0].get("departure", {}).get("at", "")
-                    return_arrival_time = ib_segments[-1].get("arrival", {}).get("at", "")
-                    return_stops = len(ib_segments) - 1
-                    return_duration_minutes = self._parse_duration(inbound.get("duration", ""))
-
-            return FlightOffer(
-                airline_code=airline_code,
-                airline_name=airline_name,
-                departure_date=departure_date,
-                return_date=return_date,
-                cabin_class=cabin_class,
-                price_amount=price,
-                currency=currency,
-                stops=stops,
-                duration_minutes=duration_minutes,
-                source="amadeus",
-                departure_time=departure_time,
-                arrival_time=arrival_time,
-                flight_number=flight_number,
-                return_flight_number=return_flight_number,
-                return_departure_time=return_departure_time,
-                return_arrival_time=return_arrival_time,
-                return_stops=return_stops,
-                return_duration_minutes=return_duration_minutes,
-            )
-        except (KeyError, ValueError, InvalidOperation) as e:
-            logger.warning(f"Failed to parse offer: {e}")
-            return None
-
-    @staticmethod
-    def _parse_duration(duration_str: str) -> int | None:
-        """Parse ISO 8601 duration (e.g., 'PT13H45M' or 'P1DT2H30M') to minutes."""
-        if not duration_str or not duration_str.startswith("P"):
-            return None
-        try:
-            remainder = duration_str[1:]
-            days = hours = minutes = 0
-            if "D" in remainder:
-                d_part, remainder = remainder.split("D", 1)
-                days = int(d_part)
-            if remainder.startswith("T"):
-                remainder = remainder[1:]
-            if "H" in remainder:
-                h_part, remainder = remainder.split("H", 1)
-                hours = int(h_part)
-            if "M" in remainder:
-                m_part, remainder = remainder.split("M", 1)
-                if m_part:
-                    minutes = int(m_part)
-            return days * 24 * 60 + hours * 60 + minutes
-        except (ValueError, TypeError):
-            return None
+        return FlightOffer(
+            airline_code=airline_code,
+            airline_name=None,
+            departure_date=departure_date,
+            return_date=return_date,
+            cabin_class=cabin_class,
+            price_amount=price,
+            currency="KRW",
+            stops=stops,
+            duration_minutes=duration_minutes,
+            source="travelpayouts",
+            departure_time=departure_at or None,
+            arrival_time=None,
+            flight_number=flight_number,
+            return_departure_time=return_at or None,
+        )
 
 
 # Singleton
-_amadeus_client = AmadeusClient()
+_tp_client = TravelpayoutsClient()
 
 
 class FlightService:
@@ -246,7 +271,7 @@ class FlightService:
         return route
 
     async def _store_search_results(
-        self, route: Route, offers: list[FlightOffer], cabin_class: str
+        self, route_id: int, offers: list[FlightOffer], cabin_class: str
     ) -> None:
         """Cache search results as price data for prediction pipeline."""
         now = datetime.now(timezone.utc)
@@ -260,14 +285,19 @@ class FlightService:
             )
             existing_airlines = {row[0] for row in result.all()}
 
+        # Deduplicate by PK (airline_code) before storing
+        seen_airlines: set[str] = set()
         stored = 0
         for offer in offers:
-            if offer.airline_code not in existing_airlines:
-                continue  # Skip airlines not in reference data
+            if not offer.airline_code or offer.airline_code not in existing_airlines:
+                continue
+            if offer.airline_code in seen_airlines:
+                continue
+            seen_airlines.add(offer.airline_code)
             try:
                 price = FlightPrice(
                     time=now,
-                    route_id=route.id,
+                    route_id=route_id,
                     airline_code=offer.airline_code,
                     departure_date=offer.departure_date,
                     cabin_class=cabin_class,
@@ -276,7 +306,7 @@ class FlightService:
                     currency=offer.currency,
                     stops=offer.stops,
                     duration_minutes=offer.duration_minutes,
-                    source="amadeus-search",
+                    source="travelpayouts-search",
                 )
                 self.db.add(price)
                 stored += 1
@@ -302,23 +332,24 @@ class FlightService:
     ) -> FlightSearchResponse:
         # Ensure route exists for future data collection
         route = await self._ensure_route(origin, dest)
-        # Commit route creation separately so it survives any downstream rollback
+        route_id: int | None = None
         if route:
+            route_id = route.id
             try:
                 await self.db.commit()
             except Exception as e:
                 logger.debug(f"Route commit skipped (likely already committed): {e}")
 
-        # Search Amadeus API for live results
-        offers = await _amadeus_client.search_flights(
+        # Search Travelpayouts API for live results
+        offers = await _tp_client.search_flights(
             origin, dest, departure_date, cabin_class, return_date
         )
 
         # Store search results as price data for predictions
-        if offers and route:
-            await self._store_search_results(route, offers, cabin_class)
+        if offers and route_id:
+            await self._store_search_results(route_id, offers, cabin_class)
 
-        # If Amadeus returned nothing, fall back to DB cache
+        # If Travelpayouts returned nothing, fall back to DB cache
         data_source = "live"
         if not offers:
             offers = await self._search_from_db(origin, dest, departure_date, cabin_class)
@@ -338,10 +369,10 @@ class FlightService:
         if max_stops is not None:
             offers = [o for o in offers if o.stops <= max_stops]
 
-        # Collect available airlines after stop filtering
+        # Collect available airlines after stop filtering (skip empty airline_code from month-matrix)
         airline_set: dict[str, str] = {}
         for o in offers:
-            if o.airline_code not in airline_set:
+            if o.airline_code and o.airline_code not in airline_set:
                 airline_set[o.airline_code] = o.airline_name or o.airline_code
         available_airlines = [
             AirlineInfo(code=code, name=name)
@@ -368,19 +399,23 @@ class FlightService:
             offers=offers,
             total_count=len(offers),
             available_airlines=available_airlines,
-            route_id=route.id if route else None,
+            route_id=route_id,
             data_source=data_source,
         )
 
     @staticmethod
     def _deduplicate_offers(offers: list[FlightOffer]) -> list[FlightOffer]:
-        """Keep the cheapest offer per unique itinerary (airline + stops + ~duration)."""
+        """Keep the cheapest offer per (airline + stops). Prefer offers with more data."""
         seen: dict[str, FlightOffer] = {}
         for offer in offers:
-            # Round duration to 30-min buckets to group similar flights
-            dur_bucket = (offer.duration_minutes or 0) // 30
-            key = f"{offer.airline_code}|{offer.stops}|{dur_bucket}"
-            if key not in seen or offer.price_amount < seen[key].price_amount:
+            key = f"{offer.airline_code}|{offer.stops}"
+            existing = seen.get(key)
+            if not existing:
+                seen[key] = offer
+            elif offer.price_amount < existing.price_amount:
+                seen[key] = offer
+            elif offer.price_amount == existing.price_amount and offer.duration_minutes and not existing.duration_minutes:
+                # Same price but new one has duration info
                 seen[key] = offer
         return list(seen.values())
 
