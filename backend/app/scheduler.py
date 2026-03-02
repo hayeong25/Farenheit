@@ -9,6 +9,11 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+_SLOW_JOB_THRESHOLD_SECS = 300  # Warn if job takes > 5 minutes
+_MISFIRE_GRACE_SECS = 300
+_CLEANUP_MISFIRE_GRACE_SECS = 3600
+_CLEANUP_HOUR = 4
+
 scheduler = BackgroundScheduler()
 
 
@@ -21,7 +26,7 @@ def _run_collect_prices() -> None:
         result = collect_all_routes_sync()
         elapsed = time.monotonic() - start
         logger.info(f"Scheduler: Collection complete in {elapsed:.1f}s - {result}")
-        if elapsed > 300:
+        if elapsed > _SLOW_JOB_THRESHOLD_SECS:
             logger.warning(f"Scheduler: Collection took {elapsed:.0f}s (>5min)")
     except Exception as e:
         elapsed = time.monotonic() - start
@@ -77,7 +82,7 @@ def start_scheduler() -> None:
         name="Collect flight prices",
         replace_existing=True,
         max_instances=1,
-        misfire_grace_time=300,  # Skip if > 5min late
+        misfire_grace_time=_MISFIRE_GRACE_SECS,
     )
 
     # Run predictions periodically
@@ -89,18 +94,18 @@ def start_scheduler() -> None:
         name="Run ML predictions + alerts",
         replace_existing=True,
         max_instances=1,
-        misfire_grace_time=300,
+        misfire_grace_time=_MISFIRE_GRACE_SECS,
     )
 
-    # Daily cleanup at 4 AM
+    # Daily cleanup
     scheduler.add_job(
         _run_cleanup,
         "cron",
-        hour=4,
+        hour=_CLEANUP_HOUR,
         id="cleanup",
         name="Data cleanup",
         replace_existing=True,
-        misfire_grace_time=3600,  # Allow up to 1hr late for daily cleanup
+        misfire_grace_time=_CLEANUP_MISFIRE_GRACE_SECS,
     )
 
     scheduler.start()
