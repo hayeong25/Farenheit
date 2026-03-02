@@ -10,6 +10,9 @@ from pipeline.db import session_factory as _session_factory
 
 logger = logging.getLogger(__name__)
 
+_PRICE_RETENTION_DAYS = 180
+_STALE_PREDICTION_DAYS = 7
+
 
 async def _cleanup() -> dict:
     """Remove data older than retention period."""
@@ -21,16 +24,14 @@ async def _cleanup() -> dict:
     now = datetime.now(timezone.utc)
     today = now.date()
 
-    # Keep 180 days of price data
-    price_cutoff = now - timedelta(days=180)
+    price_cutoff = now - timedelta(days=_PRICE_RETENTION_DAYS)
 
     async with session_factory() as session:
         price_result = await session.execute(
             delete(FlightPrice).where(FlightPrice.time < price_cutoff)
         )
         # Delete predictions for past departure dates
-        # Also purge stale predictions (valid_until expired > 7 days ago)
-        stale_cutoff = now - timedelta(days=7)
+        stale_cutoff = now - timedelta(days=_STALE_PREDICTION_DAYS)
         pred_result = await session.execute(
             delete(Prediction).where(
                 or_(
