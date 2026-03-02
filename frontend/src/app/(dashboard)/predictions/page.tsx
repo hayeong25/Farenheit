@@ -244,7 +244,7 @@ function PredictionsContent() {
           출발지/도착지 바꾸기
         </button>
         {validationMsg && (
-          <p role="alert" className="text-xs text-red-500 mt-2">{validationMsg}</p>
+          <p role="alert" className="text-xs text-red-500 dark:text-red-400 mt-2">{validationMsg}</p>
         )}
       </div>
 

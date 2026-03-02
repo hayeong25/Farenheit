@@ -195,7 +195,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
           {isLoading ? (
             <li className="px-4 py-3 text-sm text-[var(--muted-foreground)]">검색 중...</li>
           ) : fetchError ? (
-            <li className="px-4 py-3 text-sm text-red-500">서버 연결에 실패했습니다. 다시 입력해주세요.</li>
+            <li className="px-4 py-3 text-sm text-red-500 dark:text-red-400">서버 연결에 실패했습니다. 다시 입력해주세요.</li>
           ) : results.length === 0 ? (
             <li className="px-4 py-3 text-sm text-[var(--muted-foreground)]">결과가 없습니다</li>
           ) : (

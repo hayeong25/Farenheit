@@ -436,7 +436,7 @@ function SearchContent() {
               {isLoading ? "검색 중..." : "검색"}
             </button>
             {validationMsg && (
-              <p role="alert" className="text-xs text-red-500 mt-1">{validationMsg}</p>
+              <p role="alert" className="text-xs text-red-500 dark:text-red-400 mt-1">{validationMsg}</p>
             )}
           </div>
         </div>
