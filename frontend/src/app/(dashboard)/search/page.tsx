@@ -330,7 +330,7 @@ function SearchContent() {
               title="출발지/도착지 바꾸기"
               aria-label="출발지와 도착지 바꾸기"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
@@ -349,7 +349,7 @@ function SearchContent() {
             aria-label="출발지와 도착지 바꾸기"
             className="md:hidden w-full py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
           >
-            <svg className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <svg aria-hidden="true" className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             출발지/도착지 바꾸기
@@ -550,7 +550,7 @@ function SearchContent() {
                           : "border-gray-300 bg-[var(--background)]"
                       }`}>
                         {checked && (
-                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <svg aria-hidden="true" className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
                         )}
@@ -697,7 +697,7 @@ function SearchContent() {
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors"
                         >
                           예약하기
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <svg aria-hidden="true" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                           </svg>
                         </a>
@@ -782,7 +782,7 @@ function SearchContent() {
               href={`/predictions?${new URLSearchParams({ origin: originCode, dest: destCode, date, ...(cabinClass !== "ECONOMY" ? { cabin: cabinClass } : {}) }).toString()}`}
               className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
-              <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg aria-hidden="true" className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
               </svg>
               <div>
@@ -794,7 +794,7 @@ function SearchContent() {
               href={`/recommendations?${new URLSearchParams({ origin: originCode, dest: destCode, date, ...(cabinClass !== "ECONOMY" ? { cabin: cabinClass } : {}) }).toString()}`}
               className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
-              <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg aria-hidden="true" className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
               </svg>
               <div>
@@ -806,7 +806,7 @@ function SearchContent() {
               href={`/alerts?${new URLSearchParams({ origin: originCode, dest: destCode, date, ...(minPrice > 0 ? { target: String(Math.round(minPrice)) } : {}) }).toString()}`}
               className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
             >
-              <svg className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg aria-hidden="true" className="w-5 h-5 text-farenheit-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
               </svg>
               <div>
@@ -821,7 +821,7 @@ function SearchContent() {
       {/* Initial State */}
       {!isLoading && !searched && (
         <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
-          <svg className="w-12 h-12 mx-auto mb-4 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+          <svg aria-hidden="true" className="w-12 h-12 mx-auto mb-4 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
           </svg>
           <p className="text-lg mb-2">출발지, 도착지, 날짜를 입력하고 검색하세요</p>
