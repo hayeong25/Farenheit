@@ -125,5 +125,5 @@ class TravelpayoutsCollector(AbstractCollector):
                     params={"origin": "ICN", "destination": "NRT", "token": self.token},
                 )
                 return resp.status_code == 200
-        except Exception:
+        except httpx.HTTPError:
             return False
