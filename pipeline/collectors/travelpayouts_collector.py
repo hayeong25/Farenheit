@@ -9,6 +9,12 @@ from pipeline.config import pipeline_settings
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_CURRENCY = "KRW"
+_SOURCE = "travelpayouts"
+_COLLECT_TIMEOUT = 30.0
+_HEALTH_CHECK_TIMEOUT = 10.0
+
+
 class TravelpayoutsCollector(AbstractCollector):
     """Collect flight prices from Travelpayouts Data API."""
 
@@ -26,12 +32,12 @@ class TravelpayoutsCollector(AbstractCollector):
     ) -> list[PriceObservation]:
         observations: list[PriceObservation] = []
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=_COLLECT_TIMEOUT) as client:
             params: dict = {
                 "origin": origin,
                 "destination": destination,
                 "depart_date": departure_date.isoformat(),
-                "currency": "KRW",
+                "currency": _DEFAULT_CURRENCY,
                 "token": self.token,
             }
             if return_date:
@@ -104,16 +110,16 @@ class TravelpayoutsCollector(AbstractCollector):
             return_date=return_date,
             cabin_class=cabin_class,
             price=price,
-            currency="KRW",
+            currency=_DEFAULT_CURRENCY,
             stops=stops,
             duration_minutes=duration_minutes,
-            source="travelpayouts",
+            source=_SOURCE,
             raw_offer_id=None,
         )
 
     async def health_check(self) -> bool:
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=_HEALTH_CHECK_TIMEOUT) as client:
                 resp = await client.get(
                     f"{self.base_url}/v1/prices/cheap",
                     params={"origin": "ICN", "destination": "NRT", "token": self.token},
