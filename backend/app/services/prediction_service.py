@@ -18,6 +18,15 @@ from app.schemas.prediction import (
 _ZERO = Decimal("0")
 
 
+def _classify_price_level(value: float, min_p: float, max_p: float) -> str:
+    """Classify a price into LOW / MEDIUM / HIGH relative to the range."""
+    price_range = max_p - min_p
+    if price_range <= 0:
+        return "LOW"
+    ratio = (value - min_p) / price_range
+    return "LOW" if ratio < 0.33 else ("MEDIUM" if ratio < 0.66 else "HIGH")
+
+
 class PredictionService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -171,19 +180,12 @@ class PredictionService:
         if predictions:
             # Get min/max for price level categorization
             prices_dec = [max(p.predicted_price, _ZERO) for p in predictions]
-            min_p, max_p = min(prices_dec), max(prices_dec)
-            price_range = max_p - min_p
+            min_p, max_p = float(min(prices_dec)), float(max(prices_dec))
 
             for pred in predictions:
                 weeks = max(0, (pred.departure_date - today).days // 7)
                 price_val = max(pred.predicted_price, _ZERO)
-
-                # Categorize price level (all same price → all LOW)
-                if price_range > 0:
-                    ratio = float((price_val - min_p) / price_range)
-                    level = "LOW" if ratio < 0.33 else ("MEDIUM" if ratio < 0.66 else "HIGH")
-                else:
-                    level = "LOW"
+                level = _classify_price_level(float(price_val), min_p, max_p)
 
                 cells.append(HeatmapCell(
                     departure_date=pred.departure_date,
@@ -212,17 +214,11 @@ class PredictionService:
             if price_rows:
                 prices = [float(r.min_price) for r in price_rows]
                 min_p, max_p = min(prices), max(prices)
-                price_range = max_p - min_p
 
                 for row in price_rows:
                     weeks = max(0, (row.departure_date - today).days // 7)
                     price_val = float(row.min_price)
-                    # All same price → all LOW
-                    if price_range > 0:
-                        ratio = (price_val - min_p) / price_range
-                        level = "LOW" if ratio < 0.33 else ("MEDIUM" if ratio < 0.66 else "HIGH")
-                    else:
-                        level = "LOW"
+                    level = _classify_price_level(price_val, min_p, max_p)
 
                     cells.append(HeatmapCell(
                         departure_date=row.departure_date,
