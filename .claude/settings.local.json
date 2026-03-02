@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "Bash(*)"
+      "Bash(*)",
+      "WebFetch(domain:travelpayouts.github.io)",
+      "WebFetch(domain:support.travelpayouts.com)"
     ]
   }
 }
