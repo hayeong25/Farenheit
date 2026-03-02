@@ -205,6 +205,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
                 id={`${listboxId}-option-${idx}`}
                 role="option"
                 aria-selected={idx === highlightIdx}
+                aria-label={`${airport.city_ko || airport.city} ${airport.name} (${airport.iata_code})`}
                 onClick={() => handleSelect(airport)}
                 className={`px-4 py-3 cursor-pointer transition-colors ${
                   idx === highlightIdx
