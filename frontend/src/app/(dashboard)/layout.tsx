@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 export const metadata: Metadata = {
   title: {
     template: "%s | Farenheit",
-    default: "대시보드 | Farenheit",
+    default: "항공편 검색 | Farenheit",
   },
 };
 

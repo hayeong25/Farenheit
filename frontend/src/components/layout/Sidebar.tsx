@@ -5,16 +5,6 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   {
-    href: "/dashboard",
-    label: "대시보드",
-    mobileLabel: "홈",
-    icon: (
-      <svg aria-hidden="true" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-      </svg>
-    ),
-  },
-  {
     href: "/search",
     label: "항공편 검색",
     mobileLabel: "검색",
@@ -64,7 +54,7 @@ export function Sidebar() {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 border-r border-[var(--border)] bg-[var(--background)] flex-col">
         {/* Logo */}
-        <div className="p-6 border-b border-[var(--border)]">
+        <div className="p-6">
           <Link href="/" className="text-xl font-bold">
             <span className="text-farenheit-500">Faren</span>
             <span>heit</span>
@@ -97,7 +87,7 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[var(--border)]">
+        <div className="p-4">
           <p className="text-xs text-[var(--muted-foreground)] text-center">
             v0.3.0
           </p>
