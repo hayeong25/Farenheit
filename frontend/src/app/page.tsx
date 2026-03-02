@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
+import { routesApi, type RouteResponse } from "@/lib/api-client";
 import { getRecentSearches, getLocalToday, getDefaultSearchDate, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, RETURN_BEFORE_DEPART_MSG, type RecentSearch } from "@/lib/utils";
 
 export default function HomePage() {
@@ -19,6 +20,7 @@ export default function HomePage() {
   const [isSearching, setIsSearching] = useState(false);
 
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [popularRoutes, setPopularRoutes] = useState<RouteResponse[]>([]);
   const [validationMsg, setValidationMsg] = useState("");
   const validationTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -36,6 +38,7 @@ export default function HomePage() {
     setDate(getDefaultSearchDate());
     setRecentSearches(getRecentSearches());
     setIsSearching(false);
+    routesApi.popular(8).then((routes) => setPopularRoutes(routes)).catch(() => {});
     const handleVisibility = () => {
       if (document.visibilityState === "visible") setIsSearching(false);
     };
@@ -83,7 +86,6 @@ export default function HomePage() {
     setOriginDisplay(destDisplay);
     setDestCode(tempCode);
     setDestDisplay(tempDisplay);
-    // Force re-render of AirportSearch components
     originKeyRef.current += 1;
     destKeyRef.current += 1;
   };
@@ -92,7 +94,7 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <h1 className="text-2xl font-bold">
             <span className="text-farenheit-500">Faren</span>
             <span>heit</span>
@@ -100,243 +102,281 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero */}
-      <main className="flex-1 flex items-center justify-center">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          {/* Hero Illustration */}
-          <div className="flex items-center justify-center gap-6 mb-8">
-            {/* Thermometer */}
-            <div className="relative w-16 h-36 md:w-20 md:h-44">
-              <svg aria-hidden="true" viewBox="0 0 80 176" fill="none" className="w-full h-full">
-                {/* Thermometer body */}
-                <rect x="24" y="8" width="32" height="120" rx="16" className="stroke-farenheit-300 dark:stroke-farenheit-700" strokeWidth="3" fill="none" />
-                {/* Mercury fill - animated */}
-                <rect x="32" y="48" width="16" height="72" rx="8" className="fill-farenheit-500">
-                  <animate attributeName="y" values="80;48;64;48" dur="3s" repeatCount="indefinite" />
-                  <animate attributeName="height" values="40;72;56;72" dur="3s" repeatCount="indefinite" />
-                </rect>
-                {/* Bulb */}
-                <circle cx="40" cy="148" r="22" className="fill-farenheit-500" />
-                <circle cx="40" cy="148" r="16" className="fill-farenheit-400" opacity="0.6" />
-                {/* Tick marks */}
-                <line x1="58" y1="40" x2="66" y2="40" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
-                <line x1="58" y1="60" x2="66" y2="60" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
-                <line x1="58" y1="80" x2="66" y2="80" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
-                <line x1="58" y1="100" x2="66" y2="100" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
-              </svg>
-            </div>
-            {/* Plane + Price Tags */}
-            <div className="flex flex-col items-start gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-xs font-semibold text-green-700 dark:text-green-400">BUY</span>
+      {/* Main - 2 column layout */}
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start">
+          {/* Left: Illustration + Search */}
+          <div>
+            {/* Hero Illustration */}
+            <div className="flex items-center justify-center gap-6 mb-6">
+              {/* Thermometer */}
+              <div className="relative w-14 h-32 md:w-16 md:h-36">
+                <svg aria-hidden="true" viewBox="0 0 80 176" fill="none" className="w-full h-full">
+                  <rect x="24" y="8" width="32" height="120" rx="16" className="stroke-farenheit-300 dark:stroke-farenheit-700" strokeWidth="3" fill="none" />
+                  <rect x="32" y="48" width="16" height="72" rx="8" className="fill-farenheit-500">
+                    <animate attributeName="y" values="80;48;64;48" dur="3s" repeatCount="indefinite" />
+                    <animate attributeName="height" values="40;72;56;72" dur="3s" repeatCount="indefinite" />
+                  </rect>
+                  <circle cx="40" cy="148" r="22" className="fill-farenheit-500" />
+                  <circle cx="40" cy="148" r="16" className="fill-farenheit-400" opacity="0.6" />
+                  <line x1="58" y1="40" x2="66" y2="40" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
+                  <line x1="58" y1="60" x2="66" y2="60" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
+                  <line x1="58" y1="80" x2="66" y2="80" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
+                  <line x1="58" y1="100" x2="66" y2="100" className="stroke-[var(--muted-foreground)]" strokeWidth="1.5" opacity="0.4" />
+                </svg>
               </div>
-              <svg aria-hidden="true" viewBox="0 0 120 40" className="w-28 md:w-36 text-farenheit-500">
-                <path d="M10 30 Q30 10 50 20 T90 12 L110 8" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round">
-                  <animate attributeName="d" values="M10 30 Q30 10 50 20 T90 12 L110 8;M10 25 Q30 18 50 28 T90 15 L110 10;M10 30 Q30 10 50 20 T90 12 L110 8" dur="4s" repeatCount="indefinite" />
-                </path>
-                {/* Plane icon at end of line */}
-                <g transform="translate(104, 4)">
-                  <path d="M0 6 L6 0 L14 4 L6 6 L14 8 L6 12 L0 6Z" fill="currentColor" opacity="0.8">
-                    <animateTransform attributeName="transform" type="translate" values="0,0;2,-2;0,0" dur="4s" repeatCount="indefinite" />
+              {/* Plane + Price Tags */}
+              <div className="flex flex-col items-start gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="text-xs font-semibold text-green-700 dark:text-green-400">BUY</span>
+                </div>
+                <svg aria-hidden="true" viewBox="0 0 120 40" className="w-28 md:w-32 text-farenheit-500">
+                  <path d="M10 30 Q30 10 50 20 T90 12 L110 8" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round">
+                    <animate attributeName="d" values="M10 30 Q30 10 50 20 T90 12 L110 8;M10 25 Q30 18 50 28 T90 15 L110 10;M10 30 Q30 10 50 20 T90 12 L110 8" dur="4s" repeatCount="indefinite" />
                   </path>
-                </g>
-              </svg>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">WAIT</span>
+                  <g transform="translate(104, 4)">
+                    <path d="M0 6 L6 0 L14 4 L6 6 L14 8 L6 12 L0 6Z" fill="currentColor" opacity="0.8">
+                      <animateTransform attributeName="transform" type="translate" values="0,0;2,-2;0,0" dur="4s" repeatCount="indefinite" />
+                    </path>
+                  </g>
+                </svg>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">WAIT</span>
+                </div>
               </div>
             </div>
-          </div>
-          <p className="text-[var(--muted-foreground)] mb-8 text-sm">
-            지금이 살 때인지, 기다려야 할 때인지 알려드립니다
-          </p>
+            <p className="text-[var(--muted-foreground)] mb-6 text-sm text-center">
+              지금이 살 때인지, 기다려야 할 때인지 알려드립니다
+            </p>
 
-          {/* Search Form */}
-          <form onSubmit={handleSearch} className="bg-[var(--muted)] rounded-2xl p-6 max-w-2xl mx-auto">
-            {/* Trip Type Toggle */}
-            <div className="flex gap-1 mb-4 bg-[var(--background)] rounded-lg p-1 w-fit mx-auto">
-              <button
-                type="button"
-                onClick={() => setTripType("round_trip")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  tripType === "round_trip"
-                    ? "bg-farenheit-500 text-white shadow-sm"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                왕복
-              </button>
-              <button
-                type="button"
-                onClick={() => { setTripType("one_way"); setReturnDate(""); }}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  tripType === "one_way"
-                    ? "bg-farenheit-500 text-white shadow-sm"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                편도
-              </button>
-            </div>
+            {/* Search Form */}
+            <form onSubmit={handleSearch} className="bg-[var(--muted)] rounded-2xl p-6">
+              {/* Trip Type Toggle */}
+              <div className="flex gap-1 mb-4 bg-[var(--background)] rounded-lg p-1 w-fit mx-auto">
+                <button
+                  type="button"
+                  onClick={() => setTripType("round_trip")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    tripType === "round_trip"
+                      ? "bg-farenheit-500 text-white shadow-sm"
+                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  왕복
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setTripType("one_way"); setReturnDate(""); }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    tripType === "one_way"
+                      ? "bg-farenheit-500 text-white shadow-sm"
+                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  편도
+                </button>
+              </div>
 
-            {/* Origin / Swap / Destination */}
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-2 md:gap-0 mb-4 items-end">
-              <AirportSearch
-                key={`origin-${originKeyRef.current}`}
-                label="출발지"
-                placeholder="도시 또는 공항 검색"
-                value={originDisplay}
-                onSelect={(code, display) => { setOriginCode(code); setOriginDisplay(display || ""); setValidationMsg(""); }}
-              />
-              <button
-                type="button"
-                onClick={handleSwap}
-                disabled={!originCode || !destCode}
-                className="hidden md:flex w-10 h-10 mx-1 mb-0.5 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed self-end"
-                title="출발지/도착지 바꾸기"
-                aria-label="출발지와 도착지 바꾸기"
-              >
-                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={handleSwap}
-                disabled={!originCode || !destCode}
-                aria-label="출발지와 도착지 바꾸기"
-                className="md:hidden w-full py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
-              >
-                <svg aria-hidden="true" className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                출발지/도착지 바꾸기
-              </button>
-              <AirportSearch
-                key={`dest-${destKeyRef.current}`}
-                label="도착지"
-                placeholder="도시 또는 공항 검색"
-                value={destDisplay}
-                onSelect={(code, display) => { setDestCode(code); setDestDisplay(display || ""); setValidationMsg(""); }}
-              />
-            </div>
-
-            <div className={`grid grid-cols-1 gap-4 mb-4 ${
-              tripType === "round_trip" ? "md:grid-cols-3" : "md:grid-cols-2"
-            }`}>
-              <div>
-                <label htmlFor="home-departure-date" className="block text-sm font-medium mb-1 text-left">출발일</label>
-                <input
-                  id="home-departure-date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => {
-                    setDate(e.target.value);
-                    setValidationMsg("");
-                    if (returnDate && e.target.value > returnDate) {
-                      setReturnDate("");
-                      showValidation("출발일이 귀국일보다 늦어 귀국일이 초기화되었습니다.");
-                    }
-                  }}
-                  min={getLocalToday()}
-                  max={getDateOneYearLater()}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
+              {/* Origin / Swap / Destination */}
+              <div className="grid grid-cols-1 gap-2 mb-4">
+                <AirportSearch
+                  key={`origin-${originKeyRef.current}`}
+                  label="출발지"
+                  placeholder="도시 또는 공항 검색"
+                  value={originDisplay}
+                  onSelect={(code, display) => { setOriginCode(code); setOriginDisplay(display || ""); setValidationMsg(""); }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSwap}
+                  disabled={!originCode || !destCode}
+                  aria-label="출발지와 도착지 바꾸기"
+                  className="w-full py-1.5 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+                >
+                  <svg aria-hidden="true" className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  출발지/도착지 바꾸기
+                </button>
+                <AirportSearch
+                  key={`dest-${destKeyRef.current}`}
+                  label="도착지"
+                  placeholder="도시 또는 공항 검색"
+                  value={destDisplay}
+                  onSelect={(code, display) => { setDestCode(code); setDestDisplay(display || ""); setValidationMsg(""); }}
                 />
               </div>
-              {tripType === "round_trip" && (
+
+              <div className={`grid grid-cols-1 gap-4 mb-4 ${
+                tripType === "round_trip" ? "sm:grid-cols-3" : "sm:grid-cols-2"
+              }`}>
                 <div>
-                  <label htmlFor="home-return-date" className="block text-sm font-medium mb-1 text-left">귀국일</label>
+                  <label htmlFor="home-departure-date" className="block text-sm font-medium mb-1 text-left">출발일</label>
                   <input
-                    id="home-return-date"
+                    id="home-departure-date"
                     type="date"
-                    value={returnDate}
-                    onChange={(e) => { setReturnDate(e.target.value); setValidationMsg(""); }}
-                    min={date || getLocalToday()}
+                    value={date}
+                    onChange={(e) => {
+                      setDate(e.target.value);
+                      setValidationMsg("");
+                      if (returnDate && e.target.value > returnDate) {
+                        setReturnDate("");
+                        showValidation("출발일이 귀국일보다 늦어 귀국일이 초기화되었습니다.");
+                      }
+                    }}
+                    min={getLocalToday()}
                     max={getDateOneYearLater()}
                     className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                   />
                 </div>
-              )}
-              <div>
-                <label htmlFor="home-cabin-class" className="block text-sm font-medium mb-1 text-left">좌석 등급</label>
-                <select
-                  id="home-cabin-class"
-                  value={cabinClass}
-                  onChange={(e) => setCabinClass(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
-                >
-                  {VALID_CABIN_CLASSES.map((c) => (
-                    <option key={c} value={c}>{CABIN_CLASS_LABELS[c]}</option>
-                  ))}
-                </select>
+                {tripType === "round_trip" && (
+                  <div>
+                    <label htmlFor="home-return-date" className="block text-sm font-medium mb-1 text-left">귀국일</label>
+                    <input
+                      id="home-return-date"
+                      type="date"
+                      value={returnDate}
+                      onChange={(e) => { setReturnDate(e.target.value); setValidationMsg(""); }}
+                      min={date || getLocalToday()}
+                      max={getDateOneYearLater()}
+                      className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label htmlFor="home-cabin-class" className="block text-sm font-medium mb-1 text-left">좌석 등급</label>
+                  <select
+                    id="home-cabin-class"
+                    value={cabinClass}
+                    onChange={(e) => setCabinClass(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
+                  >
+                    {VALID_CABIN_CLASSES.map((c) => (
+                      <option key={c} value={c}>{CABIN_CLASS_LABELS[c]}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
-            <button
-              type="submit"
-              disabled={isSearching}
-              className={`block w-full py-3 rounded-lg font-semibold transition-colors text-center ${
-                isSearching
-                  ? "bg-farenheit-400 text-white/80 cursor-wait"
-                  : "bg-farenheit-500 text-white hover:bg-farenheit-600"
-              }`}
-            >
-              {isSearching ? (
-                <span className="inline-flex items-center gap-2">
-                  <svg aria-hidden="true" className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-25" />
-                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              <button
+                type="submit"
+                disabled={isSearching}
+                className={`block w-full py-3 rounded-lg font-semibold transition-colors text-center ${
+                  isSearching
+                    ? "bg-farenheit-400 text-white/80 cursor-wait"
+                    : "bg-farenheit-500 text-white hover:bg-farenheit-600"
+                }`}
+              >
+                {isSearching ? (
+                  <span className="inline-flex items-center gap-2">
+                    <svg aria-hidden="true" className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-25" />
+                      <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                    </svg>
+                    검색 중...
+                  </span>
+                ) : (
+                  "가격 분석하기"
+                )}
+              </button>
+              {validationMsg && (
+                <div role="alert" className="flex items-center gap-2 mt-3 px-3 py-2.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400">
+                  <svg aria-hidden="true" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
                   </svg>
-                  검색 중...
-                </span>
-              ) : (
-                "가격 분석하기"
+                  <p className="text-sm font-medium">{validationMsg}</p>
+                </div>
               )}
-            </button>
-            {validationMsg && (
-              <div role="alert" className="flex items-center gap-2 mt-3 px-3 py-2.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400">
-                <svg aria-hidden="true" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+            </form>
+          </div>
+
+          {/* Right: Recent Searches + Popular Routes */}
+          <div className="space-y-8">
+            {/* Recent Searches */}
+            {recentSearches.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <svg aria-hidden="true" className="w-5 h-5 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  최근 검색
+                </h2>
+                <div className="space-y-2">
+                  {recentSearches.slice(0, 5).map((s) => {
+                    const today = getLocalToday();
+                    const searchDate = s.date >= today ? s.date : getDefaultSearchDate();
+                    const searchReturnDate = s.returnDate && s.returnDate >= searchDate ? s.returnDate : undefined;
+                    return (
+                      <Link
+                        key={`${s.origin}-${s.dest}-${s.date}`}
+                        href={(() => {
+                          const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: searchDate });
+                          if (searchReturnDate) p.set("return_date", searchReturnDate);
+                          if (s.cabinClass !== "ECONOMY") p.set("cabin", s.cabinClass);
+                          return `/search?${p.toString()}`;
+                        })()}
+                        className="flex items-center justify-between px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{s.originDisplay} → {s.destDisplay}</p>
+                          <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                            {searchDate.slice(5).replace("-", ".")}{searchReturnDate ? ` ~ ${searchReturnDate.slice(5).replace("-", ".")}` : ""}
+                          </p>
+                        </div>
+                        {s.minPrice != null && s.minPrice > 0 && (
+                          <span className="text-sm font-semibold text-farenheit-500 ml-3 shrink-0">{formatPrice(Math.round(s.minPrice))}</span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Popular Routes */}
+            {popularRoutes.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <svg aria-hidden="true" className="w-5 h-5 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                  </svg>
+                  인기 노선
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {popularRoutes.map((route) => (
+                    <Link
+                      key={route.id}
+                      href={`/search?${new URLSearchParams({ origin: route.origin_code, dest: route.dest_code, date: getDefaultSearchDate() }).toString()}`}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all"
+                    >
+                      <svg aria-hidden="true" className="w-4 h-4 text-farenheit-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                      </svg>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {route.origin_city || route.origin_code} → {route.dest_city || route.dest_code}
+                        </p>
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          {route.origin_code} - {route.dest_code}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Empty state when no data */}
+            {recentSearches.length === 0 && popularRoutes.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <svg aria-hidden="true" className="w-12 h-12 text-[var(--muted-foreground)] opacity-30 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                 </svg>
-                <p className="text-sm font-medium">{validationMsg}</p>
+                <p className="text-sm text-[var(--muted-foreground)]">검색을 시작해보세요</p>
               </div>
             )}
-          </form>
-
-          {/* Recent Searches for returning users */}
-          {recentSearches.length > 0 && (
-            <div className="mt-8 max-w-2xl mx-auto">
-              <p className="text-sm text-[var(--muted-foreground)] mb-3">최근 검색</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {recentSearches.slice(0, 4).map((s) => {
-                  // If date is in the past, use 14 days from now
-                  const today = getLocalToday();
-                  const searchDate = s.date >= today ? s.date : getDefaultSearchDate();
-                  const searchReturnDate = s.returnDate && s.returnDate >= searchDate ? s.returnDate : undefined;
-                  return (
-                  <Link
-                    key={`${s.origin}-${s.dest}-${s.date}`}
-                    href={(() => {
-                      const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: searchDate });
-                      if (searchReturnDate) p.set("return_date", searchReturnDate);
-                      if (s.cabinClass !== "ECONOMY") p.set("cabin", s.cabinClass);
-                      return `/search?${p.toString()}`;
-                    })()}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 transition-all text-sm"
-                  >
-                    <span className="font-medium">{s.originDisplay} → {s.destDisplay}</span>
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      {s.date.slice(5)}{s.returnDate ? ` ~ ${s.returnDate.slice(5)}` : ""}
-                    </span>
-                    {s.minPrice != null && s.minPrice > 0 && (
-                      <span className="text-xs text-farenheit-500">{formatPrice(Math.round(s.minPrice))}</span>
-                    )}
-                  </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </main>
 
