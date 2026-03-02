@@ -1,5 +1,7 @@
 """Shared database engine and session factory for pipeline tasks."""
 
+from typing import Any
+
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -17,7 +19,7 @@ _engine = create_async_engine(pipeline_settings.DATABASE_URL, poolclass=NullPool
 
 # Enable SQLite foreign key enforcement on every connection
 @event.listens_for(_engine.sync_engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, connection_record):
+def _set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
