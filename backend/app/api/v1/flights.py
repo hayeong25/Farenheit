@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS
 from app.db.session import get_db
 from app.schemas.flight import FlightSearchResponse, PriceHistoryResponse
 from app.services.flight_service import FlightService
@@ -14,8 +14,8 @@ VALID_SORT_OPTIONS = {"price", "duration", "stops"}
 
 @router.get("/search", response_model=FlightSearchResponse)
 async def search_flights(
-    origin: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$", description="Origin IATA code"),
-    dest: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$", description="Destination IATA code"),
+    origin: str = Query(..., **IATA_CODE_CONSTRAINTS, description="Origin IATA code"),
+    dest: str = Query(..., **IATA_CODE_CONSTRAINTS, description="Destination IATA code"),
     departure_date: date = Query(..., description="Departure date"),
     return_date: date | None = Query(None, description="Return date for round-trip"),
     cabin_class: str = Query("ECONOMY", description="Cabin class"),

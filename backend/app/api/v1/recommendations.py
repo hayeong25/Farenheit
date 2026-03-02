@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS
 from app.db.session import get_db
 from app.schemas.recommendation import RecommendationResponse
 from app.services.recommendation_service import RecommendationService
@@ -13,8 +13,8 @@ router = APIRouter()
 
 @router.get("", response_model=RecommendationResponse)
 async def get_recommendation(
-    origin: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
-    dest: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
+    origin: str = Query(..., **IATA_CODE_CONSTRAINTS),
+    dest: str = Query(..., **IATA_CODE_CONSTRAINTS),
     departure_date: date = Query(...),
     cabin_class: str = Query("ECONOMY"),
     db: AsyncSession = Depends(get_db),

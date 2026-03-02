@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS
 from app.db.session import get_db
 from app.models.route import Route
 from app.schemas.prediction import PredictionResponse, HeatmapResponse
@@ -17,8 +17,8 @@ router = APIRouter()
 async def get_prediction(
     departure_date: date = Query(...),
     route_id: int | None = Query(None, ge=1, description="Route ID (optional if origin/dest provided)"),
-    origin: str | None = Query(None, min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
-    dest: str | None = Query(None, min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
+    origin: str | None = Query(None, **IATA_CODE_CONSTRAINTS),
+    dest: str | None = Query(None, **IATA_CODE_CONSTRAINTS),
     cabin_class: str = Query("ECONOMY"),
     db: AsyncSession = Depends(get_db),
 ) -> PredictionResponse:
@@ -67,8 +67,8 @@ async def get_prediction(
 
 @router.get("/heatmap", response_model=HeatmapResponse)
 async def get_heatmap(
-    origin: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
-    dest: str = Query(..., min_length=3, max_length=3, pattern=r"^[A-Za-z]{3}$"),
+    origin: str = Query(..., **IATA_CODE_CONSTRAINTS),
+    dest: str = Query(..., **IATA_CODE_CONSTRAINTS),
     month: str = Query(..., pattern=r"^\d{4}-\d{2}$", description="Format: YYYY-MM"),
     cabin_class: str = Query("ECONOMY"),
     db: AsyncSession = Depends(get_db),

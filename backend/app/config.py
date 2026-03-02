@@ -13,10 +13,9 @@ class Settings(BaseSettings):
     # Database (SQLite)
     DATABASE_URL: str = f"sqlite+aiosqlite:///{DB_PATH}"
 
-    # Amadeus API
-    AMADEUS_CLIENT_ID: str = ""
-    AMADEUS_CLIENT_SECRET: str = ""
-    AMADEUS_BASE_URL: str = "https://test.api.amadeus.com"
+    # Travelpayouts API
+    TRAVELPAYOUTS_TOKEN: str = ""
+    TRAVELPAYOUTS_BASE_URL: str = "https://api.travelpayouts.com"
 
     # Auth
     JWT_SECRET_KEY: str = "change-this-to-a-real-secret-key"
@@ -36,5 +35,6 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Shared constants
-VALID_CABIN_CLASSES = {"ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"}
+VALID_CABIN_CLASSES = {"ECONOMY", "BUSINESS", "FIRST"}
 CABIN_CLASS_ERROR_MSG = f"유효하지 않은 좌석 등급입니다. 유효한 값: {', '.join(sorted(VALID_CABIN_CLASSES))}"
+IATA_CODE_CONSTRAINTS = {"min_length": 3, "max_length": 3, "pattern": r"^[A-Za-z]{3}$"}
