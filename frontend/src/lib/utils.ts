@@ -42,6 +42,12 @@ export function getLocalToday(): string {
   return new Date().toLocaleDateString("sv-SE");
 }
 
+export function getDefaultSearchDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 14);
+  return d.toLocaleDateString("sv-SE");
+}
+
 export function getDateOneYearLater(): string {
   const d = new Date();
   d.setFullYear(d.getFullYear() + 1);

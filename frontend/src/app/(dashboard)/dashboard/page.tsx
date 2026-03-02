@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { statsApi, StatsResponse, alertsApi, AlertResponse, routesApi, type RouteResponse } from "@/lib/api-client";
-import { getRecentSearches, formatPrice, formatRelativeTime, getLocalToday, type RecentSearch } from "@/lib/utils";
+import { getRecentSearches, formatPrice, formatRelativeTime, getLocalToday, getDefaultSearchDate, type RecentSearch } from "@/lib/utils";
 
 interface PopularRoute {
   origin: string;
@@ -22,11 +22,6 @@ const fallbackRoutes: PopularRoute[] = [
   { origin: "ICN", dest: "TPE", label: "서울 → 타이베이" },
 ];
 
-function getDefaultDate(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 14);
-  return d.toLocaleDateString("sv-SE");
-}
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
@@ -64,7 +59,7 @@ export default function DashboardPage() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const hasData = stats && stats.prices > 0;
-  const defaultDate = getDefaultDate();
+  const defaultDate = getDefaultSearchDate();
   const activeAlerts = alerts.filter(a => !a.is_triggered);
   const triggeredAlerts = alerts.filter(a => a.is_triggered);
 
