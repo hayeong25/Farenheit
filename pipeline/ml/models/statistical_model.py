@@ -13,6 +13,17 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+# Model hyperparameters
+EMA_SHORT_SPAN = 3
+EMA_LONG_SPAN = 14
+MAX_TREND_WINDOW = 30
+MIN_VOLATILITY = 0.01
+MAX_VOLATILITY = 0.30
+PRICE_DIRECTION_THRESHOLD = 0.015
+TREND_DAMPENING_FACTOR = 0.05
+UNCERTAINTY_SCALING = 1.2
+MIN_PRICE_FLOOR_RATIO = 0.85
+
 
 class StatisticalPredictor:
     """Price prediction using statistical methods (EMA, trend, volatility, seasonality)."""
@@ -73,14 +84,14 @@ class StatisticalPredictor:
 
         # EMA (exponential moving average) - recent prices weighted more
         if n >= 7:
-            ema_short = self._ema(prices, span=3)
-            ema_long = self._ema(prices, span=min(n, 14))
+            ema_short = self._ema(prices, span=EMA_SHORT_SPAN)
+            ema_long = self._ema(prices, span=min(n, EMA_LONG_SPAN))
         else:
             ema_short = prices.mean()
             ema_long = prices.mean()
 
         # Trend analysis - use all available data (up to 30 days)
-        trend_window = min(n, 30)
+        trend_window = min(n, MAX_TREND_WINDOW)
         if trend_window >= 3:
             x = np.arange(trend_window)
             y = prices[-trend_window:]
@@ -103,7 +114,7 @@ class StatisticalPredictor:
             volatility = 0.05
 
         # Clamp volatility to reasonable range
-        volatility = max(0.01, min(volatility, 0.3))
+        volatility = max(MIN_VOLATILITY, min(volatility, MAX_VOLATILITY))
 
         # Price direction - use longer window for stability
         direction_window = min(n, 10)
@@ -114,9 +125,9 @@ class StatisticalPredictor:
             mean_price = recent_prices.mean()
             pct_change = weighted_trend[0] * len(recent_prices) / max(mean_price, 1.0)
 
-            if pct_change > 0.015:
+            if pct_change > PRICE_DIRECTION_THRESHOLD:
                 direction = "UP"
-            elif pct_change < -0.015:
+            elif pct_change < -PRICE_DIRECTION_THRESHOLD:
                 direction = "DOWN"
             else:
                 direction = "STABLE"
@@ -142,7 +153,7 @@ class StatisticalPredictor:
             # EMA-based: mean reversion toward EMA
             ema_predicted = ema_short + (ema_long - ema_short) * (d / forecast_days) * 0.3
             # Trend-based: linear extrapolation with dampening
-            dampening = 1.0 / (1.0 + d * 0.05)
+            dampening = 1.0 / (1.0 + d * TREND_DAMPENING_FACTOR)
             trend_predicted = current_price + trend_per_day * d * dampening
 
             predicted = ema_weight * ema_predicted + trend_weight * trend_predicted
@@ -152,8 +163,8 @@ class StatisticalPredictor:
             predicted *= self.DOW_FACTORS.get(dow, 1.0)
 
             # Confidence interval widens over time
-            uncertainty = current_price * volatility * np.sqrt(d) * 1.2
-            low = max(predicted - uncertainty, min_observed * 0.85)
+            uncertainty = current_price * volatility * np.sqrt(d) * UNCERTAINTY_SCALING
+            low = max(predicted - uncertainty, min_observed * MIN_PRICE_FLOOR_RATIO)
             high = predicted + uncertainty
 
             forecast_series.append({
