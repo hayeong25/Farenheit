@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -35,9 +36,10 @@ class AuthService:
         if result.scalar_one_or_none():
             return None
 
+        hashed_pw = await asyncio.to_thread(_hash_password, user_data.password)
         user = User(
             email=user_data.email,
-            hashed_password=_hash_password(user_data.password),
+            hashed_password=hashed_pw,
             display_name=user_data.display_name,
         )
         self.db.add(user)
@@ -56,7 +58,7 @@ class AuthService:
 
         # Always run bcrypt to prevent timing-based user enumeration
         hashed = user.hashed_password if user else _DUMMY_HASH
-        password_valid = _verify_password(credentials.password, hashed)
+        password_valid = await asyncio.to_thread(_verify_password, credentials.password, hashed)
 
         if not user or not password_valid:
             return None
