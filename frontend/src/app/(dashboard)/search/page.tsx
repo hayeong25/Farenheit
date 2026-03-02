@@ -489,7 +489,7 @@ function SearchContent() {
                   {filteredOffers.length}개 항공편
                   {filteredOffers.length !== offers.length && ` (전체 ${offers.length}개 중)`}
                   {directCount > 0 && ` | 직항 ${directCount}개`}
-                  {minPrice > 0 && ` | 최저가 ${formatPrice(minPrice, "KRW")}`}
+                  {minPrice > 0 && ` | 최저가 ${formatPrice(minPrice)}`}
                 </p>
                 {dataSource === "cached" && (
                   <p className="text-xs text-yellow-600 mt-0.5">
