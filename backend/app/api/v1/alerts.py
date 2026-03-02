@@ -12,6 +12,10 @@ from app.schemas.alert import AlertCreate, AlertResponse
 
 router = APIRouter()
 
+MAX_ALERTS_PER_REQUEST = 200
+_ROUTE_RETRY_DELAY = 0.05
+_ROUTE_MAX_RETRIES = 4
+
 
 @router.get("", response_model=list[AlertResponse])
 async def get_alerts(
@@ -21,7 +25,7 @@ async def get_alerts(
         select(PriceAlert)
         .where(PriceAlert.user_id.is_(None))
         .order_by(PriceAlert.created_at.desc())
-        .limit(200)
+        .limit(MAX_ALERTS_PER_REQUEST)
     )
     alerts = result.scalars().all()
 
@@ -74,8 +78,8 @@ async def create_alert(
         except IntegrityError:
             await db.rollback()
             # Retry lookup with exponential backoff
-            delay = 0.05
-            for _ in range(4):
+            delay = _ROUTE_RETRY_DELAY
+            for _ in range(_ROUTE_MAX_RETRIES):
                 route_result = await db.execute(
                     select(Route).where(Route.origin_code == origin, Route.dest_code == destination)
                 )
