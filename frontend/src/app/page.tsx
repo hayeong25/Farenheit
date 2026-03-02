@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
-import { getRecentSearches, getLocalToday, getDefaultSearchDate, getDateOneYearLater, formatPrice, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, type RecentSearch } from "@/lib/utils";
+import { getRecentSearches, getLocalToday, getDefaultSearchDate, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, type RecentSearch } from "@/lib/utils";
 
 export default function HomePage() {
   const router = useRouter();
@@ -54,13 +54,9 @@ export default function HomePage() {
     if (e) e.preventDefault();
     if (isSearching) return;
 
-    const missing: string[] = [];
-    if (!originCode) missing.push("출발지");
-    if (!destCode) missing.push("도착지");
-    if (!date) missing.push("출발일");
-    if (tripType === "round_trip" && !returnDate) missing.push("귀국일");
-    if (missing.length > 0) {
-      showValidation(`${missing.join(", ")}을(를) 입력해주세요.`);
+    const missingMsg = getMissingFieldsMsg(originCode, destCode, date, { tripType, returnDate });
+    if (missingMsg) {
+      showValidation(missingMsg);
       return;
     }
     if (tripType === "round_trip" && returnDate && returnDate < date) {

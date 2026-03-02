@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import Link from "next/link";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
+import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
 const VALID_STOPS = ["any", "0", "1", "2"];
 const VALID_SORTS = ["price", "price_desc", "duration", "stops"];
@@ -409,13 +409,9 @@ function SearchContent() {
           <div className="flex flex-col items-stretch justify-end">
             <button
               onClick={() => {
-                const missing: string[] = [];
-                if (!originCode) missing.push("출발지");
-                if (!destCode) missing.push("도착지");
-                if (!date) missing.push("출발일");
-                if (tripType === "round_trip" && !returnDate) missing.push("귀국일");
-                if (missing.length > 0) {
-                  setValidationMsg(`${missing.join(", ")}을(를) 입력해주세요.`);
+                const missingMsg = getMissingFieldsMsg(originCode, destCode, date, { tripType, returnDate });
+                if (missingMsg) {
+                  setValidationMsg(missingMsg);
                   return;
                 }
                 if (tripType === "round_trip" && returnDate && returnDate < date) {

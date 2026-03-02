@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { predictionsApi, routesApi, type PredictionResponse, type HeatmapResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, formatPrice, formatRelativeTime, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, formatPrice, formatRelativeTime, getMissingFieldsMsg, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
 const DIRECTION_CONFIG: Record<string, { color: string; text: string; arrow: string }> = {
   UP: { color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800", text: "상승 예상", arrow: "↑" },
@@ -209,12 +209,9 @@ function PredictionsContent() {
           <div className="flex items-end">
             <button
               onClick={() => {
-                const missing: string[] = [];
-                if (!originCode) missing.push("출발지");
-                if (!destCode) missing.push("도착지");
-                if (!date) missing.push("출발일");
-                if (missing.length > 0) {
-                  setValidationMsg(`${missing.join(", ")}을(를) 입력해주세요.`);
+                const missingMsg = getMissingFieldsMsg(originCode, destCode, date);
+                if (missingMsg) {
+                  setValidationMsg(missingMsg);
                   return;
                 }
                 if (originCode === destCode) {

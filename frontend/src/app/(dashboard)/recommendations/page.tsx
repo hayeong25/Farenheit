@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { recommendationsApi, routesApi, type RecommendationResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, formatPrice, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
 const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string; icon: string }> = {
   BUY: {
@@ -219,12 +219,9 @@ function RecommendationsContent() {
           <div className="flex items-end">
             <button
               onClick={() => {
-                const missing: string[] = [];
-                if (!originCode) missing.push("출발지");
-                if (!destCode) missing.push("도착지");
-                if (!date) missing.push("출발일");
-                if (missing.length > 0) {
-                  setValidationMsg(`${missing.join(", ")}을(를) 입력해주세요.`);
+                const missingMsg = getMissingFieldsMsg(originCode, destCode, date);
+                if (missingMsg) {
+                  setValidationMsg(missingMsg);
                   return;
                 }
                 if (originCode === destCode) {

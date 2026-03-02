@@ -69,6 +69,24 @@ export function formatRelativeTime(isoStr: string): string {
   return `${days}일 전`;
 }
 
+/**
+ * Build a validation message for missing search fields.
+ * Returns null if all required fields are present.
+ */
+export function getMissingFieldsMsg(
+  originCode: string,
+  destCode: string,
+  date: string,
+  opts?: { tripType?: string; returnDate?: string },
+): string | null {
+  const missing: string[] = [];
+  if (!originCode) missing.push("출발지");
+  if (!destCode) missing.push("도착지");
+  if (!date) missing.push("출발일");
+  if (opts?.tripType === "round_trip" && !opts.returnDate) missing.push("귀국일");
+  return missing.length > 0 ? `${missing.join(", ")}을(를) 입력해주세요.` : null;
+}
+
 // Recent searches (localStorage)
 export interface RecentSearch {
   origin: string;
