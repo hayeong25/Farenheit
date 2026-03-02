@@ -9,6 +9,8 @@ from app.models.route import Route
 from app.schemas.recommendation import RecommendationResponse
 
 _ZERO = Decimal("0")
+_PREDICTION_WINDOW_DAYS = 14
+_CONFIDENCE_THRESHOLD = Decimal("0.6")
 
 
 class RecommendationService:
@@ -90,8 +92,8 @@ class RecommendationService:
         today = now.date()
 
         # Search within ±14 days of departure_date for relevant recommendations
-        range_start = max(departure_date - timedelta(days=14), today)
-        range_end = departure_date + timedelta(days=14)
+        range_start = max(departure_date - timedelta(days=_PREDICTION_WINDOW_DAYS), today)
+        range_end = departure_date + timedelta(days=_PREDICTION_WINDOW_DAYS)
 
         result = await self.db.execute(
             select(Prediction)
@@ -112,7 +114,7 @@ class RecommendationService:
         return None, None
 
     def _determine_signal(self, pred: Prediction) -> str:
-        has_confidence = pred.confidence_score and pred.confidence_score > Decimal("0.6")
+        has_confidence = pred.confidence_score and pred.confidence_score > _CONFIDENCE_THRESHOLD
         if pred.price_direction == "UP" and has_confidence:
             # Price going up → buy now before it gets more expensive
             return "BUY"
