@@ -342,7 +342,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="py-6">
         <div className="max-w-7xl mx-auto px-6 text-center text-sm text-[var(--muted-foreground)]">
-          Farenheit &mdash; Fare + Fahrenheit. 가격의 온도를 측정합니다.
+          Farenheit &mdash; Fare + Fahrenheit
         </div>
       </footer>
     </div>
