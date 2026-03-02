@@ -91,7 +91,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="border-b border-[var(--border)]">
+      <header>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">
             <span className="text-farenheit-500">Faren</span>
@@ -99,10 +99,10 @@ export default function HomePage() {
           </h1>
           <nav className="flex gap-4">
             <Link
-              href="/dashboard"
+              href="/search"
               className="px-4 py-2 rounded-lg bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors text-sm font-medium"
             >
-              대시보드
+              검색하기
             </Link>
           </nav>
         </div>
@@ -348,7 +348,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--border)] py-6">
+      <footer className="py-6">
         <div className="max-w-7xl mx-auto px-6 text-center text-sm text-[var(--muted-foreground)]">
           Farenheit &mdash; Fare + Fahrenheit. 가격의 온도를 측정합니다.
         </div>

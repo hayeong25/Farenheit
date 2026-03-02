@@ -25,10 +25,10 @@ export default function NotFound() {
             홈으로 돌아가기
           </Link>
           <Link
-            href="/dashboard"
+            href="/search"
             className="px-6 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium hover:bg-[var(--muted)] transition-colors text-center"
           >
-            대시보드로 이동
+            항공편 검색
           </Link>
         </div>
       </div>
