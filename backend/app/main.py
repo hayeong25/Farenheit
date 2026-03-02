@@ -14,6 +14,8 @@ from app.models.base import Base
 
 logger = logging.getLogger(__name__)
 
+_SLOW_REQUEST_THRESHOLD_MS = 1000
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -43,7 +45,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         start = time.monotonic()
         response = await call_next(request)
         elapsed_ms = (time.monotonic() - start) * 1000
-        if elapsed_ms > 1000:
+        if elapsed_ms > _SLOW_REQUEST_THRESHOLD_MS:
             logger.warning(
                 f"Slow request: {request.method} {request.url.path} "
                 f"-> {response.status_code} ({elapsed_ms:.0f}ms)"
