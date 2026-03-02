@@ -48,8 +48,7 @@ function RecommendationsContent() {
   const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState(searchParams.get("date") || "");
   const cabinParam = searchParams.get("cabin") || "ECONOMY";
-  const validCabins: readonly string[] = VALID_CABIN_CLASSES;
-  const [cabinClass] = useState(validCabins.includes(cabinParam) ? cabinParam : "ECONOMY");
+  const cabinClass = (VALID_CABIN_CLASSES as readonly string[]).includes(cabinParam) ? cabinParam : "ECONOMY";
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
