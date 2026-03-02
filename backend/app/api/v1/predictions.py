@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG, MAX_FUTURE_DAYS
 from app.db.session import get_db
 from app.models.route import Route
 from app.schemas.prediction import PredictionResponse, HeatmapResponse
@@ -35,7 +35,7 @@ async def get_prediction(
     today = datetime.now(timezone.utc).date()
     if departure_date < today:
         raise HTTPException(status_code=400, detail=DATE_PAST_MSG)
-    if departure_date > today + timedelta(days=365):
+    if departure_date > today + timedelta(days=MAX_FUTURE_DAYS):
         raise HTTPException(status_code=400, detail=DATE_TOO_FAR_MSG)
 
     # Resolve route_id from origin/dest if not provided

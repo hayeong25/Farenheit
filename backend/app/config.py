@@ -41,3 +41,4 @@ IATA_CODE_CONSTRAINTS = {"min_length": 3, "max_length": 3, "pattern": r"^[A-Za-z
 SAME_ORIGIN_DEST_MSG = "출발지와 도착지가 같습니다."
 DATE_PAST_MSG = "출발일은 오늘 또는 이후여야 합니다."
 DATE_TOO_FAR_MSG = "출발일은 1년 이내여야 합니다."
+MAX_FUTURE_DAYS = 365

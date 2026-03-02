@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG, MAX_FUTURE_DAYS
 from app.db.session import get_db
 from app.schemas.recommendation import RecommendationResponse
 from app.services.recommendation_service import RecommendationService
@@ -29,7 +29,7 @@ async def get_recommendation(
     today = datetime.now(timezone.utc).date()
     if departure_date < today:
         raise HTTPException(status_code=400, detail=DATE_PAST_MSG)
-    if departure_date > today + timedelta(days=365):
+    if departure_date > today + timedelta(days=MAX_FUTURE_DAYS):
         raise HTTPException(status_code=400, detail=DATE_TOO_FAR_MSG)
     service = RecommendationService(db)
     return await service.get_recommendation(origin, dest, departure_date, cabin_class)
