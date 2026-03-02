@@ -492,7 +492,7 @@ function SearchContent() {
                   {minPrice > 0 && ` | 최저가 ${formatPrice(minPrice)}`}
                 </p>
                 {dataSource === "cached" && (
-                  <p className="text-xs text-yellow-600 mt-0.5">
+                  <p role="status" className="text-xs text-yellow-600 mt-0.5">
                     실시간 조회 실패 — 이전에 수집된 캐시 데이터입니다
                   </p>
                 )}

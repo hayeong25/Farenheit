@@ -1,6 +1,6 @@
 export default function DashboardLoading() {
   return (
-    <div className="space-y-6 animate-pulse">
+    <div aria-busy="true" aria-label="페이지 로딩 중" className="space-y-6 animate-pulse">
       {/* Title skeleton */}
       <div className="h-8 w-48 bg-[var(--muted)] rounded-lg" />
 
