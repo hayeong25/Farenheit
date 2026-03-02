@@ -7,15 +7,27 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from pipeline.collectors.amadeus_collector import AmadeusCollector
+from pipeline.collectors.travelpayouts_collector import TravelpayoutsCollector
 from pipeline.collectors.base import PriceObservation
 from pipeline.db import session_factory as _session_factory
 
 logger = logging.getLogger(__name__)
 
+# Rate limiting
+_DELAY_BETWEEN_DATES = 0.3
+_DELAY_BETWEEN_ROUTES = 0.5
+
+# Departure date ranges: (start_day, end_day, step)
+_DATE_RANGES = [
+    (7, 31, 3),     # 7-30 days: every 3 days (dense near-term)
+    (31, 61, 5),    # 31-60 days: every 5 days
+    (61, 121, 7),   # 61-120 days: weekly
+    (121, 181, 10), # 121-180 days: every 10 days
+]
+
 
 async def _collect_route(
-    collector: AmadeusCollector,
+    collector: TravelpayoutsCollector,
     origin: str,
     destination: str,
     departure_dates: list[date],
@@ -34,7 +46,7 @@ async def _collect_route(
             logger.error(f"Failed to collect {origin}->{destination} on {dep_date}: {e}", exc_info=True)
         # Rate limit between departure date API calls
         if i < len(departure_dates) - 1:
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(_DELAY_BETWEEN_DATES)
 
     return all_observations
 
@@ -110,7 +122,7 @@ async def collect_all_routes_async() -> dict:
     from app.models.route import Route
 
     session_factory = _session_factory
-    collector = AmadeusCollector()
+    collector = TravelpayoutsCollector()
 
     # Get active routes
     async with session_factory() as session:
@@ -124,12 +136,12 @@ async def collect_all_routes_async() -> dict:
     # Generate departure dates (deduplicated, sorted):
     # - 7-30 days: every 3 days (dense near-term data for accuracy)
     # - 31-60 days out: every 5 days
-    # - 61-90 days out: weekly
+    # - 61-120 days out: weekly
+    # - 121-180 days out: every 10 days
     today = datetime.now(timezone.utc).date()
-    date_set = set()
-    date_set.update(today + timedelta(days=d) for d in range(7, 31, 3))
-    date_set.update(today + timedelta(days=d) for d in range(31, 61, 5))
-    date_set.update(today + timedelta(days=d) for d in range(61, 91, 7))
+    date_set: set[date] = set()
+    for start, end, step in _DATE_RANGES:
+        date_set.update(today + timedelta(days=d) for d in range(start, end, step))
     departure_dates = sorted(date_set)
 
     all_observations: list[PriceObservation] = []
@@ -140,7 +152,7 @@ async def collect_all_routes_async() -> dict:
         all_observations.extend(observations)
         # Rate limit between routes
         if i < len(routes) - 1:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(_DELAY_BETWEEN_ROUTES)
 
     # Store in database
     stored = await _store_observations(session_factory, all_observations)
