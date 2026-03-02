@@ -349,7 +349,7 @@ function AlertsContent() {
             {lastCollected && (
               <p className="text-xs mt-2 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                <span className="text-green-600 font-medium">
+                <span className="text-green-600 dark:text-green-400 font-medium">
                   마지막 수집: {formatRelativeTime(lastCollected)}
                 </span>
               </p>

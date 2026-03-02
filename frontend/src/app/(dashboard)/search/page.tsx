@@ -766,7 +766,7 @@ function SearchContent() {
                     title={`현재 최저가: ${formatPrice(currentMin)}`}
                   />
                 </div>
-                <p className={`text-xs mt-2 font-medium ${isGoodPrice ? "text-green-600" : "text-yellow-600"}`}>
+                <p className={`text-xs mt-2 font-medium ${isGoodPrice ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}`}>
                   {isGoodPrice
                     ? `현재 최저가(${formatPrice(currentMin)})는 평균보다 저렴합니다`
                     : `현재 최저가(${formatPrice(currentMin)})는 평균보다 높습니다`}

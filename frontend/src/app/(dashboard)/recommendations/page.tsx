@@ -303,7 +303,7 @@ function RecommendationsContent() {
             {recommendation.predicted_low != null && Number.isFinite(Number(recommendation.predicted_low)) && (
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">예측 최저가</p>
-                <p className="text-lg font-bold text-green-600">{formatPrice(Number(recommendation.predicted_low))}</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatPrice(Number(recommendation.predicted_low))}</p>
               </div>
             )}
             {recommendation.best_airline && (
@@ -315,7 +315,7 @@ function RecommendationsContent() {
             {recommendation.confidence != null && Number.isFinite(recommendation.confidence) && recommendation.confidence > 0 && (() => {
               const pct = Math.round(recommendation.confidence * 100);
               const label = pct >= 85 ? "높음" : pct >= 60 ? "보통" : "낮음";
-              const color = pct >= 85 ? "text-green-600" : pct >= 60 ? "text-yellow-600" : "text-red-600";
+              const color = pct >= 85 ? "text-green-600 dark:text-green-400" : pct >= 60 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400";
               return (
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">신뢰도</p>

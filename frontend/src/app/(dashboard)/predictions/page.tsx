@@ -296,7 +296,7 @@ function PredictionsContent() {
             {prediction.confidence_score != null && Number.isFinite(Number(prediction.confidence_score)) && (() => {
               const pct = Math.round(Number(prediction.confidence_score) * 100);
               const label = pct >= 85 ? "높음" : pct >= 60 ? "보통" : "낮음";
-              const color = pct >= 85 ? "text-green-600" : pct >= 60 ? "text-yellow-600" : "text-red-600";
+              const color = pct >= 85 ? "text-green-600 dark:text-green-400" : pct >= 60 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400";
               return (
                 <div>
                   <p className="text-xs text-[var(--muted-foreground)]">신뢰도</p>
@@ -346,7 +346,7 @@ function PredictionsContent() {
                       <td className="py-2 pr-4">
                         <span className="font-medium">{fp.date.slice(5)}</span>
                         {isSelected && <span className="text-xs text-farenheit-500 ml-1.5">선택</span>}
-                        {isLowest && <span className="text-xs text-green-600 ml-1.5">최저</span>}
+                        {isLowest && <span className="text-xs text-green-600 dark:text-green-400 ml-1.5">최저</span>}
                       </td>
                       <td className={`text-right py-2 px-4 font-semibold ${isLowest ? "text-green-600 dark:text-green-400" : ""}`}>
                         {formatPrice(fp.predicted_price)}
