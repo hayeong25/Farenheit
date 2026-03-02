@@ -7,6 +7,8 @@ import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
 import { formatDate, formatPrice, formatRelativeTime, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
 
+const MAX_PRICE_DIGITS = 12;
+
 
 // Cache for resolved IATA → city names (persists across re-renders)
 const cityNameCache: Record<string, string> = {};
@@ -466,7 +468,7 @@ function AlertsContent() {
                   onChange={(e) => {
                     const val = e.target.value;
                     // Prevent absurdly long inputs
-                    if (val.length > 12) return;
+                    if (val.length > MAX_PRICE_DIGITS) return;
                     setTargetPrice(val);
                   }}
                   placeholder="예: 500000"
