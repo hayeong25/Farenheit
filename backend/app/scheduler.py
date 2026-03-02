@@ -27,7 +27,7 @@ def _run_collect_prices() -> None:
         elapsed = time.monotonic() - start
         logger.info(f"Scheduler: Collection complete in {elapsed:.1f}s - {result}")
         if elapsed > _SLOW_JOB_THRESHOLD_SECS:
-            logger.warning(f"Scheduler: Collection took {elapsed:.0f}s (>5min)")
+            logger.warning(f"Scheduler: Collection took {elapsed:.0f}s (>{_SLOW_JOB_THRESHOLD_SECS}s)")
     except Exception as e:
         elapsed = time.monotonic() - start
         logger.error(f"Scheduler: Collection failed after {elapsed:.1f}s - {e}")

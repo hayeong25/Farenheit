@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef, useCallback, useId } from "react";
 import { API_BASE, type Airport } from "@/lib/api-client";
 
+const MAX_RESULTS = 15;
+const DEBOUNCE_MS = 250;
+
 interface AirportSearchProps {
   label: string;
   placeholder: string;
@@ -69,7 +72,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
       });
       if (res.ok) {
         const data: Airport[] = await res.json();
-        setResults(data.slice(0, 15));
+        setResults(data.slice(0, MAX_RESULTS));
         setIsOpen(true);
         setHighlightIdx(-1);
       } else {
@@ -101,7 +104,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
     if (debounceRef.current) clearTimeout(debounceRef.current);
     // Don't search during IME composition (Korean input)
     if (!composingRef.current) {
-      debounceRef.current = setTimeout(() => searchAirports(val), 250);
+      debounceRef.current = setTimeout(() => searchAirports(val), DEBOUNCE_MS);
     }
   };
 
@@ -156,7 +159,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
             // Trigger search after composition ends
             const val = (e.target as HTMLInputElement).value;
             if (debounceRef.current) clearTimeout(debounceRef.current);
-            debounceRef.current = setTimeout(() => searchAirports(val), 250);
+            debounceRef.current = setTimeout(() => searchAirports(val), DEBOUNCE_MS);
           }}
           placeholder={placeholder}
           autoComplete="off"
