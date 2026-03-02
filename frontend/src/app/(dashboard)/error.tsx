@@ -14,11 +14,12 @@ export default function DashboardError({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
+    <div role="alert" className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
       <div className="flex flex-col items-center gap-5 max-w-md text-center">
         {/* Icon */}
         <div className="w-20 h-20 rounded-full bg-farenheit-50 flex items-center justify-center ring-4 ring-farenheit-100">
           <svg
+            aria-hidden="true"
             className="w-10 h-10 text-farenheit-500"
             fill="none"
             viewBox="0 0 24 24"

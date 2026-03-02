@@ -19,6 +19,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
         {/* Icon */}
         <div className="w-20 h-20 rounded-full bg-farenheit-50 flex items-center justify-center ring-4 ring-farenheit-100">
           <svg
+            aria-hidden="true"
             className="w-10 h-10 text-farenheit-500"
             fill="none"
             viewBox="0 0 24 24"
