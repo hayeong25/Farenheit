@@ -525,6 +525,14 @@ function PredictionsContent() {
               const DOW_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
               const selectedDate = date;
 
+              // Find cheapest and most expensive dates
+              let cheapestDate = "", expensiveDate = "";
+              let cheapestP = Infinity, expensiveP = -Infinity;
+              for (const c of heatmap.cells) {
+                if (c.predicted_price > 0 && c.predicted_price < cheapestP) { cheapestP = c.predicted_price; cheapestDate = c.departure_date; }
+                if (c.predicted_price > expensiveP) { expensiveP = c.predicted_price; expensiveDate = c.departure_date; }
+              }
+
               return (
                 <div>
                   {/* Day-of-week header */}
@@ -555,17 +563,39 @@ function PredictionsContent() {
                       return (
                         <div
                           key={idx}
-                          className={`relative bg-[var(--background)] h-10 flex flex-col justify-between p-1 cursor-default transition-all ${
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            setDate(cell.departure_date);
+                            handlePredict(originCode, destCode, cell.departure_date);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setDate(cell.departure_date);
+                              handlePredict(originCode, destCode, cell.departure_date);
+                            }
+                          }}
+                          className={`relative bg-[var(--background)] h-10 flex flex-col justify-between p-1 cursor-pointer transition-all hover:ring-2 hover:ring-inset hover:ring-farenheit-300 hover:z-10 ${
                             isSelected ? "z-10 ring-2 ring-inset ring-farenheit-500" : ""
                           }`}
                           style={{ backgroundColor: `rgba(${r}, ${g}, 60, ${isSelected ? opacity + 0.08 : opacity})` }}
-                          title={`${cell.departure_date}: ${formatPrice(cell.predicted_price)}`}
+                          title={`${cell.departure_date}: ${formatPrice(cell.predicted_price)} — 클릭하여 예측 조회`}
+                          aria-label={`${cell.departure_date}: ${formatPrice(cell.predicted_price)}`}
                         >
-                          <span className={`text-[10px] leading-none font-medium ${
-                            isSun ? "text-red-500 dark:text-red-400" : isSat ? "text-blue-500 dark:text-blue-400" : "text-[var(--foreground)]"
-                          }`}>
-                            {day}
-                          </span>
+                          <div className="flex items-center gap-0.5">
+                            <span className={`text-[10px] leading-none font-medium ${
+                              isSun ? "text-red-500 dark:text-red-400" : isSat ? "text-blue-500 dark:text-blue-400" : "text-[var(--foreground)]"
+                            }`}>
+                              {day}
+                            </span>
+                            {cell.departure_date === cheapestDate && range > 0 && (
+                              <span className="w-1 h-1 rounded-full bg-green-500" title="이 달 최저가" />
+                            )}
+                            {cell.departure_date === expensiveDate && range > 0 && (
+                              <span className="w-1 h-1 rounded-full bg-red-500" title="이 달 최고가" />
+                            )}
+                          </div>
                           <span className="text-[10px] leading-none font-semibold text-[var(--foreground)] opacity-65 text-right">
                             {(cell.predicted_price / 10000).toFixed(cell.predicted_price >= 1000000 ? 0 : 1)}
                             <span className="text-[8px] font-normal">만</span>
@@ -574,6 +604,19 @@ function PredictionsContent() {
                       );
                     })}
                   </div>
+                  {/* Min/Max summary */}
+                  {range > 0 && (
+                    <div className="flex items-center justify-between mt-2 px-1 text-[10px] text-[var(--muted-foreground)]">
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        최저 {cheapestDate.slice(8)}일 {formatPrice(cheapestP)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                        최고 {expensiveDate.slice(8)}일 {formatPrice(expensiveP)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })()}
