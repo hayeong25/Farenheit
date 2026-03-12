@@ -52,3 +52,11 @@ DATE_TOO_FAR_MSG = "출발일은 1년 이내여야 합니다."
 RETURN_BEFORE_DEPART_MSG = "귀국일은 출발일 이후여야 합니다."
 RETURN_DATE_TOO_FAR_MSG = "귀국일은 1년 이내여야 합니다."
 MAX_FUTURE_DAYS = 365
+
+# API error messages
+EMAIL_ALREADY_EXISTS_MSG = "이미 등록된 이메일입니다."
+INVALID_CREDENTIALS_MSG = "이메일 또는 비밀번호가 올바르지 않습니다."
+INVALID_AIRPORT_OR_ROUTE_MSG = "유효하지 않은 공항 코드이거나 노선 생성에 실패했습니다."
+ALERT_NOT_FOUND_MSG = "알림을 찾을 수 없습니다."
+ALERT_DELETE_FAILED_MSG = "알림 삭제에 실패했습니다."
+INVALID_MONTH_FORMAT_MSG = "유효하지 않은 월 형식입니다."

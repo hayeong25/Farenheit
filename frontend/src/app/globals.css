@@ -42,6 +42,13 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* ring-offset-color follows background in dark mode */
+*,
+*::before,
+*::after {
+  --tw-ring-offset-color: var(--background);
+}
+
 /* Scrollbar styling (Firefox) */
 * {
   scrollbar-width: thin;

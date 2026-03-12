@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG, MAX_FUTURE_DAYS
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG, MAX_FUTURE_DAYS, INVALID_MONTH_FORMAT_MSG
 from app.db.session import get_db
 from app.models.route import Route
 from app.schemas.prediction import PredictionResponse, HeatmapResponse
@@ -84,8 +84,8 @@ async def get_heatmap(
     try:
         year_val, mon_val = int(month[:4]), int(month[5:7])
     except (ValueError, IndexError):
-        raise HTTPException(status_code=400, detail="유효하지 않은 월 형식입니다.")
+        raise HTTPException(status_code=400, detail=INVALID_MONTH_FORMAT_MSG)
     if not (2020 <= year_val <= 2099 and 1 <= mon_val <= 12):
-        raise HTTPException(status_code=400, detail="유효하지 않은 월 형식입니다.")
+        raise HTTPException(status_code=400, detail=INVALID_MONTH_FORMAT_MSG)
     service = PredictionService(db)
     return await service.get_heatmap(origin, dest, month, cabin_class)

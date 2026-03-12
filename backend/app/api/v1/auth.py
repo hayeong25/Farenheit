@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import EMAIL_ALREADY_EXISTS_MSG, INVALID_CREDENTIALS_MSG
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
 from app.services.auth_service import AuthService
@@ -17,7 +18,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)) ->
     user = await service.register(user_data)
     if not user:
         logger.warning(f"Registration failed - duplicate email: {user_data.email}")
-        raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다.")
+        raise HTTPException(status_code=400, detail=EMAIL_ALREADY_EXISTS_MSG)
     logger.info(f"New user registered: {user_data.email}")
     return user
 
@@ -28,5 +29,5 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)) -> T
     token = await service.login(credentials)
     if not token:
         logger.warning(f"Failed login attempt: {credentials.email}")
-        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
+        raise HTTPException(status_code=401, detail=INVALID_CREDENTIALS_MSG)
     return token

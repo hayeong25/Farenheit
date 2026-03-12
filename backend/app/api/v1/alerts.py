@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import INVALID_AIRPORT_OR_ROUTE_MSG, ALERT_NOT_FOUND_MSG, ALERT_DELETE_FAILED_MSG
 from app.db.session import get_db
 from app.models.alert import PriceAlert
 from app.models.route import Route
@@ -91,7 +92,7 @@ async def create_alert(
                 await asyncio.sleep(delay)
                 delay *= 2
             if not route:
-                raise HTTPException(status_code=400, detail="유효하지 않은 공항 코드이거나 노선 생성에 실패했습니다.")
+                raise HTTPException(status_code=400, detail=INVALID_AIRPORT_OR_ROUTE_MSG)
 
     alert = PriceAlert(
         user_id=None,
@@ -127,11 +128,11 @@ async def delete_alert(
     )
     alert = result.scalar_one_or_none()
     if not alert:
-        raise HTTPException(status_code=404, detail="알림을 찾을 수 없습니다.")
+        raise HTTPException(status_code=404, detail=ALERT_NOT_FOUND_MSG)
     try:
         await db.delete(alert)
         await db.commit()
     except SQLAlchemyError as e:
         logger.error(f"Failed to delete alert {alert_id}: {e}", exc_info=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail="알림 삭제에 실패했습니다.")
+        raise HTTPException(status_code=500, detail=ALERT_DELETE_FAILED_MSG)
