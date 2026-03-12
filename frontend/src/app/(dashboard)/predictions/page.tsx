@@ -438,7 +438,11 @@ function PredictionsContent() {
           {/* Quick action links */}
           <div className="px-6 pb-5 flex items-center gap-3 flex-wrap">
             <Link
-              href={`/search?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`}
+              href={(() => {
+                const p = new URLSearchParams({ origin: originCode, dest: destCode, date });
+                if (cabinClass !== "ECONOMY") p.set("cabin", cabinClass);
+                return `/search?${p.toString()}`;
+              })()}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors"
             >
               <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -447,7 +451,11 @@ function PredictionsContent() {
               항공편 검색
             </Link>
             <Link
-              href={`/recommendations?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`}
+              href={(() => {
+                const p = new URLSearchParams({ origin: originCode, dest: destCode, date });
+                if (cabinClass !== "ECONOMY") p.set("cabin", cabinClass);
+                return `/recommendations?${p.toString()}`;
+              })()}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors"
             >
               <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

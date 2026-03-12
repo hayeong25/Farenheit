@@ -537,13 +537,21 @@ function SearchContent() {
               <span className="text-xs text-[var(--muted-foreground)]">실제 가격은 예약 시점에 따라 다를 수 있습니다</span>
               <span className="text-xs text-[var(--muted-foreground)]">|</span>
               <Link
-                href={`/predictions?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`}
+                href={(() => {
+                  const p = new URLSearchParams({ origin: originCode, dest: destCode, date });
+                  if (cabinClass !== "ECONOMY") p.set("cabin", cabinClass);
+                  return `/predictions?${p.toString()}`;
+                })()}
                 className="text-xs text-farenheit-500 hover:text-farenheit-600 font-medium"
               >
                 가격 예측
               </Link>
               <Link
-                href={`/recommendations?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`}
+                href={(() => {
+                  const p = new URLSearchParams({ origin: originCode, dest: destCode, date });
+                  if (cabinClass !== "ECONOMY") p.set("cabin", cabinClass);
+                  return `/recommendations?${p.toString()}`;
+                })()}
                 className="text-xs text-farenheit-500 hover:text-farenheit-600 font-medium"
               >
                 구매 추천
