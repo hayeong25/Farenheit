@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { formatPrice, saveRecentSearch, getLocalToday, getDateOneYearLater, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, RETURN_BEFORE_DEPART_MSG, NETWORK_ERROR_MSG } from "@/lib/utils";
+import { formatPrice, saveRecentSearch, getRecentSearches, getLocalToday, getDateOneYearLater, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, RETURN_BEFORE_DEPART_MSG, NETWORK_ERROR_MSG, type RecentSearch } from "@/lib/utils";
 
 const VALID_STOPS = ["any", "0", "1", "2"];
 const VALID_SORTS = ["price", "price_desc", "duration", "stops"];
@@ -81,6 +81,7 @@ function SearchContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [searchInfo, setSearchInfo] = useState<{
     origin: string; dest: string; date: string; returnDate?: string; tripType: string;
   } | null>(null);
@@ -219,6 +220,7 @@ function SearchContent() {
     if (o && d && dt && !searched) {
       handleSearch(o, d, dt, cabinClass, maxStops, sortBy, rt || undefined);
     }
+    setRecentSearches(getRecentSearches());
   }, [searchParams, searched, handleSearch, cabinClass, maxStops, sortBy]);
 
   // Re-search when filters change (including cabin class) - skip on initial mount
@@ -880,22 +882,61 @@ function SearchContent() {
 
       {/* Initial State */}
       {!isLoading && !searched && (
-        <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
-          <svg aria-hidden="true" className="w-12 h-12 mx-auto mb-4 text-farenheit-300 dark:text-farenheit-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-          </svg>
-          <p className="text-lg mb-2 text-[var(--foreground)]">출발지, 도착지, 날짜를 입력하고 검색하세요</p>
-          <p className="text-sm">전 세계 항공편 가격을 실시간으로 검색합니다</p>
-          <div className="flex items-center justify-center gap-4 mt-6 text-xs">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-              Travelpayouts
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              AirLabs
-            </span>
+        <div className="space-y-4">
+          <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
+            <svg aria-hidden="true" className="w-12 h-12 mx-auto mb-4 text-farenheit-300 dark:text-farenheit-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+            </svg>
+            <p className="text-lg mb-2 text-[var(--foreground)]">출발지, 도착지, 날짜를 입력하고 검색하세요</p>
+            <p className="text-sm">전 세계 항공편 가격을 실시간으로 검색합니다</p>
+            <div className="flex items-center justify-center gap-4 mt-6 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                Travelpayouts
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                AirLabs
+              </span>
+            </div>
           </div>
+
+          {/* Recent Searches */}
+          {recentSearches.length > 0 && (
+            <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
+              <h3 className="text-sm font-semibold mb-3">최근 검색</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {recentSearches.slice(0, 4).map((s, i) => {
+                  const p = new URLSearchParams({ origin: s.origin, dest: s.dest, date: s.date });
+                  if (s.returnDate) p.set("return_date", s.returnDate);
+                  if (s.cabinClass !== "ECONOMY") p.set("cabin", s.cabinClass);
+                  return (
+                    <Link
+                      key={`${s.origin}-${s.dest}-${s.date}-${i}`}
+                      href={`/search?${p.toString()}`}
+                      className="flex items-center justify-between p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50/50 dark:hover:bg-farenheit-950/50 transition-all group"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {s.originDisplay || s.origin} → {s.destDisplay || s.dest}
+                        </p>
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          {s.date.slice(5).replace("-", "/")}
+                          {s.returnDate && ` ~ ${s.returnDate.slice(5).replace("-", "/")}`}
+                          {s.cabinClass !== "ECONOMY" && ` · ${CABIN_CLASS_LABELS[s.cabinClass] || s.cabinClass}`}
+                        </p>
+                      </div>
+                      {s.minPrice != null && s.minPrice > 0 && (
+                        <span className="text-sm font-medium text-farenheit-500 shrink-0 ml-2">
+                          {formatPrice(s.minPrice)}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

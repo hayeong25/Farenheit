@@ -42,7 +42,7 @@ export default function DashboardPage() {
           ))}
         </div>
       ) : stats ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-stagger">
           {[
             { label: "모니터링 노선", value: String(stats.routes), color: "text-farenheit-500", bgColor: "bg-farenheit-50 dark:bg-farenheit-950",
               icon: <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /> },
