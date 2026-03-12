@@ -43,22 +43,28 @@ export default function DashboardPage() {
         </div>
       ) : stats ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
-            <p className="text-xs text-[var(--muted-foreground)] mb-1">모니터링 노선</p>
-            <p className="text-3xl font-bold">{stats.routes}</p>
-          </div>
-          <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
-            <p className="text-xs text-[var(--muted-foreground)] mb-1">수집된 가격</p>
-            <p className="text-3xl font-bold">{stats.prices.toLocaleString()}</p>
-          </div>
-          <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
-            <p className="text-xs text-[var(--muted-foreground)] mb-1">예측 데이터</p>
-            <p className="text-3xl font-bold">{stats.predictions.toLocaleString()}</p>
-          </div>
-          <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
-            <p className="text-xs text-[var(--muted-foreground)] mb-1">등록 공항</p>
-            <p className="text-3xl font-bold">{stats.airports}</p>
-          </div>
+          {[
+            { label: "모니터링 노선", value: String(stats.routes), color: "text-farenheit-500", bgColor: "bg-farenheit-50 dark:bg-farenheit-950",
+              icon: <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /> },
+            { label: "수집된 가격", value: stats.prices.toLocaleString(), color: "text-green-500", bgColor: "bg-green-50 dark:bg-green-950/30",
+              icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /> },
+            { label: "예측 데이터", value: stats.predictions.toLocaleString(), color: "text-blue-500", bgColor: "bg-blue-50 dark:bg-blue-950/30",
+              icon: <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /> },
+            { label: "등록 공항", value: String(stats.airports), color: "text-purple-500", bgColor: "bg-purple-50 dark:bg-purple-950/30",
+              icon: <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /> },
+          ].map(({ label, value, color, bgColor, icon }) => (
+            <div key={label} className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)] hover:shadow-sm transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-7 h-7 rounded-lg ${bgColor} flex items-center justify-center`}>
+                  <svg aria-hidden="true" className={`w-3.5 h-3.5 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    {icon}
+                  </svg>
+                </div>
+                <p className="text-xs text-[var(--muted-foreground)]">{label}</p>
+              </div>
+              <p className="text-3xl font-bold">{value}</p>
+            </div>
+          ))}
         </div>
       ) : null}
 
@@ -137,10 +143,17 @@ export default function DashboardPage() {
                   href={`/search?${new URLSearchParams({ origin: alert.origin || "", dest: alert.destination || "", date: alert.departure_date || "" }).toString()}`}
                   className="flex items-center justify-between p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/30 dark:bg-green-950/10 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors"
                 >
-                  <span className="text-sm font-medium">
-                    {alert.origin} → {alert.destination}
-                  </span>
-                  <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium">
+                      {alert.origin} → {alert.destination}
+                    </span>
+                    {alert.departure_date && (
+                      <span className="text-xs text-[var(--muted-foreground)] ml-2">
+                        {alert.departure_date.slice(5).replace("-", "/")} 출발
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-sm text-green-600 dark:text-green-400 font-medium shrink-0">
                     {formatPrice(Number(alert.target_price))} 도달
                   </span>
                 </Link>
