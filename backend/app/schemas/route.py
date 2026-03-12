@@ -8,6 +8,7 @@ class RouteResponse(BaseModel):
     origin_city: str | None = None
     dest_city: str | None = None
     is_active: bool
+    min_price: float | None = None
 
     model_config = {"from_attributes": True}
 

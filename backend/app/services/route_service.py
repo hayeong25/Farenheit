@@ -1,10 +1,15 @@
-from sqlalchemy import select, or_, case, literal
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import select, or_, case, literal, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.models.airport import Airport
+from app.models.flight_price import FlightPrice
 from app.models.route import Route
 from app.schemas.route import RouteResponse, AirportSearchResponse
+
+_RECENT_PRICE_DAYS = 7
 
 # Major international airports get priority in search results
 MAJOR_AIRPORTS = {
@@ -48,6 +53,30 @@ class RouteService:
             .limit(limit)
         )
         rows = result.all()
+        if not rows:
+            return []
+
+        route_ids = [row[0].id for row in rows]
+
+        # Batch fetch min prices for all routes (recent 7 days)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        cutoff = now - timedelta(days=_RECENT_PRICE_DAYS)
+        price_result = await self.db.execute(
+            select(
+                FlightPrice.route_id,
+                func.min(FlightPrice.price_amount).label("min_price"),
+            )
+            .where(
+                FlightPrice.route_id.in_(route_ids),
+                FlightPrice.time >= cutoff,
+                FlightPrice.price_amount > 0,
+            )
+            .group_by(FlightPrice.route_id)
+        )
+        price_map: dict[int, float] = {}
+        for pr in price_result.all():
+            price_map[pr.route_id] = float(pr.min_price)
+
         responses = []
         for row in rows:
             route = row[0]
@@ -60,6 +89,7 @@ class RouteService:
                 origin_city=origin_city,
                 dest_city=dest_city,
                 is_active=route.is_active,
+                min_price=price_map.get(route.id),
             ))
         return responses
 

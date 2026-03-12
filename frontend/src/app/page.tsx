@@ -354,7 +354,7 @@ export default function HomePage() {
                       <svg aria-hidden="true" className="w-4 h-4 text-farenheit-400 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                       </svg>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">
                           {route.origin_city || route.origin_code} → {route.dest_city || route.dest_code}
                         </p>
@@ -362,6 +362,9 @@ export default function HomePage() {
                           {route.origin_code} - {route.dest_code}
                         </p>
                       </div>
+                      {route.min_price != null && route.min_price > 0 && (
+                        <span className="text-xs font-semibold text-farenheit-500 shrink-0">{formatPrice(Math.round(route.min_price))}</span>
+                      )}
                     </Link>
                   ))}
                 </div>

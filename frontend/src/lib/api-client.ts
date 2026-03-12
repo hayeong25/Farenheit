@@ -189,6 +189,7 @@ export interface RouteResponse {
   origin_city: string | null;
   dest_city: string | null;
   is_active: boolean;
+  min_price: number | null;
 }
 
 export interface AlertResponse {
