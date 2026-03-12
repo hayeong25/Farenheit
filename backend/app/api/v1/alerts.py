@@ -1,8 +1,9 @@
 import asyncio
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -10,6 +11,7 @@ from app.models.alert import PriceAlert
 from app.models.route import Route
 from app.schemas.alert import AlertCreate, AlertResponse
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 MAX_ALERTS_PER_REQUEST = 200
@@ -126,5 +128,10 @@ async def delete_alert(
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="알림을 찾을 수 없습니다.")
-    await db.delete(alert)
-    await db.commit()
+    try:
+        await db.delete(alert)
+        await db.commit()
+    except SQLAlchemyError as e:
+        logger.error(f"Failed to delete alert {alert_id}: {e}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="알림 삭제에 실패했습니다.")

@@ -15,6 +15,7 @@ _SOURCE = "travelpayouts"
 _COLLECT_TIMEOUT = 30.0
 _HEALTH_CHECK_TIMEOUT = 10.0
 _RETRY_BASE_DELAY = 1.0
+_MAX_PRICE_KRW = 50_000_000  # 5천만원 초과 가격은 데이터 오류로 판단
 
 
 class TravelpayoutsCollector(AbstractCollector):
@@ -109,7 +110,7 @@ class TravelpayoutsCollector(AbstractCollector):
         except (InvalidOperation, TypeError):
             logger.warning(f"Invalid price value: {offer.get('price')}")
             return None
-        if price <= 0:
+        if price <= 0 or price > _MAX_PRICE_KRW:
             return None
 
         airline_code = offer.get("airline", "")
