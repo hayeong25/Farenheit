@@ -182,6 +182,20 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
             selectedCode ? "border-farenheit-300" : "border-[var(--border)]"
           }`}
         />
+        {isLoading && !selectedCode ? (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <svg aria-hidden="true" className="w-4 h-4 animate-spin text-[var(--muted-foreground)]" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-25" />
+              <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          </div>
+        ) : !selectedCode && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg aria-hidden="true" className="w-4 h-4 text-[var(--muted-foreground)] opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+          </div>
+        )}
         {selectedCode && (
           <button
             type="button"
