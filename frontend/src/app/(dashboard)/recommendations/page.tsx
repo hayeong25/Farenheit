@@ -380,7 +380,7 @@ function RecommendationsContent() {
                 </div>
                 {recommendation.predicted_low && (
                   <Link
-                    href={`/alerts?${new URLSearchParams({ origin: recommendation.origin, dest: recommendation.destination, target: String(Math.round(recommendation.predicted_low)), date: recommendation.departure_date }).toString()}`}
+                    href={(() => { const p = new URLSearchParams({ origin: recommendation.origin, dest: recommendation.destination, target: String(Math.round(recommendation.predicted_low)), date: recommendation.departure_date }); if (cabinClass !== "ECONOMY") p.set("cabin", cabinClass); return `/alerts?${p.toString()}`; })()}
                     className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-yellow-600 text-white text-sm font-medium hover:bg-yellow-700 transition-colors"
                   >
                     <svg aria-hidden="true" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

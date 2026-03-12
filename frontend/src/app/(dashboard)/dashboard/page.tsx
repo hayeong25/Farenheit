@@ -140,7 +140,7 @@ export default function DashboardPage() {
               {triggeredAlerts.slice(0, 3).map(alert => (
                 <Link
                   key={alert.id}
-                  href={`/search?${new URLSearchParams({ origin: alert.origin || "", dest: alert.destination || "", date: alert.departure_date || "" }).toString()}`}
+                  href={(() => { const p = new URLSearchParams({ origin: alert.origin || "", dest: alert.destination || "", date: alert.departure_date || "" }); if (alert.cabin_class !== "ECONOMY") p.set("cabin", alert.cabin_class); return `/search?${p.toString()}`; })()}
                   className="flex items-center justify-between p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/30 dark:bg-green-950/10 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors"
                 >
                   <div className="min-w-0">
