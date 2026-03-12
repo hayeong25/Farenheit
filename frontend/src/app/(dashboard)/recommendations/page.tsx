@@ -451,7 +451,7 @@ function RecommendationsContent() {
           <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">먼저 항공편을 검색하면 가격 수집이 시작되고, 약 1시간 후 AI 분석이 가능합니다.</p>
           <Link
             href={originCode && destCode && date
-              ? `/search?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`
+              ? (() => { const p = new URLSearchParams({ origin: originCode, dest: destCode, date }); if (cabinClass !== "ECONOMY") p.set("cabin", cabinClass); return `/search?${p.toString()}`; })()
               : "/search"}
             className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 dark:bg-blue-700 text-white font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm"
           >

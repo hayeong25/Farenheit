@@ -476,7 +476,7 @@ function PredictionsContent() {
           </p>
           <Link
             href={originCode && destCode && date
-              ? `/search?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`
+              ? (() => { const p = new URLSearchParams({ origin: originCode, dest: destCode, date }); if (cabinClass !== "ECONOMY") p.set("cabin", cabinClass); return `/search?${p.toString()}`; })()
               : "/search"}
             className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
           >
