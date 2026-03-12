@@ -387,7 +387,7 @@ export default function HomePage() {
       {/* Features */}
       <section className="border-t border-[var(--border)]">
         <div className="max-w-7xl mx-auto px-6 py-10">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center animate-stagger">
             <div>
               <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-farenheit-50 dark:bg-farenheit-950 flex items-center justify-center">
                 <svg aria-hidden="true" className="w-5 h-5 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
