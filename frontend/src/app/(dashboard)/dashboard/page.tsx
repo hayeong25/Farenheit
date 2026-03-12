@@ -167,7 +167,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Link
           href="/search"
-          className="flex items-center gap-3 p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:shadow-sm transition-all"
+          className="flex items-center gap-3 p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:shadow-sm hover:-translate-y-0.5 transition-all focus:outline-none focus:ring-2 focus:ring-farenheit-500"
         >
           <div className="w-10 h-10 rounded-full bg-farenheit-50 dark:bg-farenheit-950 flex items-center justify-center">
             <svg aria-hidden="true" className="w-5 h-5 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -181,7 +181,7 @@ export default function DashboardPage() {
         </Link>
         <Link
           href="/predictions"
-          className="flex items-center gap-3 p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:shadow-sm transition-all"
+          className="flex items-center gap-3 p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:shadow-sm hover:-translate-y-0.5 transition-all focus:outline-none focus:ring-2 focus:ring-farenheit-500"
         >
           <div className="w-10 h-10 rounded-full bg-farenheit-50 dark:bg-farenheit-950 flex items-center justify-center">
             <svg aria-hidden="true" className="w-5 h-5 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -195,7 +195,7 @@ export default function DashboardPage() {
         </Link>
         <Link
           href="/recommendations"
-          className="flex items-center gap-3 p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:shadow-sm transition-all"
+          className="flex items-center gap-3 p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:shadow-sm hover:-translate-y-0.5 transition-all focus:outline-none focus:ring-2 focus:ring-farenheit-500"
         >
           <div className="w-10 h-10 rounded-full bg-farenheit-50 dark:bg-farenheit-950 flex items-center justify-center">
             <svg aria-hidden="true" className="w-5 h-5 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
