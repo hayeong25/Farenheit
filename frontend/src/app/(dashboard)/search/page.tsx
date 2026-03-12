@@ -858,7 +858,7 @@ function SearchContent() {
                           href={buildBookingUrl(originCode, destCode, String(offer.departure_date), isRoundTrip && offer.return_date ? String(offer.return_date) : null, offer.cabin_class, maxStops === "0")}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-farenheit-500 text-white hover:bg-farenheit-600 hover:shadow-md transition-all"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-farenheit-500 text-white hover:bg-farenheit-600 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
                         >
                           예약하기
                           <svg aria-hidden="true" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

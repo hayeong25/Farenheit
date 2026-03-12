@@ -80,7 +80,7 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete, cityNames }
         {isTriggered && alert.origin && alert.destination && (
           <Link
             href={(() => { const p = new URLSearchParams({ origin: alert.origin, dest: alert.destination, date: searchDate }); if (alert.cabin_class !== "ECONOMY") p.set("cabin", alert.cabin_class); return `/search?${p.toString()}`; })()}
-            className="text-sm text-white bg-farenheit-500 hover:bg-farenheit-600 px-4 py-1.5 rounded-lg font-medium transition-colors"
+            className="text-sm text-white bg-farenheit-500 hover:bg-farenheit-600 px-4 py-1.5 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
           >
             지금 검색
           </Link>
