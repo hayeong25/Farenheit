@@ -761,7 +761,7 @@ function SearchContent() {
                     key={offerKey}
                     aria-label={`${offer.airline_name || offer.airline_code} ${formatPrice(offer.price_amount, offer.currency)}`}
                     className={`bg-[var(--background)] rounded-xl p-5 border transition-all hover:shadow-md hover:-translate-y-0.5 ${
-                      isLowest ? "border-farenheit-300 dark:border-farenheit-700 ring-1 ring-farenheit-100 dark:ring-farenheit-900" : "border-[var(--border)]"
+                      isLowest ? "border-farenheit-300 dark:border-farenheit-700 ring-1 ring-farenheit-100 dark:ring-farenheit-900" : "border-[var(--border)] hover:border-farenheit-200 dark:hover:border-farenheit-800"
                     }`}
                   >
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
