@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { predictionsApi, routesApi, type PredictionResponse, type HeatmapResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, NETWORK_ERROR_MSG } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, formatPrice, getMissingFieldsMsg, getKoreanHolidays, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, NETWORK_ERROR_MSG } from "@/lib/utils";
 
 function PredictionsContent() {
   const searchParams = useSearchParams();
@@ -27,6 +27,7 @@ function PredictionsContent() {
   const [heatmap, setHeatmap] = useState<HeatmapResponse | null>(null);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [heatmapMonth, setHeatmapMonth] = useState("");
+  const [holidays, setHolidays] = useState<Map<string, string>>(new Map());
   const requestIdRef = useRef(0);
   const heatmapIdRef = useRef(0);
 
@@ -76,6 +77,9 @@ function PredictionsContent() {
       const hm = await predictionsApi.heatmap({ origin, dest, month, cabin_class: cabinClass });
       if (currentId !== heatmapIdRef.current) return;
       setHeatmap(hm);
+      // Load holidays for this month's year (non-blocking)
+      const yr = parseInt(month.slice(0, 4), 10);
+      if (yr) getKoreanHolidays(yr).then(h => setHolidays(h));
     } catch {
       if (currentId !== heatmapIdRef.current) return;
       setHeatmap(null);
@@ -648,10 +652,13 @@ function PredictionsContent() {
                         >
                           <div className="flex items-center gap-0.5">
                             <span className={`text-[10px] leading-none font-medium ${
-                              isSun ? "text-red-500 dark:text-red-400" : isSat ? "text-blue-500 dark:text-blue-400" : "text-[var(--foreground)]"
+                              (isSun || holidays.has(cell.departure_date)) ? "text-red-500 dark:text-red-400" : isSat ? "text-blue-500 dark:text-blue-400" : "text-[var(--foreground)]"
                             }`}>
                               {day}
                             </span>
+                            {holidays.has(cell.departure_date) && (
+                              <span className="w-1 h-1 rounded-full bg-orange-400" title={holidays.get(cell.departure_date)} />
+                            )}
                             {cell.departure_date === cheapestDate && range > 0 && (
                               <span className="w-1 h-1 rounded-full bg-green-500" title="이 달 최저가" />
                             )}
@@ -669,11 +676,17 @@ function PredictionsContent() {
                   </div>
                   {/* Min/Max summary */}
                   {range > 0 && (
-                    <div className="flex items-center justify-between mt-2 px-1 text-[10px] text-[var(--muted-foreground)]">
+                    <div className="flex items-center justify-between mt-2 px-1 text-[10px] text-[var(--muted-foreground)] flex-wrap gap-y-1">
                       <span className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                         최저 {cheapestDate.slice(8)}일 {formatPrice(cheapestP)}
                       </span>
+                      {holidays.size > 0 && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                          공휴일
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                         최고 {expensiveDate.slice(8)}일 {formatPrice(expensiveP)}
