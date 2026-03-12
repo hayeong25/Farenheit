@@ -873,11 +873,21 @@ function SearchContent() {
       {/* Initial State */}
       {!isLoading && !searched && (
         <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
-          <svg aria-hidden="true" className="w-12 h-12 mx-auto mb-4 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+          <svg aria-hidden="true" className="w-12 h-12 mx-auto mb-4 text-farenheit-300 dark:text-farenheit-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
           </svg>
-          <p className="text-lg mb-2">출발지, 도착지, 날짜를 입력하고 검색하세요</p>
+          <p className="text-lg mb-2 text-[var(--foreground)]">출발지, 도착지, 날짜를 입력하고 검색하세요</p>
           <p className="text-sm">전 세계 항공편 가격을 실시간으로 검색합니다</p>
+          <div className="flex items-center justify-center gap-4 mt-6 text-xs">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              Travelpayouts
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              AirLabs
+            </span>
+          </div>
         </div>
       )}
     </div>
