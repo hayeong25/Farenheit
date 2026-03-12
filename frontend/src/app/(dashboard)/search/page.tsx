@@ -461,7 +461,7 @@ function SearchContent() {
 
       {/* Loading */}
       {isLoading && (
-        <div className="space-y-3">
+        <div className="space-y-3" aria-busy="true" aria-label="검색 결과 로딩 중">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
               <div className="flex justify-between items-start">

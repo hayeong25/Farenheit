@@ -33,7 +33,7 @@ export default function DashboardPage() {
 
       {/* Stats Grid */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-busy="true" aria-label="통계 로딩 중">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
               <div className="h-3 w-16 rounded animate-shimmer mb-3" />
