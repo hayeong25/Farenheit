@@ -10,6 +10,10 @@ export const SAME_ORIGIN_DEST_MSG = "출발지와 도착지가 같습니다.";
 export const RETURN_BEFORE_DEPART_MSG = "귀국일은 출발일 이후여야 합니다.";
 export const NETWORK_ERROR_MSG = "서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.";
 export const AIRPORT_SEARCH_ERROR_MSG = "서버 연결에 실패했습니다. 다시 입력해주세요.";
+export const INVALID_PRICE_MSG = "유효한 목표 가격을 입력해주세요.";
+export const PRICE_TOO_HIGH_MSG = "목표 가격이 너무 큽니다.";
+export const ALERT_CREATED_MSG = "가격 알림이 설정되었습니다.";
+export const ALERT_DELETED_MSG = "알림이 삭제되었습니다.";
 
 export function formatPrice(amount: number, currency = "KRW"): string {
   if (!Number.isFinite(amount)) return "-";

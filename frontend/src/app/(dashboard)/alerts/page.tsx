@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
-import { formatDate, formatPrice, formatRelativeTime, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, NETWORK_ERROR_MSG } from "@/lib/utils";
+import { formatDate, formatPrice, formatRelativeTime, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, NETWORK_ERROR_MSG, INVALID_PRICE_MSG, PRICE_TOO_HIGH_MSG, ALERT_CREATED_MSG, ALERT_DELETED_MSG } from "@/lib/utils";
 
 const MAX_PRICE_DIGITS = 12;
 
@@ -247,11 +247,11 @@ function AlertsContent() {
     }
     const priceNum = Number(targetPrice);
     if (!Number.isFinite(priceNum) || priceNum <= 0) {
-      setCreateError("유효한 목표 가격을 입력해주세요.");
+      setCreateError(INVALID_PRICE_MSG);
       return;
     }
     if (priceNum > 100_000_000) {
-      setCreateError("목표 가격이 너무 큽니다.");
+      setCreateError(PRICE_TOO_HIGH_MSG);
       return;
     }
     setCreating(true);
@@ -273,7 +273,7 @@ function AlertsContent() {
       setDepartureDate("");
       setCabinClass("ECONOMY");
       await loadAlerts();
-      showToast("가격 알림이 설정되었습니다.");
+      showToast(ALERT_CREATED_MSG);
     } catch (err) {
       let msg = "알림 생성에 실패했습니다. 입력 정보를 확인해주세요.";
       const apiErr = err as { data?: { detail?: string | { msg?: string }[] } };
@@ -300,7 +300,7 @@ function AlertsContent() {
       await alertsApi.delete(id);
       setAlerts((prev) => prev.filter((a) => a.id !== id));
       setDeleteConfirm(null);
-      showToast("알림이 삭제되었습니다.");
+      showToast(ALERT_DELETED_MSG);
     } catch {
       setDeleteConfirm(null);
       setError("알림 삭제에 실패했습니다.");
