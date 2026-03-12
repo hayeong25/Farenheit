@@ -338,30 +338,40 @@ function AlertsContent() {
       <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
         <h2 className="text-lg font-semibold mb-3">이렇게 동작합니다</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-lg bg-[var(--muted)]">
-            <div className="w-8 h-8 rounded-full bg-farenheit-100 dark:bg-farenheit-900 text-farenheit-600 dark:text-farenheit-300 flex items-center justify-center text-sm font-bold mb-2">1</div>
+          <div className="relative p-4 rounded-lg bg-[var(--muted)]">
+            <div className="w-8 h-8 rounded-full bg-farenheit-500 text-white flex items-center justify-center text-sm font-bold mb-2">1</div>
             <p className="font-medium text-sm">노선과 목표 가격 설정</p>
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
               관심 있는 노선의 목표 가격을 설정하세요
             </p>
+            <div className="hidden md:block absolute top-6 -right-2 w-4 text-[var(--muted-foreground)]">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </div>
           </div>
-          <div className="p-4 rounded-lg bg-[var(--muted)]">
-            <div className="w-8 h-8 rounded-full bg-farenheit-100 dark:bg-farenheit-900 text-farenheit-600 dark:text-farenheit-300 flex items-center justify-center text-sm font-bold mb-2">2</div>
+          <div className="relative p-4 rounded-lg bg-[var(--muted)]">
+            <div className="w-8 h-8 rounded-full bg-farenheit-500 text-white flex items-center justify-center text-sm font-bold mb-2">2</div>
             <p className="font-medium text-sm">자동 가격 모니터링</p>
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
               30분 간격으로 가격을 수집하고 비교합니다
             </p>
             {lastCollected && (
               <p className="text-xs mt-2 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse-glow" />
                 <span className="text-green-600 dark:text-green-400 font-medium">
                   마지막 수집: {formatRelativeTime(lastCollected)}
                 </span>
               </p>
             )}
+            <div className="hidden md:block absolute top-6 -right-2 w-4 text-[var(--muted-foreground)]">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </div>
           </div>
           <div className="p-4 rounded-lg bg-[var(--muted)]">
-            <div className="w-8 h-8 rounded-full bg-farenheit-100 dark:bg-farenheit-900 text-farenheit-600 dark:text-farenheit-300 flex items-center justify-center text-sm font-bold mb-2">3</div>
+            <div className="w-8 h-8 rounded-full bg-farenheit-500 text-white flex items-center justify-center text-sm font-bold mb-2">3</div>
             <p className="font-medium text-sm">이 페이지에서 확인</p>
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
               목표 가격에 도달하면 &quot;도달 완료&quot;로 표시됩니다
@@ -405,7 +415,10 @@ function AlertsContent() {
           </div>
         ) : activeAlerts.length === 0 ? (
           <div className="text-center py-12 text-[var(--muted-foreground)]">
-            <p>모니터링 중인 가격 알림이 없습니다.</p>
+            <svg aria-hidden="true" className="w-10 h-10 mx-auto mb-3 text-farenheit-300 dark:text-farenheit-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+            <p className="font-medium text-[var(--foreground)]">모니터링 중인 가격 알림이 없습니다</p>
             <p className="text-sm mt-1">&quot;+ 알림 추가&quot; 버튼으로 새 알림을 설정하세요.</p>
           </div>
         ) : (
