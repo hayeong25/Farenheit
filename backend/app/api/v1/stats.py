@@ -18,37 +18,41 @@ router = APIRouter()
 @router.get("")
 async def get_stats(db: AsyncSession = Depends(get_db)) -> dict:
     try:
-        routes_count = (await db.execute(
-            select(func.count()).select_from(Route).where(Route.is_active.is_(True))
-        )).scalar() or 0
+        # Single query for all counts + timestamps
+        result = (await db.execute(
+            select(
+                func.count().filter(Route.is_active.is_(True)).label("routes"),
+            ).select_from(Route)
+        )).one()
+        routes_count = result.routes
 
-        prices_count = (await db.execute(
-            select(func.count()).select_from(FlightPrice)
-        )).scalar() or 0
+        # Prices count + last collected in one query
+        price_result = (await db.execute(
+            select(
+                func.count().label("cnt"),
+                func.max(FlightPrice.time).label("last_time"),
+            ).select_from(FlightPrice)
+        )).one()
 
-        predictions_count = (await db.execute(
-            select(func.count()).select_from(Prediction)
-        )).scalar() or 0
+        # Predictions count + last predicted in one query
+        pred_result = (await db.execute(
+            select(
+                func.count().label("cnt"),
+                func.max(Prediction.predicted_at).label("last_at"),
+            ).select_from(Prediction)
+        )).one()
 
         airports_count = (await db.execute(
             select(func.count()).select_from(Airport)
         )).scalar() or 0
 
-        last_collected = (await db.execute(
-            select(func.max(FlightPrice.time))
-        )).scalar()
-
-        last_predicted = (await db.execute(
-            select(func.max(Prediction.predicted_at))
-        )).scalar()
-
         return {
             "routes": routes_count,
-            "prices": prices_count,
-            "predictions": predictions_count,
+            "prices": price_result.cnt or 0,
+            "predictions": pred_result.cnt or 0,
             "airports": airports_count,
-            "last_price_collected_at": last_collected.isoformat() if last_collected else None,
-            "last_predicted_at": last_predicted.isoformat() if last_predicted else None,
+            "last_price_collected_at": price_result.last_time.isoformat() if price_result.last_time else None,
+            "last_predicted_at": pred_result.last_at.isoformat() if pred_result.last_at else None,
         }
     except SQLAlchemyError as e:
         logger.error(f"Stats query failed: {e}", exc_info=True)

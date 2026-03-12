@@ -759,17 +759,19 @@ class FlightService:
         live_airlines: set[str],
     ) -> list[FlightOffer]:
         """Fetch latest DB prices for airlines missing from live results."""
+        filters = [
+            FlightPrice.route_id == route_id,
+            FlightPrice.departure_date == departure_date,
+            FlightPrice.cabin_class == cabin_class,
+        ]
+        if live_airlines:
+            filters.append(FlightPrice.airline_code.notin_(list(live_airlines)))
         subq = (
             select(
                 FlightPrice.airline_code,
                 func.max(FlightPrice.time).label("latest_time"),
             )
-            .where(
-                FlightPrice.route_id == route_id,
-                FlightPrice.departure_date == departure_date,
-                FlightPrice.cabin_class == cabin_class,
-                FlightPrice.airline_code.notin_(list(live_airlines)) if live_airlines else True,
-            )
+            .where(*filters)
             .group_by(FlightPrice.airline_code)
             .subquery()
         )
@@ -996,20 +998,6 @@ class FlightService:
                     next_num = int(num_part) + 1
                     o.return_flight_number = f"{al}{next_num}"
                     logger.debug(f"Inferred return flight: {o.flight_number} -> {o.return_flight_number}")
-
-        # Enrich airline names (second pass - for supplemented offers)
-        codes_missing = {o.airline_code for o in offers if not o.airline_name and o.airline_code not in name_map}
-        if codes_missing:
-            result = await self.db.execute(
-                select(Airline.iata_code, Airline.name).where(
-                    Airline.iata_code.in_(list(codes_missing))
-                )
-            )
-            extra_names = {row.iata_code: row.name for row in result.all()}
-            name_map.update(extra_names)
-        for o in offers:
-            if not o.airline_name and o.airline_code in name_map:
-                o.airline_name = name_map[o.airline_code]
 
         # Deduplicate: keep cheapest per (airline, stops, duration bucket)
         offers = self._deduplicate_offers(offers)
