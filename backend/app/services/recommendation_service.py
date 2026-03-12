@@ -72,12 +72,15 @@ class RecommendationService:
         # Resolve airline code to human-readable name
         best_airline_name: str | None = pred.airline_code
         if pred.airline_code:
-            airline_result = await self.db.execute(
-                select(Airline.name).where(Airline.iata_code == pred.airline_code)
-            )
-            airline_row = airline_result.scalar_one_or_none()
-            if airline_row:
-                best_airline_name = airline_row
+            try:
+                airline_result = await self.db.execute(
+                    select(Airline.name).where(Airline.iata_code == pred.airline_code)
+                )
+                airline_row = airline_result.scalar_one_or_none()
+                if airline_row:
+                    best_airline_name = airline_row
+            except Exception:
+                pass  # Graceful fallback: use airline_code as-is
 
         return RecommendationResponse(
             origin=origin,

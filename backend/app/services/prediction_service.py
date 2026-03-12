@@ -115,7 +115,7 @@ class PredictionService:
             predicted_price=pred.predicted_price,
             confidence_low=pred.confidence_low,
             confidence_high=pred.confidence_high,
-            price_direction=pred.price_direction,
+            price_direction=pred.price_direction or "STABLE",
             confidence_score=pred.confidence_score,
             model_version=pred.model_version,
             predicted_at=pred.predicted_at,
