@@ -388,6 +388,9 @@ function PredictionsContent() {
               return parts.length >= 3 ? `${Number(parts[1])}/${Number(parts[2])}` : d;
             };
 
+            // Find index of current selected date for highlight
+            const selectedIdx = series.findIndex(f => f.date === date);
+
             return (
               <div className="px-6 pb-5">
                 <p className="text-xs text-[var(--muted-foreground)] mb-2">가격 예측 추이</p>
@@ -396,6 +399,23 @@ function PredictionsContent() {
                   <path d={`${bandTop} ${bandBot} Z`} className="fill-farenheit-200 dark:fill-farenheit-800 opacity-30 dark:opacity-40" />
                   {/* Main line */}
                   <path d={mainLine} fill="none" className="stroke-farenheit-500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  {/* Selected date indicator */}
+                  {selectedIdx >= 0 && (
+                    <>
+                      <line
+                        x1={toX(selectedIdx)} y1={pad.t}
+                        x2={toX(selectedIdx)} y2={H - pad.b}
+                        className="stroke-farenheit-400 dark:stroke-farenheit-600" strokeWidth="1" strokeDasharray="3,3" opacity="0.5"
+                      />
+                      <circle
+                        cx={toX(selectedIdx)}
+                        cy={toY(series[selectedIdx].predicted_price)}
+                        r="4"
+                        className="fill-farenheit-500 stroke-[var(--background)]"
+                        strokeWidth="2"
+                      />
+                    </>
+                  )}
                   {/* Date labels */}
                   {labelIdxs.map(i => (
                     <text key={i} x={toX(i)} y={H - 2} textAnchor={i === 0 ? "start" : i === series.length - 1 ? "end" : "middle"} className="fill-[var(--muted-foreground)]" fontSize="9">{formatShortDate(series[i].date)}</text>
