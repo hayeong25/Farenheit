@@ -55,6 +55,17 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    href: "/dashboard",
+    label: "대시보드",
+    mobileLabel: "대시보드",
+    desktopOnly: true,
+    icon: (
+      <svg aria-hidden="true" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
+  },
 ];
 
 export function Sidebar() {
@@ -107,7 +118,7 @@ export function Sidebar() {
 
       {/* Mobile Bottom Nav */}
       <nav aria-label="모바일 내비게이션" className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)] border-t border-[var(--border)] flex justify-around py-2 px-1 sm:px-2 pb-safe">
-        {navItems.map((item) => {
+        {navItems.filter(item => !("desktopOnly" in item && item.desktopOnly)).map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
