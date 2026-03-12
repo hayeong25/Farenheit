@@ -676,11 +676,51 @@ function PredictionsContent() {
               );
             })()}
 
-            {!heatmapLoading && heatmap && heatmap.cells.length === 0 && (
-              <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">
-                이 달의 히트맵 데이터가 아직 없습니다. 가격 수집 후 자동 생성됩니다.
-              </p>
-            )}
+            {!heatmapLoading && heatmap && heatmap.cells.length === 0 && (() => {
+              // Show month navigation even when no data
+              const monthStr = heatmapMonth || date.slice(0, 7);
+              if (!monthStr || monthStr.length < 7) return (
+                <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+                  이 달의 히트맵 데이터가 아직 없습니다.
+                </p>
+              );
+              const yr = Number(monthStr.slice(0, 4));
+              const mo = Number(monthStr.slice(5, 7)); // 1-indexed
+              const prevMonth = mo === 1 ? `${yr - 1}-12` : `${yr}-${String(mo - 1).padStart(2, "0")}`;
+              const nextMonth = mo === 12 ? `${yr + 1}-01` : `${yr}-${String(mo + 1).padStart(2, "0")}`;
+              const today = getLocalToday();
+              const todayMonth = today.slice(0, 7);
+              const canPrev = prevMonth >= todayMonth;
+              return (
+                <div className="py-6 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <button
+                      onClick={() => canPrev && loadHeatmap(originCode, destCode, prevMonth)}
+                      disabled={!canPrev}
+                      className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                      aria-label="이전 달"
+                    >
+                      <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                      </svg>
+                    </button>
+                    <span className="text-sm font-semibold min-w-[80px]">{yr}년 {mo}월</span>
+                    <button
+                      onClick={() => loadHeatmap(originCode, destCode, nextMonth)}
+                      className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors"
+                      aria-label="다음 달"
+                    >
+                      <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    이 달의 히트맵 데이터가 아직 없습니다. 가격 수집 후 자동 생성됩니다.
+                  </p>
+                </div>
+              );
+            })()}
 
             {!heatmapLoading && !heatmap && (
               <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">
