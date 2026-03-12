@@ -381,6 +381,41 @@ export default function HomePage() {
         </div>
       </main>
 
+      {/* Features */}
+      <section className="border-t border-[var(--border)]">
+        <div className="max-w-7xl mx-auto px-6 py-10">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+            <div>
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-farenheit-50 dark:bg-farenheit-950 flex items-center justify-center">
+                <svg aria-hidden="true" className="w-5 h-5 text-farenheit-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium">가격 예측</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">과거 데이터 기반 가격 변동 예측</p>
+            </div>
+            <div>
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-green-50 dark:bg-green-950/30 flex items-center justify-center">
+                <svg aria-hidden="true" className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium">구매 추천</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">BUY / WAIT / HOLD 시그널 분석</p>
+            </div>
+            <div>
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-yellow-50 dark:bg-yellow-950/30 flex items-center justify-center">
+                <svg aria-hidden="true" className="w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium">가격 알림</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">목표가 도달 시 자동 알림</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="py-6 border-t border-[var(--border)]">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-center gap-2 text-sm text-[var(--muted-foreground)]">
