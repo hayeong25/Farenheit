@@ -159,7 +159,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => setTripType("round_trip")}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 ${
                     tripType === "round_trip"
                       ? "bg-farenheit-500 text-white shadow-sm"
                       : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
@@ -170,7 +170,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => { setTripType("one_way"); setReturnDate(""); }}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 ${
                     tripType === "one_way"
                       ? "bg-farenheit-500 text-white shadow-sm"
                       : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
