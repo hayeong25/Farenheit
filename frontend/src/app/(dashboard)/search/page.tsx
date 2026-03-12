@@ -914,7 +914,7 @@ function SearchContent() {
                     <Link
                       key={`${s.origin}-${s.dest}-${s.date}-${i}`}
                       href={`/search?${p.toString()}`}
-                      className="flex items-center justify-between p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50/50 dark:hover:bg-farenheit-950/50 transition-all group"
+                      className="flex items-center justify-between p-3 rounded-lg border border-[var(--border)] hover:border-farenheit-300 hover:bg-farenheit-50/50 dark:hover:bg-farenheit-950/50 transition-all group focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">

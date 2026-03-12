@@ -317,7 +317,7 @@ export default function HomePage() {
                           if (s.cabinClass !== "ECONOMY") p.set("cabin", s.cabinClass);
                           return `/search?${p.toString()}`;
                         })()}
-                        className="flex items-center justify-between px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:-translate-y-0.5 hover:shadow-sm transition-all"
+                        className="flex items-center justify-between px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:-translate-y-0.5 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                       >
                         <div className="min-w-0">
                           <p className="font-medium text-sm truncate">{s.originDisplay} → {s.destDisplay}</p>
@@ -349,7 +349,7 @@ export default function HomePage() {
                     <Link
                       key={route.id}
                       href={`/search?${new URLSearchParams({ origin: route.origin_code, dest: route.dest_code, date: getDefaultSearchDate() }).toString()}`}
-                      className="group flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-all"
+                      className="group flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-farenheit-300 hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-all focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                     >
                       <svg aria-hidden="true" className="w-4 h-4 text-farenheit-400 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
