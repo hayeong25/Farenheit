@@ -26,7 +26,9 @@ function PredictionsContent() {
   // Heatmap uses same origin/dest, auto-derives month from date
   const [heatmap, setHeatmap] = useState<HeatmapResponse | null>(null);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
+  const [heatmapMonth, setHeatmapMonth] = useState("");
   const requestIdRef = useRef(0);
+  const heatmapIdRef = useRef(0);
 
   // Swap refs
   const originKeyRef = useRef(0);
@@ -65,6 +67,25 @@ function PredictionsContent() {
 
   const [validationMsg, setValidationMsg] = useState("");
 
+  const loadHeatmap = useCallback(async (origin: string, dest: string, month: string) => {
+    if (!origin || !dest || !month || month.length < 7) return;
+    const currentId = ++heatmapIdRef.current;
+    setHeatmapLoading(true);
+    setHeatmapMonth(month);
+    try {
+      const hm = await predictionsApi.heatmap({ origin, dest, month, cabin_class: cabinClass });
+      if (currentId !== heatmapIdRef.current) return;
+      setHeatmap(hm);
+    } catch {
+      if (currentId !== heatmapIdRef.current) return;
+      setHeatmap(null);
+    } finally {
+      if (currentId === heatmapIdRef.current) {
+        setHeatmapLoading(false);
+      }
+    }
+  }, [cabinClass]);
+
   const handlePredict = useCallback(async (origin: string, dest: string, depDate: string) => {
     if (!origin || !dest || !depDate) return;
     if (origin === dest) {
@@ -102,22 +123,8 @@ function PredictionsContent() {
     setLoading(false);
 
     // Auto-load heatmap for the same month (only if prediction succeeded)
-    const month = depDate.slice(0, 7);
-    if (!month || month.length < 7) return;
-    setHeatmapLoading(true);
-    try {
-      const hm = await predictionsApi.heatmap({ origin, dest, month, cabin_class: cabinClass });
-      if (currentRequestId !== requestIdRef.current) return;
-      setHeatmap(hm);
-    } catch {
-      if (currentRequestId !== requestIdRef.current) return;
-      setHeatmap(null);
-    } finally {
-      if (currentRequestId === requestIdRef.current) {
-        setHeatmapLoading(false);
-      }
-    }
-  }, [router, cabinClass]);
+    loadHeatmap(origin, dest, depDate.slice(0, 7));
+  }, [router, cabinClass, loadHeatmap]);
 
   // Auto-search on mount if URL params present (once only)
   const autoSearchedRef = useRef(false);
@@ -479,11 +486,39 @@ function PredictionsContent() {
           {/* Calendar header */}
           {!heatmapLoading && heatmap && heatmap.cells.length > 0 && (() => {
             const firstDate = new Date(heatmap.cells[0].departure_date + "T00:00:00");
+            const yr = firstDate.getFullYear();
+            const mo = firstDate.getMonth(); // 0-indexed
+            const prevMonth = mo === 0 ? `${yr - 1}-12` : `${yr}-${String(mo).padStart(2, "0")}`;
+            const nextMonth = mo === 11 ? `${yr + 1}-01` : `${yr}-${String(mo + 2).padStart(2, "0")}`;
+            const today = getLocalToday();
+            const todayMonth = today.slice(0, 7);
+            const canPrev = prevMonth >= todayMonth;
             return (
               <div className="px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between">
-                <h2 className="text-sm font-semibold">
-                  {firstDate.getFullYear()}년 {firstDate.getMonth() + 1}월
-                </h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => canPrev && loadHeatmap(originCode, destCode, prevMonth)}
+                    disabled={!canPrev}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                    aria-label="이전 달"
+                  >
+                    <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                  </button>
+                  <h2 className="text-sm font-semibold min-w-[80px] text-center">
+                    {yr}년 {mo + 1}월
+                  </h2>
+                  <button
+                    onClick={() => loadHeatmap(originCode, destCode, nextMonth)}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors"
+                    aria-label="다음 달"
+                  >
+                    <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-[var(--muted-foreground)]">
                   <span className="w-2 h-2 rounded-sm bg-green-500/25" />
                   <span>저렴</span>
