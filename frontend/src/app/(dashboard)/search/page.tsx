@@ -461,19 +461,19 @@ function SearchContent() {
       {isLoading && (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)] animate-pulse">
+            <div key={i} className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
               <div className="flex justify-between items-start">
                 <div className="space-y-3 flex-1">
-                  <div className="h-5 w-32 bg-[var(--muted)] rounded" />
+                  <div className="h-5 w-32 rounded animate-shimmer" />
                   <div className="flex gap-4">
-                    <div className="h-4 w-16 bg-[var(--muted)] rounded" />
-                    <div className="h-4 w-24 bg-[var(--muted)] rounded" />
-                    <div className="h-4 w-20 bg-[var(--muted)] rounded" />
+                    <div className="h-4 w-16 rounded animate-shimmer" />
+                    <div className="h-4 w-24 rounded animate-shimmer" />
+                    <div className="h-4 w-20 rounded animate-shimmer" />
                   </div>
                 </div>
                 <div className="text-right space-y-2">
-                  <div className="h-7 w-28 bg-[var(--muted)] rounded" />
-                  <div className="h-4 w-16 bg-[var(--muted)] rounded ml-auto" />
+                  <div className="h-7 w-28 rounded animate-shimmer" />
+                  <div className="h-4 w-16 rounded ml-auto animate-shimmer" />
                 </div>
               </div>
             </div>
@@ -695,7 +695,7 @@ function SearchContent() {
               )}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-stagger">
               {filteredOffers.slice(0, 100).map((offer, idx) => {
                 const isLowest = minPrice > 0 && offer.price_amount === minPrice;
                 const offerKey = `${offer.airline_code}-${offer.flight_number || ""}-${offer.departure_date}-${offer.stops}-${offer.price_amount}-${idx}`;
@@ -789,7 +789,9 @@ function SearchContent() {
                                   </>
                                 )}
                               </>
-                            ) : null}
+                            ) : (
+                              <span className="text-xs text-[var(--muted-foreground)] italic">시간 미정</span>
+                            )}
                             {(offer.return_duration_minutes || offer.duration_minutes) != null && (offer.return_duration_minutes || offer.duration_minutes)! > 0 && (
                               <span className="text-[var(--muted-foreground)]">{formatDuration(offer.return_duration_minutes || offer.duration_minutes)}</span>
                             )}

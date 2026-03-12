@@ -296,9 +296,24 @@ function RecommendationsContent() {
 
       {/* Result */}
       {loading && (
-        <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center">
-          <div className="inline-block w-8 h-8 border-4 border-farenheit-200 border-t-farenheit-500 rounded-full animate-spin mb-4" />
-          <p className="text-[var(--muted-foreground)]">AI가 최적 구매 타이밍을 분석하고 있습니다...</p>
+        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="h-10 w-20 rounded animate-shimmer" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-40 rounded animate-shimmer" />
+              <div className="h-3 w-56 rounded animate-shimmer" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 w-16 rounded animate-shimmer" />
+                <div className="h-6 w-24 rounded animate-shimmer" />
+              </div>
+            ))}
+          </div>
+          <div className="h-20 w-full rounded-lg animate-shimmer" />
+          <p className="text-center text-sm text-[var(--muted-foreground)] mt-4">AI가 최적 구매 타이밍을 분석하고 있습니다...</p>
         </div>
       )}
 

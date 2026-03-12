@@ -272,9 +272,21 @@ function PredictionsContent() {
 
       {/* Loading */}
       {loading && (
-        <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center">
-          <div className="inline-block w-8 h-8 border-4 border-farenheit-200 border-t-farenheit-500 rounded-full animate-spin mb-3" />
-          <p className="text-sm text-[var(--muted-foreground)]">가격 추세를 분석하고 있습니다...</p>
+        <div className="bg-[var(--background)] rounded-xl border border-[var(--border)] overflow-hidden">
+          <div className="px-6 pt-6 pb-4 text-center space-y-3">
+            <div className="h-3 w-16 mx-auto rounded animate-shimmer" />
+            <div className="h-10 w-40 mx-auto rounded animate-shimmer" />
+            <div className="h-4 w-28 mx-auto rounded animate-shimmer" />
+          </div>
+          <div className="px-6 pb-5">
+            <div className="h-2 w-full rounded-full animate-shimmer" />
+          </div>
+          <div className="px-6 pb-5 flex items-center gap-3">
+            <div className="h-3 w-10 rounded animate-shimmer" />
+            <div className="flex-1 h-1.5 rounded-full animate-shimmer" />
+            <div className="h-3 w-8 rounded animate-shimmer" />
+          </div>
+          <p className="text-center text-sm text-[var(--muted-foreground)] pb-6">가격 추세를 분석하고 있습니다...</p>
         </div>
       )}
 
@@ -477,8 +489,8 @@ function PredictionsContent() {
                 </div>
                 <div className="grid grid-cols-7 gap-[1px] bg-[var(--border)] border border-[var(--border)] rounded-md overflow-hidden">
                   {Array.from({ length: 35 }).map((_, i) => (
-                    <div key={i} className="bg-[var(--background)] h-10 animate-pulse">
-                      <div className="p-1"><div className="h-2 w-3 bg-[var(--muted)] rounded" /></div>
+                    <div key={i} className="bg-[var(--background)] h-10">
+                      <div className="p-1"><div className="h-2 w-3 rounded animate-shimmer" /></div>
                     </div>
                   ))}
                 </div>

@@ -97,6 +97,12 @@ export function Sidebar() {
           })}
         </nav>
 
+        {/* Footer */}
+        <div className="p-4 border-t border-[var(--border)]">
+          <p className="text-[10px] text-[var(--muted-foreground)] text-center">
+            Fare + Fahrenheit
+          </p>
+        </div>
       </aside>
 
       {/* Mobile Bottom Nav */}
@@ -108,12 +114,15 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex flex-col items-center gap-0.5 px-2 py-2 min-w-[48px] min-h-[48px] justify-center rounded-lg text-xs transition-colors ${
+              className={`relative flex flex-col items-center gap-0.5 px-2 py-2 min-w-[48px] min-h-[48px] justify-center rounded-lg text-xs transition-colors ${
                 isActive
                   ? "text-farenheit-600 font-medium"
                   : "text-[var(--muted-foreground)]"
               }`}
             >
+              {isActive && (
+                <span className="absolute -top-0.5 w-5 h-0.5 rounded-full bg-farenheit-500" />
+              )}
               {item.icon}
               <span className="text-[11px]">{item.mobileLabel}</span>
             </Link>

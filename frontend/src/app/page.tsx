@@ -303,7 +303,7 @@ export default function HomePage() {
                   </svg>
                   최근 검색
                 </h2>
-                <div className="space-y-2">
+                <div className="space-y-2 animate-stagger">
                   {recentSearches.slice(0, 5).map((s) => {
                     const today = getLocalToday();
                     const searchDate = s.date >= today ? s.date : getDefaultSearchDate();

@@ -392,8 +392,16 @@ function AlertsContent() {
         </h2>
 
         {isLoading ? (
-          <div className="text-center py-8">
-            <div className="inline-block w-6 h-6 border-4 border-farenheit-200 border-t-farenheit-500 rounded-full animate-spin" />
+          <div className="space-y-3 py-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex items-center justify-between gap-3 p-4 rounded-lg border border-[var(--border)]">
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-48 rounded animate-shimmer" />
+                  <div className="h-3 w-64 rounded animate-shimmer" />
+                </div>
+                <div className="h-8 w-16 rounded animate-shimmer" />
+              </div>
+            ))}
           </div>
         ) : activeAlerts.length === 0 ? (
           <div className="text-center py-12 text-[var(--muted-foreground)]">
