@@ -47,6 +47,7 @@ async def _check_alerts() -> dict:
 
             for route_id, cabin_class in route_cabin_pairs:
                 # Get min price per departure_date for this route+cabin (recent only)
+                # Overall min (for alerts without departure_date) is derived from the same data
                 price_result = await session.execute(
                     select(
                         FlightPrice.departure_date,
@@ -57,17 +58,11 @@ async def _check_alerts() -> dict:
                         FlightPrice.time >= recent_cutoff,
                     ).group_by(FlightPrice.departure_date)
                 )
+                overall_min = None
                 for row in price_result.all():
                     min_prices_map[(route_id, cabin_class, row.departure_date)] = row.min_price
-                # Also get overall min for alerts without departure_date (recent only)
-                overall_result = await session.execute(
-                    select(func.min(FlightPrice.price_amount)).where(
-                        FlightPrice.route_id == route_id,
-                        FlightPrice.cabin_class == cabin_class,
-                        FlightPrice.time >= recent_cutoff,
-                    )
-                )
-                overall_min = overall_result.scalar()
+                    if overall_min is None or row.min_price < overall_min:
+                        overall_min = row.min_price
                 if overall_min is not None:
                     min_prices_map[(route_id, cabin_class, None)] = overall_min
 
