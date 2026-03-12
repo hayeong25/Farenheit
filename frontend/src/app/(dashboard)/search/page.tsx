@@ -559,49 +559,81 @@ function SearchContent() {
                 const minP = Number(priceHistory.min_price);
                 const avgP = Number(priceHistory.avg_price);
                 const maxP = Number(priceHistory.max_price);
-                return (
-                  <div className="grid grid-cols-3 gap-4 mb-3">
-                    <div>
-                      <p className="text-xs text-[var(--muted-foreground)]">최저가</p>
-                      <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatPrice(Math.round(minP))}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[var(--muted-foreground)]">평균가</p>
-                      <p className="text-lg font-bold">{formatPrice(Math.round(avgP))}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[var(--muted-foreground)]">최고가</p>
-                      <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatPrice(Math.round(maxP))}</p>
-                    </div>
-                  </div>
-                );
-              })()}
-              {(() => {
                 const prices = priceHistory.prices.map(p => Number(p.price_amount)).filter(p => Number.isFinite(p) && p > 0);
-                if (prices.length === 0) return null;
-                const min = Math.min(...prices);
-                const max = Math.max(...prices);
-                const range = max - min || 1;
                 const currentMin = minPrice;
-                const avgNum = Number(priceHistory.avg_price);
-                if (!Number.isFinite(avgNum)) return null;
-                const position = avgNum > 0 ? ((currentMin - min) / range) * 100 : 50;
-                const isGoodPrice = currentMin <= avgNum;
+                const isGoodPrice = currentMin <= avgP;
+
                 return (
-                  <div>
-                    <div className="relative h-2 rounded-full bg-gradient-to-r from-green-200 via-yellow-200 to-red-200 dark:from-green-800 dark:via-yellow-800 dark:to-red-800">
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[var(--foreground)] border-2 border-[var(--background)] shadow"
-                        style={{ left: `${Math.min(Math.max(position, 5), 95)}%` }}
-                        title={`현재 최저가: ${formatPrice(currentMin)}`}
-                      />
+                  <>
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="text-center p-3 rounded-lg bg-green-50/50 dark:bg-green-950/20">
+                        <p className="text-xs text-[var(--muted-foreground)]">최저가</p>
+                        <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatPrice(Math.round(minP))}</p>
+                      </div>
+                      <div className="text-center p-3 rounded-lg bg-[var(--muted)]">
+                        <p className="text-xs text-[var(--muted-foreground)]">평균가</p>
+                        <p className="text-lg font-bold">{formatPrice(Math.round(avgP))}</p>
+                      </div>
+                      <div className="text-center p-3 rounded-lg bg-red-50/50 dark:bg-red-950/20">
+                        <p className="text-xs text-[var(--muted-foreground)]">최고가</p>
+                        <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatPrice(Math.round(maxP))}</p>
+                      </div>
                     </div>
-                    <p className={`text-xs mt-2 font-medium ${isGoodPrice ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}`}>
-                      {isGoodPrice
-                        ? `현재 최저가(${formatPrice(currentMin)})는 평균보다 저렴합니다`
-                        : `현재 최저가(${formatPrice(currentMin)})는 평균보다 높습니다`}
-                    </p>
-                  </div>
+
+                    {/* Sparkline chart */}
+                    {prices.length >= 2 && (() => {
+                      const sparMin = Math.min(...prices);
+                      const sparMax = Math.max(...prices);
+                      const sparRange = sparMax - sparMin || 1;
+                      const W = 400, H = 48, pad = 4;
+                      const cw = W - pad * 2, ch = H - pad * 2;
+                      const pts = prices.map((p, i) => {
+                        const x = pad + (i / (prices.length - 1)) * cw;
+                        const y = pad + (1 - (p - sparMin) / sparRange) * ch;
+                        return `${x.toFixed(1)},${y.toFixed(1)}`;
+                      });
+                      const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p}`).join(" ");
+                      const area = `${line} L${(pad + cw).toFixed(1)},${H} L${pad},${H} Z`;
+
+                      return (
+                        <div className="mb-3">
+                          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-12" aria-label="가격 추이 스파크라인">
+                            <defs>
+                              <linearGradient id="sparkGrad" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stopColor={isGoodPrice ? "#22c55e" : "#f59e0b"} stopOpacity="0.2" />
+                                <stop offset="100%" stopColor={isGoodPrice ? "#22c55e" : "#f59e0b"} stopOpacity="0.02" />
+                              </linearGradient>
+                            </defs>
+                            <path d={area} fill="url(#sparkGrad)" />
+                            <path d={line} fill="none" stroke={isGoodPrice ? "#22c55e" : "#f59e0b"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                      );
+                    })()}
+
+                    {Number.isFinite(avgP) && avgP > 0 && (() => {
+                      const min = prices.length > 0 ? Math.min(...prices) : minP;
+                      const max = prices.length > 0 ? Math.max(...prices) : maxP;
+                      const range = max - min || 1;
+                      const position = ((currentMin - min) / range) * 100;
+                      return (
+                        <div>
+                          <div className="relative h-2 rounded-full bg-gradient-to-r from-green-200 via-yellow-200 to-red-200 dark:from-green-800 dark:via-yellow-800 dark:to-red-800">
+                            <div
+                              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[var(--foreground)] border-2 border-[var(--background)] shadow"
+                              style={{ left: `${Math.min(Math.max(position, 5), 95)}%` }}
+                              title={`현재 최저가: ${formatPrice(currentMin)}`}
+                            />
+                          </div>
+                          <p className={`text-xs mt-2 font-medium ${isGoodPrice ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}`}>
+                            {isGoodPrice
+                              ? `현재 최저가(${formatPrice(currentMin)})는 평균보다 저렴합니다`
+                              : `현재 최저가(${formatPrice(currentMin)})는 평균보다 높습니다`}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </>
                 );
               })()}
             </div>
