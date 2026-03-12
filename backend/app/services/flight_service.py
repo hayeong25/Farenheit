@@ -868,8 +868,9 @@ class FlightService:
             )
             offers.extend(db_supplements)
 
-        # Enrich airline names from DB
+        # Enrich airline names from DB (first pass - before supplement)
         codes_to_lookup = {o.airline_code for o in offers if not o.airline_name}
+        name_map: dict[str, str] = {}
         if codes_to_lookup:
             result = await self.db.execute(
                 select(Airline.iata_code, Airline.name).where(
@@ -995,6 +996,20 @@ class FlightService:
                     next_num = int(num_part) + 1
                     o.return_flight_number = f"{al}{next_num}"
                     logger.debug(f"Inferred return flight: {o.flight_number} -> {o.return_flight_number}")
+
+        # Enrich airline names (second pass - for supplemented offers)
+        codes_missing = {o.airline_code for o in offers if not o.airline_name and o.airline_code not in name_map}
+        if codes_missing:
+            result = await self.db.execute(
+                select(Airline.iata_code, Airline.name).where(
+                    Airline.iata_code.in_(list(codes_missing))
+                )
+            )
+            extra_names = {row.iata_code: row.name for row in result.all()}
+            name_map.update(extra_names)
+        for o in offers:
+            if not o.airline_name and o.airline_code in name_map:
+                o.airline_name = name_map[o.airline_code]
 
         # Deduplicate: keep cheapest per (airline, stops, duration bucket)
         offers = self._deduplicate_offers(offers)
