@@ -22,7 +22,7 @@ def _classify_price_level(value: float, min_p: float, max_p: float) -> str:
     """Classify a price into LOW / MEDIUM / HIGH relative to the range."""
     price_range = max_p - min_p
     if price_range <= 0:
-        return "LOW"
+        return "MEDIUM"
     ratio = (value - min_p) / price_range
     return "LOW" if ratio < 0.33 else ("MEDIUM" if ratio < 0.66 else "HIGH")
 
