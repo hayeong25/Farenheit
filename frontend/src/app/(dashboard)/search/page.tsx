@@ -298,7 +298,7 @@ function SearchContent() {
         <div className="flex gap-1 mb-4 bg-[var(--muted)] rounded-lg p-1 w-fit">
           <button
             onClick={() => setTripType("round_trip")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 ${
               tripType === "round_trip"
                 ? "bg-[var(--background)] shadow-sm text-farenheit-600"
                 : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
@@ -308,7 +308,7 @@ function SearchContent() {
           </button>
           <button
             onClick={() => { setTripType("one_way"); setReturnDate(""); }}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 ${
               tripType === "one_way"
                 ? "bg-[var(--background)] shadow-sm text-farenheit-600"
                 : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
@@ -452,7 +452,7 @@ function SearchContent() {
               const retDate = tripType === "round_trip" ? returnDate : undefined;
               handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
             }}
-            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             다시 시도
           </button>
@@ -514,7 +514,7 @@ function SearchContent() {
                   value={maxStops}
                   onChange={(e) => setMaxStops(e.target.value)}
                   aria-label="경유 필터"
-                  className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)]"
+                  className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 >
                   <option value="any">경유 전체</option>
                   <option value="0">직항만</option>
@@ -525,7 +525,7 @@ function SearchContent() {
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   aria-label="정렬 기준"
-                  className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)]"
+                  className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 >
                   <option value="price">가격 낮은 순</option>
                   <option value="price_desc">가격 높은 순</option>

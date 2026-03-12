@@ -270,7 +270,7 @@ function PredictionsContent() {
           <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
           <button
             onClick={() => handlePredict(originCode, destCode, date)}
-            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            className="shrink-0 px-4 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             다시 시도
           </button>
@@ -507,7 +507,7 @@ function PredictionsContent() {
                   <button
                     onClick={() => canPrev && loadHeatmap(originCode, destCode, prevMonth)}
                     disabled={!canPrev}
-                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                     aria-label="이전 달"
                   >
                     <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -519,7 +519,7 @@ function PredictionsContent() {
                   </h2>
                   <button
                     onClick={() => loadHeatmap(originCode, destCode, nextMonth)}
-                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors"
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                     aria-label="다음 달"
                   >
                     <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -705,7 +705,7 @@ function PredictionsContent() {
                     <button
                       onClick={() => canPrev && loadHeatmap(originCode, destCode, prevMonth)}
                       disabled={!canPrev}
-                      className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                      className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                       aria-label="이전 달"
                     >
                       <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -715,7 +715,7 @@ function PredictionsContent() {
                     <span className="text-sm font-semibold min-w-[80px]">{yr}년 {mo}월</span>
                     <button
                       onClick={() => loadHeatmap(originCode, destCode, nextMonth)}
-                      className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors"
+                      className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                       aria-label="다음 달"
                     >
                       <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
