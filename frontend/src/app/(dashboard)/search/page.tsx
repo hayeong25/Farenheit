@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { formatPrice, saveRecentSearch, getRecentSearches, getLocalToday, getDateOneYearLater, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, RETURN_BEFORE_DEPART_MSG, NETWORK_ERROR_MSG, type RecentSearch } from "@/lib/utils";
+import { formatPrice, saveRecentSearch, getRecentSearches, getLocalToday, getDateOneYearLater, getMissingFieldsMsg, getKoreanHolidays, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, RETURN_BEFORE_DEPART_MSG, NETWORK_ERROR_MSG, type RecentSearch } from "@/lib/utils";
 
 const VALID_STOPS = ["any", "0", "1", "2"];
 const VALID_SORTS = ["price", "price_desc", "duration", "stops"];
@@ -88,6 +88,7 @@ function SearchContent() {
   const [priceHistory, setPriceHistory] = useState<PriceHistoryResponse | null>(null);
   const [dataSource, setDataSource] = useState<string>("live");
   const [validationMsg, setValidationMsg] = useState("");
+  const [holidays, setHolidays] = useState<Map<string, string>>(new Map());
 
   // Swap support
   const originKeyRef = useRef(0);
@@ -136,6 +137,10 @@ function SearchContent() {
       setDataSource(result.data_source || "live");
       setAvailableAirlines(result.available_airlines);
       setSelectedAirlines(new Set(result.available_airlines.map(a => a.code)));
+
+      // Load holidays for the departure date year (non-blocking)
+      const depYear = parseInt(depDate.slice(0, 4), 10);
+      if (depYear) getKoreanHolidays(depYear).then(h => setHolidays(h));
 
       // Save to recent searches
       const validPrices = result.offers.map(o => Number(o.price_amount)).filter(p => Number.isFinite(p) && p > 0);
@@ -495,7 +500,17 @@ function SearchContent() {
                   {searchInfo?.origin} → {searchInfo?.dest}
                   <span className="text-sm font-normal text-[var(--muted-foreground)] ml-2">
                     {searchInfo?.date?.slice(5).replace("-", "/")}
+                    {searchInfo?.date && holidays.get(searchInfo.date) && (
+                      <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded border border-red-200 dark:border-red-800">
+                        {holidays.get(searchInfo.date)}
+                      </span>
+                    )}
                     {searchInfo?.returnDate && ` ~ ${searchInfo.returnDate.slice(5).replace("-", "/")}`}
+                    {searchInfo?.returnDate && holidays.get(searchInfo.returnDate) && (
+                      <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded border border-red-200 dark:border-red-800">
+                        {holidays.get(searchInfo.returnDate)}
+                      </span>
+                    )}
                   </span>
                 </h2>
                 <p className="text-sm text-[var(--muted-foreground)]">

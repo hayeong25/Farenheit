@@ -94,6 +94,27 @@ export function getMissingFieldsMsg(
   return missing.length > 0 ? `${missing.join(", ")}을(를) 입력해주세요.` : null;
 }
 
+// Korean public holidays (Nager.Date API)
+interface HolidayEntry { date: string; localName: string }
+const _holidayCache = new Map<number, Map<string, string>>();
+
+export async function getKoreanHolidays(year: number): Promise<Map<string, string>> {
+  if (_holidayCache.has(year)) return _holidayCache.get(year)!;
+  try {
+    const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/KR`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return new Map();
+    const data: HolidayEntry[] = await res.json();
+    const map = new Map<string, string>();
+    for (const h of data) {
+      if (h.date && h.localName) map.set(h.date, h.localName);
+    }
+    _holidayCache.set(year, map);
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 // Recent searches (localStorage)
 export interface RecentSearch {
   origin: string;
