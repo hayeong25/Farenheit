@@ -283,7 +283,7 @@ function PredictionsContent() {
 
       {/* Loading */}
       {loading && (
-        <div className="bg-[var(--background)] rounded-xl border border-[var(--border)] overflow-hidden">
+        <div className="bg-[var(--background)] rounded-xl border border-[var(--border)] overflow-hidden" aria-busy="true" aria-label="가격 예측 분석 중">
           <div className="px-6 pt-6 pb-4 text-center space-y-3">
             <div className="h-3 w-16 mx-auto rounded animate-shimmer" />
             <div className="h-10 w-40 mx-auto rounded animate-shimmer" />
@@ -548,7 +548,7 @@ function PredictionsContent() {
 
           <div className="p-2.5">
             {heatmapLoading && (
-              <div>
+              <div aria-busy="true" aria-label="히트맵 로딩 중">
                 <div className="grid grid-cols-7">
                   {["일","월","화","수","목","금","토"].map(d => (
                     <div key={d} className="py-1 text-center text-[10px] font-medium text-[var(--muted-foreground)]">{d}</div>
@@ -768,7 +768,7 @@ function PredictionsContent() {
 export default function PredictionsPage() {
   return (
     <Suspense fallback={
-      <div className="space-y-6">
+      <div className="space-y-6" aria-busy="true" aria-label="페이지 로딩 중">
         <div className="h-8 w-28 bg-[var(--muted)] rounded animate-pulse" />
         <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">

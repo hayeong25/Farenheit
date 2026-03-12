@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { recommendationsApi, routesApi, type RecommendationResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, NETWORK_ERROR_MSG } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, NETWORK_ERROR_MSG, getKoreanHolidays } from "@/lib/utils";
 
 const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string; icon: string }> = {
   BUY: {
@@ -53,6 +53,8 @@ function RecommendationsContent() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [holidays, setHolidays] = useState<Map<string, string>>(new Map());
 
   const requestIdRef = useRef(0);
   const originKeyRef = useRef(0);
@@ -116,6 +118,8 @@ function RecommendationsContent() {
       });
       if (currentRequestId !== requestIdRef.current) return;
       setRecommendation(result);
+      const yr = parseInt(depDate.slice(0, 4), 10);
+      if (yr) getKoreanHolidays(yr).then(h => setHolidays(h));
     } catch {
       if (currentRequestId !== requestIdRef.current) return;
       setError(NETWORK_ERROR_MSG);
@@ -299,7 +303,7 @@ function RecommendationsContent() {
 
       {/* Result */}
       {loading && (
-        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]" aria-busy="true" aria-label="추천 분석 중">
           <div className="flex items-center gap-4 mb-4">
             <div className="h-10 w-20 rounded animate-shimmer" />
             <div className="flex-1 space-y-2">
@@ -330,6 +334,11 @@ function RecommendationsContent() {
               <p className={`font-semibold ${signal.color}`}>{signal.description}</p>
               <p className="text-sm text-[var(--muted-foreground)]">
                 {originDisplay || recommendation.origin} → {destDisplay || recommendation.destination} | {recommendation.departure_date}
+                {recommendation.departure_date && holidays.get(recommendation.departure_date) && (
+                  <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded border border-red-200 dark:border-red-800">
+                    {holidays.get(recommendation.departure_date)}
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -480,7 +489,7 @@ function RecommendationsContent() {
 export default function RecommendationsPage() {
   return (
     <Suspense fallback={
-      <div className="space-y-6">
+      <div className="space-y-6" aria-busy="true" aria-label="페이지 로딩 중">
         <div className="h-8 w-28 bg-[var(--muted)] rounded animate-pulse" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
           {[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-[var(--muted)] rounded-xl animate-pulse" />)}

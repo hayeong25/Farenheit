@@ -403,7 +403,7 @@ function AlertsContent() {
         </h2>
 
         {isLoading ? (
-          <div className="space-y-3 py-2">
+          <div className="space-y-3 py-2" aria-busy="true" aria-label="알림 목록 로딩 중">
             {[1, 2, 3].map(i => (
               <div key={i} className="flex items-center justify-between gap-3 p-4 rounded-lg border border-[var(--border)]">
                 <div className="flex-1 space-y-2">
@@ -461,7 +461,7 @@ function AlertsContent() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-alert-title"
-            className="bg-[var(--background)] rounded-xl p-6 w-full max-w-lg border border-[var(--border)] shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-[var(--background)] rounded-xl p-6 w-full max-w-lg border border-[var(--border)] shadow-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up"
             onClick={(e) => e.stopPropagation()}
             onSubmit={(e) => { e.preventDefault(); handleCreate(); }}
           >
@@ -552,7 +552,7 @@ function AlertsContent() {
               <button
                 type="submit"
                 disabled={!originCode || !destCode || !targetPrice || creating}
-                className="flex-1 py-2.5 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
+                className="flex-1 py-2.5 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
               >
                 {creating ? "생성 중..." : "알림 추가"}
               </button>
@@ -567,7 +567,7 @@ function AlertsContent() {
 export default function AlertsPage() {
   return (
     <Suspense fallback={
-      <div className="space-y-6">
+      <div className="space-y-6" aria-busy="true" aria-label="페이지 로딩 중">
         <div className="h-8 w-28 bg-[var(--muted)] rounded animate-pulse" />
         <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
           <div className="space-y-3">

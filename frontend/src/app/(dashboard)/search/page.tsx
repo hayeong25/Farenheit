@@ -961,7 +961,7 @@ function SearchContent() {
 export default function SearchPage() {
   return (
     <Suspense fallback={
-      <div className="space-y-6">
+      <div className="space-y-6" aria-busy="true" aria-label="페이지 로딩 중">
         <div className="h-8 w-32 bg-[var(--muted)] rounded animate-pulse" />
         <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -106,7 +106,7 @@ export default function DashboardPage() {
             <h2 className="text-lg font-semibold">가격 알림</h2>
             <Link
               href="/alerts"
-              className="text-sm text-farenheit-500 hover:text-farenheit-600 font-medium"
+              className="text-sm text-farenheit-500 hover:text-farenheit-600 font-medium rounded focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             >
               전체 보기
             </Link>
