@@ -169,7 +169,8 @@ function AlertsContent() {
   const [destCode, setDestCode] = useState(searchParams.get("dest") || "");
   const [destDisplay, setDestDisplay] = useState(searchParams.get("dest") || "");
   const [targetPrice, setTargetPrice] = useState(searchParams.get("target") || "");
-  const [cabinClass, setCabinClass] = useState("ECONOMY");
+  const cabinParam = searchParams.get("cabin") || "ECONOMY";
+  const [cabinClass, setCabinClass] = useState((VALID_CABIN_CLASSES as readonly string[]).includes(cabinParam) ? cabinParam : "ECONOMY");
   const [departureDate, setDepartureDate] = useState(searchParams.get("date") || "");
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
