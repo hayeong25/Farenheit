@@ -95,12 +95,15 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`relative flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive
                     ? "bg-farenheit-50 dark:bg-farenheit-950 text-farenheit-600 dark:text-farenheit-400 font-medium"
                     : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
+                {isActive && (
+                  <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-farenheit-500" />
+                )}
                 {item.icon}
                 <span>{item.label}</span>
               </Link>
