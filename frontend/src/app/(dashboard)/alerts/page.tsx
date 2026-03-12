@@ -89,13 +89,13 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete, cityNames }
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => onDelete(alert.id)}
-              className="text-sm text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded font-medium transition-colors"
+              className="text-sm text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               확인
             </button>
             <button
               onClick={() => onConfirmDelete(null)}
-              className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] px-3 py-1.5 rounded border border-[var(--border)] transition-colors"
+              className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] px-3 py-1.5 rounded border border-[var(--border)] transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             >
               취소
             </button>
@@ -103,7 +103,7 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete, cityNames }
         ) : (
           <button
             onClick={() => onConfirmDelete(alert.id)}
-            className="text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-3 py-1.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            className="text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-3 py-1.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             삭제
           </button>
@@ -329,7 +329,7 @@ function AlertsContent() {
             setShowCreate(true);
           }}
           ref={triggerBtnRef}
-          className="px-4 py-2 rounded-lg bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors text-sm font-medium"
+          className="px-4 py-2 rounded-lg bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
         >
           + 알림 추가
         </button>
@@ -545,14 +545,14 @@ function AlertsContent() {
               <button
                 type="button"
                 onClick={() => { setShowCreate(false); setCreateError(null); }}
-                className="flex-1 py-2.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] transition-colors"
+                className="flex-1 py-2.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500"
               >
                 취소
               </button>
               <button
                 type="submit"
                 disabled={!originCode || !destCode || !targetPrice || creating}
-                className="flex-1 py-2.5 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
               >
                 {creating ? "생성 중..." : "알림 추가"}
               </button>

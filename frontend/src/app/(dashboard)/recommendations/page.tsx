@@ -204,7 +204,7 @@ function RecommendationsContent() {
             <button
               onClick={handleSwap}
               disabled={!originCode || !destCode}
-              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:border-farenheit-300 transition-colors disabled:opacity-30"
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:border-farenheit-300 transition-colors disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-farenheit-500"
               title="출발지/도착지 바꾸기"
               aria-label="출발지와 도착지 바꾸기"
             >
@@ -261,7 +261,7 @@ function RecommendationsContent() {
                 handleGetRecommendation(originCode, destCode, date);
               }}
               disabled={!originCode || !destCode || !date || loading}
-              className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
             >
               {loading ? "분석 중..." : "추천 받기"}
             </button>
@@ -272,7 +272,7 @@ function RecommendationsContent() {
         <button
           onClick={handleSwap}
           disabled={!originCode || !destCode}
-          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
         >
           <svg aria-hidden="true" className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
@@ -411,7 +411,7 @@ function RecommendationsContent() {
                 if (cabinClass !== "ECONOMY") p.set("cabin", cabinClass);
                 return `/search?${p.toString()}`;
               })()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             >
               <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -424,7 +424,7 @@ function RecommendationsContent() {
                 if (cabinClass !== "ECONOMY") p.set("cabin", cabinClass);
                 return `/predictions?${p.toString()}`;
               })()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             >
               <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />

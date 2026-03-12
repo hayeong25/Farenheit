@@ -194,7 +194,7 @@ export default function HomePage() {
                   onClick={handleSwap}
                   disabled={!originCode || !destCode}
                   aria-label="출발지와 도착지 바꾸기"
-                  className="w-full py-1.5 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+                  className="w-full py-1.5 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 >
                   <svg aria-hidden="true" className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                     <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
@@ -263,7 +263,7 @@ export default function HomePage() {
               <button
                 type="submit"
                 disabled={isSearching}
-                className={`block w-full py-3 rounded-lg font-semibold transition-all text-center ${
+                className={`block w-full py-3 rounded-lg font-semibold transition-all text-center focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2 ${
                   isSearching
                     ? "bg-farenheit-400 text-white/80 cursor-wait"
                     : "bg-farenheit-500 text-white hover:bg-farenheit-600 hover:shadow-lg hover:shadow-farenheit-500/25 active:scale-[0.98]"

@@ -331,7 +331,7 @@ function SearchContent() {
             <button
               onClick={handleSwap}
               disabled={!originCode || !destCode}
-              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:border-farenheit-300 transition-colors disabled:opacity-30"
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:border-farenheit-300 transition-colors disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-farenheit-500"
               title="출발지/도착지 바꾸기"
               aria-label="출발지와 도착지 바꾸기"
             >
@@ -352,7 +352,7 @@ function SearchContent() {
             onClick={handleSwap}
             disabled={!originCode || !destCode}
             aria-label="출발지와 도착지 바꾸기"
-            className="md:hidden w-full py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+            className="md:hidden w-full py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
           >
             <svg aria-hidden="true" className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
@@ -432,7 +432,7 @@ function SearchContent() {
                 handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
               }}
               disabled={isLoading}
-              className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 hover:shadow-lg hover:shadow-farenheit-500/25 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 hover:shadow-lg hover:shadow-farenheit-500/25 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
             >
               {isLoading ? "검색 중..." : "검색"}
             </button>
@@ -706,7 +706,7 @@ function SearchContent() {
                   <p className="text-sm mb-3">위 항공사 필터에서 최소 1개 항공사를 선택해주세요.</p>
                   <button
                     onClick={() => setSelectedAirlines(new Set(availableAirlines.map(a => a.code)))}
-                    className="px-4 py-2 rounded-lg bg-farenheit-500 text-white text-sm font-medium hover:bg-farenheit-600 transition-colors"
+                    className="px-4 py-2 rounded-lg bg-farenheit-500 text-white text-sm font-medium hover:bg-farenheit-600 transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
                   >
                     전체 선택
                   </button>
@@ -729,7 +729,7 @@ function SearchContent() {
                       setMaxStops("any");
                       setSelectedAirlines(new Set(availableAirlines.map(a => a.code)));
                     }}
-                    className="px-5 py-2 rounded-lg border border-farenheit-500 text-farenheit-500 text-sm font-medium hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors"
+                    className="px-5 py-2 rounded-lg border border-farenheit-500 text-farenheit-500 text-sm font-medium hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                   >
                     필터 초기화
                   </button>

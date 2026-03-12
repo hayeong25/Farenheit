@@ -20,13 +20,13 @@ export default function NotFound() {
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Link
             href="/"
-            className="px-6 py-2.5 rounded-lg bg-farenheit-500 text-white font-medium hover:bg-farenheit-600 transition-colors text-center"
+            className="px-6 py-2.5 rounded-lg bg-farenheit-500 text-white font-medium hover:bg-farenheit-600 transition-colors text-center focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
           >
             홈으로 돌아가기
           </Link>
           <Link
             href="/search"
-            className="px-6 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium hover:bg-[var(--muted)] transition-colors text-center"
+            className="px-6 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium hover:bg-[var(--muted)] transition-colors text-center focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
           >
             항공편 검색
           </Link>
