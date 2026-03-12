@@ -77,7 +77,7 @@ export function Sidebar() {
       <aside className="hidden md:flex w-64 border-r border-[var(--border)] bg-[var(--background)] flex-col">
         {/* Logo */}
         <div className="p-6">
-          <Link href="/" className="text-xl font-bold">
+          <Link href="/" className="text-xl font-bold focus:outline-none focus:ring-2 focus:ring-farenheit-500 rounded">
             <span className="text-farenheit-500">Faren</span>
             <span>heit</span>
           </Link>
@@ -95,7 +95,7 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`relative flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`relative flex items-center gap-3 px-4 py-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 ${
                   isActive
                     ? "bg-farenheit-50 dark:bg-farenheit-950 text-farenheit-600 dark:text-farenheit-400 font-medium"
                     : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
@@ -128,7 +128,7 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`relative flex flex-col items-center gap-0.5 px-2 py-2 min-w-[48px] min-h-[48px] justify-center rounded-lg text-xs transition-colors ${
+              className={`relative flex flex-col items-center gap-0.5 px-2 py-2 min-w-[48px] min-h-[48px] justify-center rounded-lg text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 ${
                 isActive
                   ? "text-farenheit-600 font-medium"
                   : "text-[var(--muted-foreground)]"
