@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -13,6 +14,7 @@ _DEFAULT_CURRENCY = "KRW"
 _SOURCE = "travelpayouts"
 _COLLECT_TIMEOUT = 30.0
 _HEALTH_CHECK_TIMEOUT = 10.0
+_RETRY_BASE_DELAY = 1.0
 
 
 class TravelpayoutsCollector(AbstractCollector):
@@ -31,48 +33,64 @@ class TravelpayoutsCollector(AbstractCollector):
         cabin_class: str = "ECONOMY",
     ) -> list[PriceObservation]:
         observations: list[PriceObservation] = []
+        max_retries = pipeline_settings.MAX_RETRIES
 
-        async with httpx.AsyncClient(timeout=_COLLECT_TIMEOUT) as client:
-            params: dict = {
-                "origin": origin,
-                "destination": destination,
-                "depart_date": departure_date.isoformat(),
-                "currency": _DEFAULT_CURRENCY,
-                "token": self.token,
-            }
-            if return_date:
-                params["return_date"] = return_date.isoformat()
+        params: dict = {
+            "origin": origin,
+            "destination": destination,
+            "depart_date": departure_date.isoformat(),
+            "currency": _DEFAULT_CURRENCY,
+            "token": self.token,
+        }
+        # NOTE: Do NOT send return_date — Travelpayouts returns empty
+        # results when return_date is included. Use response's return_at instead.
 
-            response = await client.get(
-                f"{self.base_url}/v1/prices/cheap",
-                params=params,
-            )
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=_COLLECT_TIMEOUT) as client:
+                    response = await client.get(
+                        f"{self.base_url}/v1/prices/cheap",
+                        params=params,
+                    )
 
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("success"):
-                    now = datetime.now(timezone.utc)
-                    # Iterate all destination keys (API may return city code)
-                    for _dest_key, stops_dict in data.get("data", {}).items():
-                        if not isinstance(stops_dict, dict):
-                            continue
-                        for stops_key, offer in stops_dict.items():
-                            try:
-                                obs = self._parse_offer(
-                                    offer, origin, destination, departure_date,
-                                    return_date, cabin_class, now, int(stops_key),
-                                )
-                                if obs:
-                                    observations.append(obs)
-                            except (KeyError, ValueError) as e:
-                                logger.warning(f"Failed to parse offer: {e}")
-            elif response.status_code == 429:
-                logger.warning("Travelpayouts rate limit reached")
-            else:
-                logger.error(
-                    f"Travelpayouts API error: {response.status_code}"
-                )
+                if response.status_code == 200:
+                    try:
+                        data = response.json()
+                    except Exception as e:
+                        logger.error(f"Failed to parse JSON response: {e}")
+                        return observations
+                    if data.get("success"):
+                        now = datetime.now(timezone.utc).replace(tzinfo=None)
+                        # Iterate all destination keys (API may return city code)
+                        for _dest_key, stops_dict in data.get("data", {}).items():
+                            if not isinstance(stops_dict, dict):
+                                continue
+                            for stops_key, offer in stops_dict.items():
+                                try:
+                                    obs = self._parse_offer(
+                                        offer, origin, destination, departure_date,
+                                        return_date, cabin_class, now, int(stops_key),
+                                    )
+                                    if obs:
+                                        observations.append(obs)
+                                except (KeyError, ValueError) as e:
+                                    logger.warning(f"Failed to parse offer: {e}")
+                    return observations
+                elif response.status_code == 429:
+                    logger.warning("Travelpayouts rate limit reached")
+                    return observations  # Don't retry rate limits
+                else:
+                    logger.warning(
+                        f"Travelpayouts API error: {response.status_code} (attempt {attempt + 1}/{max_retries})"
+                    )
+            except (httpx.HTTPError, httpx.TimeoutException) as e:
+                logger.warning(f"Travelpayouts request failed (attempt {attempt + 1}/{max_retries}): {e}")
 
+            if attempt < max_retries - 1:
+                delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                await asyncio.sleep(delay)
+
+        logger.error(f"Travelpayouts collection failed after {max_retries} attempts: {origin}->{destination}")
         return observations
 
     def _parse_offer(
@@ -99,7 +117,10 @@ class TravelpayoutsCollector(AbstractCollector):
             return None
 
         duration_to = offer.get("duration_to")
-        duration_minutes = int(duration_to) if duration_to else None
+        try:
+            duration_minutes = int(duration_to) if duration_to else None
+        except (ValueError, TypeError):
+            duration_minutes = None
 
         return PriceObservation(
             observed_at=now,

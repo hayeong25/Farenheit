@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 # Prediction configuration
 _HISTORY_DAYS = 90
 _TARGET_DATE_START = 7
-_TARGET_DATE_END = 61
-_TARGET_DATE_STEP = 3
+_TARGET_DATE_END = 181
+_TARGET_DATE_STEP = 1
 _MAX_FORECAST_DAYS = 14
-_VALID_UNTIL_HOURS = 2
+_VALID_UNTIL_HOURS = 3
 _MIN_DATA_POINTS = 3
 _MODEL_VERSION = "statistical-v1"
 _DEFAULT_CABIN = "ECONOMY"
@@ -47,6 +47,8 @@ async def _predict_all_routes() -> dict:
             return {"status": "ok", "routes": 0, "predictions": 0}
 
         now_utc = datetime.now(timezone.utc)
+        # SQLite stores tz-naive datetimes; use naive UTC for DataFrame comparisons
+        now_naive = now_utc.replace(tzinfo=None)
         today = now_utc.date()
         target_dates = [
             today + timedelta(days=d)
@@ -62,7 +64,7 @@ async def _predict_all_routes() -> dict:
                     select(FlightPrice)
                     .where(
                         FlightPrice.route_id == route.id,
-                        FlightPrice.time >= now_utc - timedelta(days=_HISTORY_DAYS),
+                        FlightPrice.time >= now_naive - timedelta(days=_HISTORY_DAYS),
                     )
                     .order_by(FlightPrice.time.asc())
                 )
@@ -95,13 +97,13 @@ async def _predict_all_routes() -> dict:
                 for dep_date in target_dates:
                     # Prefer departure-date-specific prices; fall back to all route prices
                     dep_specific = price_df[
-                        (price_df["time"] <= now_utc) & (price_df["departure_date"] == dep_date)
+                        (price_df["time"] <= now_naive) & (price_df["departure_date"] == dep_date)
                     ]
                     if len(dep_specific) >= _MIN_DATA_POINTS:
                         relevant = dep_specific.copy()
                     else:
                         # Fall back to all prices for this route (better than nothing)
-                        relevant = price_df[price_df["time"] <= now_utc].copy()
+                        relevant = price_df[price_df["time"] <= now_naive].copy()
 
                     if len(relevant) < _MIN_DATA_POINTS:
                         continue
@@ -144,15 +146,15 @@ async def _predict_all_routes() -> dict:
                     )
                     pred = existing.scalar_one_or_none()
 
-                    valid_until = now_utc + timedelta(hours=_VALID_UNTIL_HOURS)
+                    valid_until = now_naive + timedelta(hours=_VALID_UNTIL_HOURS)
 
                     if pred:
                         pred.predicted_price = result_pred["predicted_price"]
                         pred.confidence_low = result_pred["confidence_low"]
                         pred.confidence_high = result_pred["confidence_high"]
                         pred.price_direction = result_pred["price_direction"]
-                        pred.confidence_score = Decimal(str(result_pred["confidence_score"]))
-                        pred.predicted_at = now_utc
+                        pred.confidence_score = Decimal(str(round(result_pred["confidence_score"], 4)))
+                        pred.predicted_at = now_naive
                         pred.valid_until = valid_until
                     else:
                         pred = Prediction(
@@ -164,9 +166,9 @@ async def _predict_all_routes() -> dict:
                             confidence_low=result_pred["confidence_low"],
                             confidence_high=result_pred["confidence_high"],
                             price_direction=result_pred["price_direction"],
-                            confidence_score=Decimal(str(result_pred["confidence_score"])),
+                            confidence_score=Decimal(str(round(result_pred["confidence_score"], 4))),
                             model_version=_MODEL_VERSION,
-                            predicted_at=now_utc,
+                            predicted_at=now_naive,
                             valid_until=valid_until,
                         )
                         session.add(pred)
@@ -176,6 +178,9 @@ async def _predict_all_routes() -> dict:
             except Exception as e:
                 routes_failed += 1
                 logger.error(f"Route {route.origin_code}->{route.dest_code}: prediction failed: {e}", exc_info=True)
+                # Don't rollback here — it would discard all prior routes' predictions.
+                # Non-DB errors (predictor, pandas) don't corrupt the session.
+                # If a DB error occurs, the final commit() will handle it.
                 continue
 
         try:

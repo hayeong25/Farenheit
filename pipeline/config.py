@@ -10,10 +10,9 @@ class PipelineSettings(BaseSettings):
     # Database (SQLite)
     DATABASE_URL: str = f"sqlite+aiosqlite:///{DB_PATH}"
 
-    # Amadeus API
-    AMADEUS_CLIENT_ID: str = ""
-    AMADEUS_CLIENT_SECRET: str = ""
-    AMADEUS_BASE_URL: str = "https://test.api.amadeus.com"
+    # Travelpayouts API
+    TRAVELPAYOUTS_TOKEN: str = ""
+    TRAVELPAYOUTS_BASE_URL: str = "https://api.travelpayouts.com"
 
     # Collection settings
     COLLECTION_BATCH_SIZE: int = 10

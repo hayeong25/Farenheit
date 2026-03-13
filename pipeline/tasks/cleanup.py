@@ -21,7 +21,8 @@ async def _cleanup() -> dict:
     from app.models.prediction import Prediction
 
     session_factory = _session_factory
-    now = datetime.now(timezone.utc)
+    # Use tz-naive datetimes for SQLite compatibility
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     today = now.date()
 
     price_cutoff = now - timedelta(days=_PRICE_RETENTION_DAYS)
