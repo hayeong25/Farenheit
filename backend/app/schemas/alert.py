@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.config import IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_TOO_FAR_MSG, MAX_FUTURE_DAYS
+from app.config import IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG, PRICE_TOO_HIGH_MSG, MAX_FUTURE_DAYS
 
 _MAX_TARGET_PRICE = 100_000_000
 
@@ -24,11 +24,11 @@ class AlertCreate(BaseModel):
             raise ValueError(SAME_ORIGIN_DEST_MSG)
         today = datetime.now(timezone.utc).date()
         if self.departure_date and self.departure_date < today:
-            raise ValueError("출발일은 과거일 수 없습니다.")
+            raise ValueError(DATE_PAST_MSG)
         if self.departure_date and self.departure_date > today + timedelta(days=MAX_FUTURE_DAYS):
             raise ValueError(DATE_TOO_FAR_MSG)
         if self.target_price > _MAX_TARGET_PRICE:
-            raise ValueError("목표 가격이 너무 큽니다.")
+            raise ValueError(PRICE_TOO_HIGH_MSG)
         return self
 
 
