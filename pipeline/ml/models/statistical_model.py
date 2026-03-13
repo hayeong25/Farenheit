@@ -70,25 +70,34 @@ class StatisticalPredictor:
         daily = df.groupby(df["time"].dt.date)["price"].agg(["mean", "min", "max"]).reset_index()
         daily.columns = ["date", "avg_price", "min_price", "max_price"]
         daily = daily.sort_values("date")
+        daily = daily.dropna(subset=["avg_price"])
+        if daily.empty:
+            return None
 
         prices = daily["avg_price"].values
         n = len(prices)
 
         # Current price metrics
         current_price = prices[-1]
-        if current_price <= 0:
-            # Zero/negative price = corrupted data, fall back to mean
-            current_price = max(float(prices.mean()), 1.0)
-        min_observed = max(prices.min(), 0)
-        max_observed = prices.max()
+        if not np.isfinite(current_price) or current_price <= 0:
+            # NaN/Inf/Zero/negative price = corrupted data, fall back to mean
+            finite_prices = prices[np.isfinite(prices)]
+            current_price = max(float(finite_prices.mean()), 1.0) if len(finite_prices) > 0 else 1.0
+        min_observed = max(float(np.nanmin(prices)), 0)
+        max_observed = float(np.nanmax(prices))
 
         # EMA (exponential moving average) - recent prices weighted more
         if n >= 7:
             ema_short = self._ema(prices, span=EMA_SHORT_SPAN)
             ema_long = self._ema(prices, span=min(n, EMA_LONG_SPAN))
         else:
-            ema_short = prices.mean()
-            ema_long = prices.mean()
+            ema_short = float(np.nanmean(prices))
+            ema_long = float(np.nanmean(prices))
+        # NaN safety for EMA values
+        if not np.isfinite(ema_short):
+            ema_short = current_price
+        if not np.isfinite(ema_long):
+            ema_long = current_price
 
         # Trend analysis - use all available data (up to 30 days)
         trend_window = min(n, MAX_TREND_WINDOW)
@@ -166,6 +175,11 @@ class StatisticalPredictor:
             uncertainty = current_price * volatility * np.sqrt(d) * UNCERTAINTY_SCALING
             low = max(predicted - uncertainty, min_observed * MIN_PRICE_FLOOR_RATIO)
             high = predicted + uncertainty
+
+            # NaN/Inf safety: clamp to 0 if not finite
+            predicted = predicted if np.isfinite(predicted) else current_price
+            low = low if np.isfinite(low) else 0
+            high = high if np.isfinite(high) else predicted * 1.2
 
             forecast_series.append({
                 "date": forecast_date.isoformat(),

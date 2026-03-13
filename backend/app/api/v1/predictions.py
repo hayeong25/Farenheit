@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,14 +29,14 @@ async def get_prediction(
         dest = dest.upper()
     cabin_class = cabin_class.upper()
     if cabin_class not in VALID_CABIN_CLASSES:
-        raise HTTPException(status_code=400, detail=CABIN_CLASS_ERROR_MSG)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=CABIN_CLASS_ERROR_MSG)
     if origin and dest and origin == dest:
-        raise HTTPException(status_code=400, detail=SAME_ORIGIN_DEST_MSG)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=SAME_ORIGIN_DEST_MSG)
     today = datetime.now(timezone.utc).date()
     if departure_date < today:
-        raise HTTPException(status_code=400, detail=DATE_PAST_MSG)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=DATE_PAST_MSG)
     if departure_date > today + timedelta(days=MAX_FUTURE_DAYS):
-        raise HTTPException(status_code=400, detail=DATE_TOO_FAR_MSG)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=DATE_TOO_FAR_MSG)
 
     # Resolve route_id from origin/dest if not provided
     if route_id is None and origin and dest:
@@ -77,15 +77,15 @@ async def get_heatmap(
     dest = dest.upper()
     cabin_class = cabin_class.upper()
     if cabin_class not in VALID_CABIN_CLASSES:
-        raise HTTPException(status_code=400, detail=CABIN_CLASS_ERROR_MSG)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=CABIN_CLASS_ERROR_MSG)
     if origin == dest:
-        raise HTTPException(status_code=400, detail=SAME_ORIGIN_DEST_MSG)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=SAME_ORIGIN_DEST_MSG)
     # Validate month semantics (YYYY-MM format already guaranteed by regex)
     try:
         year_val, mon_val = int(month[:4]), int(month[5:7])
     except (ValueError, IndexError):
-        raise HTTPException(status_code=400, detail=INVALID_MONTH_FORMAT_MSG)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=INVALID_MONTH_FORMAT_MSG)
     if not (2020 <= year_val <= 2099 and 1 <= mon_val <= 12):
-        raise HTTPException(status_code=400, detail=INVALID_MONTH_FORMAT_MSG)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=INVALID_MONTH_FORMAT_MSG)
     service = PredictionService(db)
     return await service.get_heatmap(origin, dest, month, cabin_class)

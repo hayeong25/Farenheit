@@ -92,7 +92,7 @@ async def create_alert(
                 await asyncio.sleep(delay)
                 delay *= 2
             if not route:
-                raise HTTPException(status_code=400, detail=INVALID_AIRPORT_OR_ROUTE_MSG)
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=INVALID_AIRPORT_OR_ROUTE_MSG)
 
     alert = PriceAlert(
         user_id=None,
@@ -128,11 +128,11 @@ async def delete_alert(
     )
     alert = result.scalar_one_or_none()
     if not alert:
-        raise HTTPException(status_code=404, detail=ALERT_NOT_FOUND_MSG)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ALERT_NOT_FOUND_MSG)
     try:
         await db.delete(alert)
         await db.commit()
     except SQLAlchemyError as e:
         logger.error(f"Failed to delete alert {alert_id}: {e}", exc_info=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail=ALERT_DELETE_FAILED_MSG)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=ALERT_DELETE_FAILED_MSG)

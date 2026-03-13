@@ -18,7 +18,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)) ->
     user = await service.register(user_data)
     if not user:
         logger.warning(f"Registration failed - duplicate email: {user_data.email}")
-        raise HTTPException(status_code=400, detail=EMAIL_ALREADY_EXISTS_MSG)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=EMAIL_ALREADY_EXISTS_MSG)
     logger.info(f"New user registered: {user_data.email}")
     return user
 
@@ -29,5 +29,5 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)) -> T
     token = await service.login(credentials)
     if not token:
         logger.warning(f"Failed login attempt: {credentials.email}")
-        raise HTTPException(status_code=401, detail=INVALID_CREDENTIALS_MSG)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=INVALID_CREDENTIALS_MSG)
     return token
