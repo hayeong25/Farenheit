@@ -128,7 +128,7 @@ class RecommendationService:
         return None, None
 
     def _determine_signal(self, pred: Prediction) -> str:
-        has_confidence = pred.confidence_score and pred.confidence_score > _CONFIDENCE_THRESHOLD
+        has_confidence = pred.confidence_score is not None and pred.confidence_score > _CONFIDENCE_THRESHOLD
         if pred.price_direction == "UP" and has_confidence:
             # Price going up → buy now before it gets more expensive
             return "BUY"

@@ -148,7 +148,7 @@ class StatisticalPredictor:
         trend_consistency = max(0, 1.0 - volatility * 3) * 0.3
         trend_strength = min(abs(trend_per_day / max(current_price, 1.0)) * 100, 1.0) * 0.3
         confidence = round(data_confidence + trend_consistency + trend_strength, 3)
-        confidence = float(np.clip(confidence, 0.1, 0.95))
+        confidence = float(np.clip(confidence, 0.1, 0.95)) if np.isfinite(confidence) else 0.1
 
         # Generate forecast series with EMA-weighted prediction + seasonality
         forecast_series = []
