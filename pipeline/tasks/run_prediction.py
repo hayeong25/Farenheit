@@ -127,6 +127,11 @@ async def _predict_all_routes() -> dict:
                         result_pred["confidence_low"] = result_pred["predicted_price"]
                     if result_pred["confidence_high"] < result_pred["predicted_price"]:
                         result_pred["confidence_high"] = result_pred["predicted_price"]
+                    # Final safety: ensure low <= high
+                    if result_pred["confidence_low"] > result_pred["confidence_high"]:
+                        result_pred["confidence_low"], result_pred["confidence_high"] = (
+                            result_pred["confidence_high"], result_pred["confidence_low"]
+                        )
 
                     # Upsert prediction (match all UniqueConstraint fields)
                     # Build WHERE clause - handle NULL airline_code properly

@@ -2,7 +2,8 @@
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 
 from sqlalchemy import select, func, or_
 
@@ -38,7 +39,7 @@ async def _check_alerts() -> dict:
         alerts = result.scalars().all()
 
         # Batch: pre-fetch minimum prices for all relevant route+cabin combinations
-        min_prices_map: dict[tuple[int, str, object], object] = {}
+        min_prices_map: dict[tuple[int, str, date | None], Decimal] = {}
 
         if alerts:
             route_cabin_pairs = list({(a.route_id, a.cabin_class) for a in alerts})
