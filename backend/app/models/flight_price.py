@@ -12,6 +12,7 @@ class FlightPrice(Base):
     __table_args__ = (
         Index("idx_fp_route_depart", "route_id", "departure_date", "time"),
         Index("idx_fp_airline_route", "airline_code", "route_id", "time"),
+        Index("idx_fp_route_depart_cabin", "route_id", "departure_date", "cabin_class", "time"),
     )
 
     time: Mapped[datetime] = mapped_column(primary_key=True)

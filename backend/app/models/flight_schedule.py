@@ -24,4 +24,5 @@ class FlightSchedule(Base):
     __table_args__ = (
         Index("idx_schedule_route", "origin_code", "dest_code"),
         Index("idx_schedule_airline_route", "airline_code", "origin_code", "dest_code"),
+        Index("idx_schedule_route_fetched", "origin_code", "dest_code", "fetched_at"),
     )
