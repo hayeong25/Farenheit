@@ -359,9 +359,11 @@ class TravelpayoutsClient:
                 continue
             try:
                 airline_code = offer.get("airline", "")
-                if not airline_code:
+                if not airline_code or len(airline_code) != 2:
                     continue
                 price = Decimal(str(offer["price"]))
+                if price <= 0:
+                    continue
                 flight_number_raw = offer.get("flight_number")
                 flight_number = f"{airline_code}{flight_number_raw}" if flight_number_raw else None
                 stops = offer.get("transfers", 0)
@@ -394,6 +396,8 @@ class TravelpayoutsClient:
         cabin_class: str, return_date: date | None,
     ) -> FlightOffer | None:
         price = Decimal(str(offer["price"]))
+        if price <= 0:
+            return None
         airline_code = offer.get("airline", "")
         flight_number_raw = offer.get("flight_number")
         flight_number = f"{airline_code}{flight_number_raw}" if flight_number_raw and airline_code else None
