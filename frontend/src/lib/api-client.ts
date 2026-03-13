@@ -2,12 +2,16 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:900
 
 const FETCH_TIMEOUT_MS = 35_000;
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     public status: number,
     public data: unknown
   ) {
-    super(`API Error: ${status}`);
+    const detail =
+      data && typeof data === "object" && "detail" in data
+        ? String((data as { detail: unknown }).detail)
+        : "";
+    super(detail ? `API Error ${status}: ${detail}` : `API Error: ${status}`);
   }
 }
 
@@ -201,7 +205,7 @@ export interface AlertResponse {
 }
 
 export const flightsApi = {
-  search: (params: {
+  search: async (params: {
     origin: string;
     dest: string;
     departure_date: string;
@@ -209,37 +213,76 @@ export const flightsApi = {
     cabin_class?: string;
     max_stops?: number | string;
     sort_by?: string;
-  }) => fetchAPI<FlightSearchResponse>(`/flights/search?${qs(params)}`),
+  }): Promise<FlightSearchResponse> => {
+    const res = await fetchAPI<FlightSearchResponse>(`/flights/search?${qs(params)}`);
+    // Decimal fields arrive as strings from Pydantic; coerce to number
+    for (const o of res.offers) {
+      o.price_amount = Number(o.price_amount);
+    }
+    return res;
+  },
 
-  priceHistory: (params: {
+  priceHistory: async (params: {
     route_id: number;
     departure_date: string;
     airline_code?: string;
     days?: number;
-  }) => fetchAPI<PriceHistoryResponse>(`/flights/prices/history?${qs(params)}`),
+  }): Promise<PriceHistoryResponse> => {
+    const res = await fetchAPI<PriceHistoryResponse>(`/flights/prices/history?${qs(params)}`);
+    for (const p of res.prices) {
+      p.price_amount = Number(p.price_amount);
+    }
+    if (res.min_price != null) res.min_price = Number(res.min_price);
+    if (res.max_price != null) res.max_price = Number(res.max_price);
+    if (res.avg_price != null) res.avg_price = Number(res.avg_price);
+    return res;
+  },
 };
 
 // Prediction APIs
 export const predictionsApi = {
-  get: (params: {
+  get: async (params: {
     origin: string;
     dest: string;
     departure_date: string;
     cabin_class?: string;
-  }) => fetchAPI<PredictionResponse>(`/predictions?${qs(params)}`),
+  }): Promise<PredictionResponse> => {
+    const res = await fetchAPI<PredictionResponse>(`/predictions?${qs(params)}`);
+    if (res.predicted_price != null) res.predicted_price = Number(res.predicted_price);
+    if (res.confidence_low != null) res.confidence_low = Number(res.confidence_low);
+    if (res.confidence_high != null) res.confidence_high = Number(res.confidence_high);
+    if (res.confidence_score != null) res.confidence_score = Number(res.confidence_score);
+    for (const f of res.forecast_series) {
+      f.predicted_price = Number(f.predicted_price);
+      f.confidence_low = Number(f.confidence_low);
+      f.confidence_high = Number(f.confidence_high);
+    }
+    return res;
+  },
 
-  heatmap: (params: { origin: string; dest: string; month: string; cabin_class?: string }) =>
-    fetchAPI<HeatmapResponse>(`/predictions/heatmap?${qs(params)}`),
+  heatmap: async (params: { origin: string; dest: string; month: string; cabin_class?: string }): Promise<HeatmapResponse> => {
+    const res = await fetchAPI<HeatmapResponse>(`/predictions/heatmap?${qs(params)}`);
+    for (const c of res.cells) {
+      c.predicted_price = Number(c.predicted_price);
+    }
+    return res;
+  },
 };
 
 // Recommendation APIs
 export const recommendationsApi = {
-  get: (params: {
+  get: async (params: {
     origin: string;
     dest: string;
     departure_date: string;
     cabin_class?: string;
-  }) => fetchAPI<RecommendationResponse>(`/recommendations?${qs(params)}`),
+  }): Promise<RecommendationResponse> => {
+    const res = await fetchAPI<RecommendationResponse>(`/recommendations?${qs(params)}`);
+    if (res.current_price != null) res.current_price = Number(res.current_price);
+    if (res.predicted_low != null) res.predicted_low = Number(res.predicted_low);
+    if (res.confidence != null) res.confidence = Number(res.confidence);
+    return res;
+  },
 };
 
 // Route APIs
