@@ -37,9 +37,9 @@ def _calc_duration_from_hhmm(dep_hhmm: str, arr_hhmm: str) -> int | None:
         dh, dm = int(dep_hhmm[:2]), int(dep_hhmm[3:5])
         ah, am = int(arr_hhmm[:2]), int(arr_hhmm[3:5])
         diff = (ah * 60 + am) - (dh * 60 + dm)
-        if diff <= 0:
+        if diff < 0:
             diff += 24 * 60  # next day arrival
-        return diff
+        return diff if diff > 0 else None
     except (ValueError, IndexError):
         return None
 
@@ -61,7 +61,7 @@ def _extract_time(dt_str: str) -> str | None:
 
 def _calc_arrival(departure_time_str: str | None, duration_minutes: int | None) -> str | None:
     """Calculate arrival time from departure + duration."""
-    if not departure_time_str or not duration_minutes:
+    if not departure_time_str or not duration_minutes or duration_minutes <= 0:
         return None
     try:
         dep = datetime.fromisoformat(departure_time_str)
