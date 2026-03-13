@@ -17,8 +17,8 @@ class Prediction(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    route_id: Mapped[int] = mapped_column(ForeignKey("routes.id"), index=True)
-    airline_code: Mapped[str | None] = mapped_column(String(2), ForeignKey("airlines.iata_code"))
+    route_id: Mapped[int] = mapped_column(ForeignKey("routes.id", ondelete="CASCADE"), index=True)
+    airline_code: Mapped[str | None] = mapped_column(String(2), ForeignKey("airlines.iata_code", ondelete="SET NULL"))
     departure_date: Mapped[date] = mapped_column()
     cabin_class: Mapped[str] = mapped_column(String(20), default="ECONOMY")
     predicted_price: Mapped[Decimal] = mapped_column()
@@ -27,5 +27,5 @@ class Prediction(Base):
     price_direction: Mapped[str] = mapped_column(String(10))  # UP, DOWN, STABLE
     confidence_score: Mapped[Decimal | None] = mapped_column()
     model_version: Mapped[str] = mapped_column(String(50))
-    predicted_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
+    predicted_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     valid_until: Mapped[datetime] = mapped_column()

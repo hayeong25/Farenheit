@@ -15,9 +15,9 @@ class FlightPrice(Base):
     )
 
     time: Mapped[datetime] = mapped_column(primary_key=True)
-    route_id: Mapped[int] = mapped_column(ForeignKey("routes.id"), primary_key=True)
+    route_id: Mapped[int] = mapped_column(ForeignKey("routes.id", ondelete="CASCADE"), primary_key=True)
     airline_code: Mapped[str] = mapped_column(
-        String(2), ForeignKey("airlines.iata_code"), primary_key=True
+        String(2), ForeignKey("airlines.iata_code", ondelete="CASCADE"), primary_key=True
     )
     departure_date: Mapped[date] = mapped_column(primary_key=True)
     cabin_class: Mapped[str] = mapped_column(String(20), primary_key=True, default="ECONOMY")

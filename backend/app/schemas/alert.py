@@ -18,7 +18,9 @@ class AlertCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_alert(self) -> "AlertCreate":
-        if self.origin.upper() == self.destination.upper():
+        self.origin = self.origin.upper()
+        self.destination = self.destination.upper()
+        if self.origin == self.destination:
             raise ValueError(SAME_ORIGIN_DEST_MSG)
         today = datetime.now(timezone.utc).date()
         if self.departure_date and self.departure_date < today:

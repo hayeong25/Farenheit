@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 
 class FlightOffer(BaseModel):
@@ -10,10 +10,10 @@ class FlightOffer(BaseModel):
     departure_date: date
     return_date: date | None = None
     cabin_class: str
-    price_amount: Decimal
+    price_amount: Decimal = Field(gt=0)
     currency: str
-    stops: int
-    duration_minutes: int | None = None
+    stops: int = Field(ge=0)
+    duration_minutes: int | None = Field(None, ge=0)
     source: str
     departure_time: str | None = None
     arrival_time: str | None = None
@@ -22,8 +22,18 @@ class FlightOffer(BaseModel):
     return_flight_number: str | None = None
     return_departure_time: str | None = None
     return_arrival_time: str | None = None
-    return_stops: int | None = None
-    return_duration_minutes: int | None = None
+    return_stops: int | None = Field(None, ge=0)
+    return_duration_minutes: int | None = Field(None, ge=0)
+
+    @model_validator(mode="after")
+    def _clear_return_fields_for_one_way(self) -> "FlightOffer":
+        if not self.return_date:
+            self.return_flight_number = None
+            self.return_departure_time = None
+            self.return_arrival_time = None
+            self.return_stops = None
+            self.return_duration_minutes = None
+        return self
 
 
 class AirlineInfo(BaseModel):

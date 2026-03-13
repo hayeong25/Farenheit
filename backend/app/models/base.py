@@ -8,9 +8,9 @@ class Base(DeclarativeBase):
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class TimestampMixin:
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
-    updated_at: Mapped[datetime | None] = mapped_column(default=None, onupdate=_utcnow)
+    updated_at: Mapped[datetime | None] = mapped_column(default=_utcnow, onupdate=_utcnow)
