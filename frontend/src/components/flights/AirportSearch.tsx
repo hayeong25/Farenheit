@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useId } from "react";
 import { API_BASE, type Airport } from "@/lib/api-client";
+import { AIRPORT_SEARCH_ERROR_MSG } from "@/lib/utils";
 
 const MAX_RESULTS = 15;
 const DEBOUNCE_MS = 250;
@@ -25,6 +26,8 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const abortRef = useRef<AbortController | null>(null);
+  const composingRef = useRef(false);
+  const justSelectedRef = useRef(false);
   const instanceId = useId();
   const inputId = `airport-input-${instanceId}`;
   const listboxId = `airport-listbox-${instanceId}`;
@@ -52,7 +55,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
   }, []);
 
   const searchAirports = useCallback(async (q: string) => {
-    if (q.length < 2) {
+    if (q.length < 1) {
       setResults([]);
       setIsOpen(false);
       setIsLoading(false);
@@ -90,7 +93,10 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
     }
   }, []);
 
-  const composingRef = useRef(false);
+  const scheduleSearch = useCallback((val: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchAirports(val), DEBOUNCE_MS);
+  }, [searchAirports]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -101,17 +107,27 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
       onSelect("", "");
     }
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    // Don't search during IME composition (Korean input)
-    if (!composingRef.current) {
-      debounceRef.current = setTimeout(() => searchAirports(val), DEBOUNCE_MS);
+    scheduleSearch(val);
+  };
+
+  const handleCompositionStart = () => { composingRef.current = true; };
+  const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement>) => {
+    composingRef.current = false;
+    // Skip if user just selected an item (click ends composition via blur)
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
     }
+    const val = e.currentTarget.value;
+    scheduleSearch(val);
   };
 
   const handleSelect = (airport: Airport) => {
     const displayName = airport.city_ko
       ? `${airport.city_ko} (${airport.iata_code})`
       : `${airport.city} (${airport.iata_code})`;
+    justSelectedRef.current = true;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setQuery(displayName);
     setSelectedCode(airport.iata_code);
     onSelect(airport.iata_code, displayName);
@@ -120,7 +136,14 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen || results.length === 0) return;
+    if (!isOpen) return;
+
+    if (e.key === "Escape" || e.key === "Tab") {
+      setIsOpen(false);
+      return;
+    }
+
+    if (results.length === 0) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -131,8 +154,6 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
     } else if (e.key === "Enter" && highlightIdx >= 0) {
       e.preventDefault();
       handleSelect(results[highlightIdx]);
-    } else if (e.key === "Escape" || e.key === "Tab") {
-      setIsOpen(false);
     }
   };
 
@@ -151,16 +172,10 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
           aria-autocomplete="list"
           value={query}
           onChange={handleChange}
-          onFocus={() => { if (results.length > 0 && !selectedCode && query.length >= 2) setIsOpen(true); }}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
+          onFocus={() => { if (results.length > 0 && !selectedCode && query.length >= 1) setIsOpen(true); }}
           onKeyDown={handleKeyDown}
-          onCompositionStart={() => { composingRef.current = true; }}
-          onCompositionEnd={(e) => {
-            composingRef.current = false;
-            // Trigger search after composition ends
-            const val = (e.target as HTMLInputElement).value;
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-            debounceRef.current = setTimeout(() => searchAirports(val), DEBOUNCE_MS);
-          }}
           placeholder={placeholder}
           autoComplete="off"
           className={`w-full px-4 py-3 rounded-lg border bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500 transition-colors ${
@@ -194,11 +209,11 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
       </div>
 
       {isOpen && (
-        <ul id={listboxId} role="listbox" aria-label={label} className="absolute z-[60] w-full mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <ul id={listboxId} role="listbox" aria-label={label} className="absolute z-[60] w-full mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg max-h-48 sm:max-h-60 overflow-y-auto">
           {isLoading ? (
             <li className="px-4 py-3 text-sm text-[var(--muted-foreground)]">검색 중...</li>
           ) : fetchError ? (
-            <li className="px-4 py-3 text-sm text-red-500 dark:text-red-400">서버 연결에 실패했습니다. 다시 입력해주세요.</li>
+            <li className="px-4 py-3 text-sm text-red-500 dark:text-red-400">{AIRPORT_SEARCH_ERROR_MSG}</li>
           ) : results.length === 0 ? (
             <li className="px-4 py-3 text-sm text-[var(--muted-foreground)]">결과가 없습니다</li>
           ) : (
@@ -212,7 +227,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
                 onClick={() => handleSelect(airport)}
                 className={`px-4 py-3 cursor-pointer transition-colors ${
                   idx === highlightIdx
-                    ? "bg-farenheit-50 text-farenheit-700"
+                    ? "bg-farenheit-50 dark:bg-farenheit-950 text-farenheit-700 dark:text-farenheit-300"
                     : "hover:bg-[var(--muted)]"
                 }`}
               >

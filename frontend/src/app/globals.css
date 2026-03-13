@@ -42,7 +42,13 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling (Firefox) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Scrollbar styling (WebKit) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -67,6 +73,22 @@ input[type="month"] {
   appearance: none;
   -webkit-appearance: none;
   min-height: 48px;
+}
+
+/* Fade-in animation for result cards */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out both;
 }
 
 /* Mobile safe area */

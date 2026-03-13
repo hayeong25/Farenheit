@@ -17,7 +17,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
     <div role="alert" className="flex flex-col items-center justify-center min-h-screen gap-6 px-4 bg-[var(--background)]">
       <div className="flex flex-col items-center gap-5 max-w-md text-center">
         {/* Icon */}
-        <div className="w-20 h-20 rounded-full bg-farenheit-50 flex items-center justify-center ring-4 ring-farenheit-100">
+        <div className="w-20 h-20 rounded-full bg-farenheit-50 dark:bg-farenheit-950 flex items-center justify-center ring-4 ring-farenheit-100 dark:ring-farenheit-900">
           <svg
             aria-hidden="true"
             className="w-10 h-10 text-farenheit-500"
