@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { recommendationsApi, routesApi, type RecommendationResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
+import { getLocalToday, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, NETWORK_ERROR_MSG } from "@/lib/utils";
 
 const signalConfig: Record<string, { color: string; bgColor: string; label: string; description: string; icon: string }> = {
   BUY: {
@@ -48,7 +48,7 @@ function RecommendationsContent() {
   const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState(searchParams.get("date") || "");
   const cabinParam = searchParams.get("cabin") || "ECONOMY";
-  const cabinClass = (VALID_CABIN_CLASSES as readonly string[]).includes(cabinParam) ? cabinParam : "ECONOMY";
+  const [cabinClass, setCabinClass] = useState((VALID_CABIN_CLASSES as readonly string[]).includes(cabinParam) ? cabinParam : "ECONOMY");
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -118,7 +118,7 @@ function RecommendationsContent() {
       setRecommendation(result);
     } catch {
       if (currentRequestId !== requestIdRef.current) return;
-      setError("추천 정보를 불러올 수 없습니다. 다시 시도해주세요.");
+      setError(NETWORK_ERROR_MSG);
       setRecommendation(null);
     } finally {
       if (currentRequestId === requestIdRef.current) {
@@ -140,6 +140,19 @@ function RecommendationsContent() {
     }
   }, [searchParams, searched, handleGetRecommendation]);
 
+  // Re-search when cabin class changes (skip on initial mount)
+  const cabinInitialRef = useRef(true);
+  useEffect(() => {
+    if (cabinInitialRef.current) {
+      cabinInitialRef.current = false;
+      return;
+    }
+    if (searched && originCode && destCode && date) {
+      handleGetRecommendation(originCode, destCode, date);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cabinClass]);
+
   const handleSwap = () => {
     const tc = originCode, td = originDisplay;
     setOriginCode(destCode); setOriginDisplay(destDisplay);
@@ -156,14 +169,14 @@ function RecommendationsContent() {
       <h1 className="text-2xl font-bold">구매 추천</h1>
 
       {/* Signal Legend */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {Object.entries(signalConfig).map(([key, cfg]) => {
           const dotColor = key === "BUY" ? "bg-green-500" :
             key === "WAIT" ? "bg-yellow-500" :
             key === "HOLD" ? "bg-gray-400" : "bg-blue-400";
           const borderStyle = key === "INSUFFICIENT" ? "border-dashed border-[var(--border)]" : "border-[var(--border)]";
           return (
-            <div key={key} className={`bg-[var(--background)] rounded-xl p-4 border ${borderStyle}`}>
+            <div key={key} className={`bg-[var(--background)] rounded-xl p-4 border transition-shadow hover:shadow-sm ${borderStyle}`}>
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
                 <span className={`font-semibold text-sm ${cfg.color}`}>{cfg.label}</span>
@@ -176,7 +189,7 @@ function RecommendationsContent() {
 
       {/* Query Form */}
       <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr_auto] gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] lg:grid-cols-[1fr_auto_1fr_1fr_1fr_auto] gap-4 items-end">
           <AirportSearch
             key={`ro-${originKeyRef.current}`}
             label="출발지"
@@ -188,7 +201,7 @@ function RecommendationsContent() {
             <button
               onClick={handleSwap}
               disabled={!originCode || !destCode}
-              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30"
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:border-farenheit-300 transition-colors disabled:opacity-30"
               title="출발지/도착지 바꾸기"
               aria-label="출발지와 도착지 바꾸기"
             >
@@ -215,6 +228,19 @@ function RecommendationsContent() {
               max={getDateOneYearLater()}
               className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             />
+          </div>
+          <div>
+            <label htmlFor="rec-cabin-class" className="block text-sm font-medium mb-1">좌석 등급</label>
+            <select
+              id="rec-cabin-class"
+              value={cabinClass}
+              onChange={(e) => setCabinClass(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
+            >
+              {VALID_CABIN_CLASSES.map((c) => (
+                <option key={c} value={c}>{CABIN_CLASS_LABELS[c]}</option>
+              ))}
+            </select>
           </div>
           <div className="flex items-end">
             <button
@@ -243,7 +269,7 @@ function RecommendationsContent() {
         <button
           onClick={handleSwap}
           disabled={!originCode || !destCode}
-          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
         >
           <svg aria-hidden="true" className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
@@ -277,9 +303,9 @@ function RecommendationsContent() {
       )}
 
       {!loading && searched && recommendation && signal && (
-        <div className={`rounded-xl p-6 border-2 ${signal.bgColor}`} aria-live="polite">
+        <div className={`rounded-xl p-6 border-2 animate-fade-in-up ${signal.bgColor}`} aria-live="polite">
           <div className="flex items-center gap-4 mb-4">
-            <span className={`text-4xl font-black ${signal.color}`}>
+            <span className={`text-2xl sm:text-3xl md:text-4xl font-black ${signal.color}`}>
               {signal.label}
             </span>
             <div>
@@ -290,7 +316,7 @@ function RecommendationsContent() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4">
             {recommendation.current_price != null && Number.isFinite(Number(recommendation.current_price)) && (
               <div>
                 <p className="text-xs text-[var(--muted-foreground)]">현재 예측 가격</p>
@@ -353,6 +379,28 @@ function RecommendationsContent() {
             <p className="text-sm font-medium mb-1">분석 근거</p>
             <p className="text-sm text-[var(--muted-foreground)]">{recommendation.reasoning}</p>
           </div>
+
+          {/* Quick action links */}
+          <div className="flex items-center gap-3 mt-4 flex-wrap">
+            <Link
+              href={`/search?${new URLSearchParams({ origin: recommendation.origin, dest: recommendation.destination, date: recommendation.departure_date }).toString()}`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors"
+            >
+              <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              항공편 검색
+            </Link>
+            <Link
+              href={`/predictions?${new URLSearchParams({ origin: recommendation.origin, dest: recommendation.destination, date: recommendation.departure_date }).toString()}`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors"
+            >
+              <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+              </svg>
+              가격 예측 보기
+            </Link>
+          </div>
         </div>
       )}
 
@@ -403,12 +451,12 @@ export default function RecommendationsPage() {
     <Suspense fallback={
       <div className="space-y-6">
         <div className="h-8 w-28 bg-[var(--muted)] rounded animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
           {[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-[var(--muted)] rounded-xl animate-pulse" />)}
         </div>
         <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-[var(--muted)] rounded-lg animate-pulse" />)}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-12 bg-[var(--muted)] rounded-lg animate-pulse" />)}
           </div>
         </div>
       </div>

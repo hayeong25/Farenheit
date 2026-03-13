@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { alertsApi, AlertResponse, routesApi, statsApi } from "@/lib/api-client";
-import { formatDate, formatPrice, formatRelativeTime, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
+import { formatDate, formatPrice, formatRelativeTime, getLocalToday, getDateOneYearLater, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, NETWORK_ERROR_MSG } from "@/lib/utils";
 
 const MAX_PRICE_DIGITS = 12;
 
@@ -66,7 +66,7 @@ function AlertCard({ alert, onDelete, confirmingId, onConfirmDelete, cityNames }
             {isTriggered ? "목표가 도달" : "모니터링 중"}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-4 text-sm text-[var(--muted-foreground)] mt-1 flex-wrap">
           <span>목표가: {formatPrice(Number(alert.target_price))}</span>
           {alert.departure_date && <span>출발일: {alert.departure_date}</span>}
           {!alert.departure_date && <span className="text-xs italic">모든 출발일 모니터링</span>}
@@ -126,6 +126,7 @@ function AlertsContent() {
   // Create form
   const [showCreate, setShowCreate] = useState(false);
   const modalRef = useRef<HTMLFormElement>(null);
+  const triggerBtnRef = useRef<HTMLButtonElement>(null);
 
   // Escape key to close modal + focus trap
   useEffect(() => {
@@ -160,6 +161,7 @@ function AlertsContent() {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       clearTimeout(focusTimer);
+      triggerBtnRef.current?.focus();
     };
   }, [showCreate]);
   const [originCode, setOriginCode] = useState(searchParams.get("origin") || "");
@@ -224,7 +226,7 @@ function AlertsContent() {
         setCityNames(resolved);
       }
     } catch {
-      setError("서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.");
+      setError(NETWORK_ERROR_MSG);
     } finally {
       setIsLoading(false);
     }
@@ -325,6 +327,7 @@ function AlertsContent() {
             setCreateError(null);
             setShowCreate(true);
           }}
+          ref={triggerBtnRef}
           className="px-4 py-2 rounded-lg bg-farenheit-500 text-white hover:bg-farenheit-600 transition-colors text-sm font-medium"
         >
           + 알림 추가
@@ -336,14 +339,14 @@ function AlertsContent() {
         <h2 className="text-lg font-semibold mb-3">이렇게 동작합니다</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 rounded-lg bg-[var(--muted)]">
-            <div className="w-8 h-8 rounded-full bg-farenheit-100 text-farenheit-600 flex items-center justify-center text-sm font-bold mb-2">1</div>
+            <div className="w-8 h-8 rounded-full bg-farenheit-100 dark:bg-farenheit-900 text-farenheit-600 dark:text-farenheit-300 flex items-center justify-center text-sm font-bold mb-2">1</div>
             <p className="font-medium text-sm">노선과 목표 가격 설정</p>
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
               관심 있는 노선의 목표 가격을 설정하세요
             </p>
           </div>
           <div className="p-4 rounded-lg bg-[var(--muted)]">
-            <div className="w-8 h-8 rounded-full bg-farenheit-100 text-farenheit-600 flex items-center justify-center text-sm font-bold mb-2">2</div>
+            <div className="w-8 h-8 rounded-full bg-farenheit-100 dark:bg-farenheit-900 text-farenheit-600 dark:text-farenheit-300 flex items-center justify-center text-sm font-bold mb-2">2</div>
             <p className="font-medium text-sm">자동 가격 모니터링</p>
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
               30분 간격으로 가격을 수집하고 비교합니다
@@ -358,7 +361,7 @@ function AlertsContent() {
             )}
           </div>
           <div className="p-4 rounded-lg bg-[var(--muted)]">
-            <div className="w-8 h-8 rounded-full bg-farenheit-100 text-farenheit-600 flex items-center justify-center text-sm font-bold mb-2">3</div>
+            <div className="w-8 h-8 rounded-full bg-farenheit-100 dark:bg-farenheit-900 text-farenheit-600 dark:text-farenheit-300 flex items-center justify-center text-sm font-bold mb-2">3</div>
             <p className="font-medium text-sm">이 페이지에서 확인</p>
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
               목표 가격에 도달하면 &quot;도달 완료&quot;로 표시됩니다
@@ -430,7 +433,7 @@ function AlertsContent() {
 
       {/* Create Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCreate(false)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowCreate(false)}>
           <form
             ref={modalRef}
             role="dialog"
@@ -442,7 +445,7 @@ function AlertsContent() {
           >
             <h2 id="create-alert-title" className="text-xl font-bold mb-4">가격 알림 추가</h2>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <AirportSearch
                   label="출발지"
                   placeholder="도시 또는 공항 검색"
@@ -472,13 +475,14 @@ function AlertsContent() {
                     setTargetPrice(val);
                   }}
                   placeholder="예: 500000"
+                  aria-describedby="alert-price-help"
                   className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                 />
-                <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                <p id="alert-price-help" className="text-xs text-[var(--muted-foreground)] mt-1">
                   이 금액 이하가 되면 이 페이지에서 &quot;도달 완료&quot;로 표시됩니다
                 </p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="alert-cabin-class" className="block text-sm font-medium mb-1">좌석 등급</label>
                   <select
@@ -501,9 +505,10 @@ function AlertsContent() {
                     onChange={(e) => setDepartureDate(e.target.value)}
                     min={getLocalToday()}
                     max={getDateOneYearLater()}
+                    aria-describedby="alert-date-help"
                     className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
                   />
-                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                  <p id="alert-date-help" className="text-xs text-[var(--muted-foreground)] mt-1">
                     비워두면 이 노선의 모든 출발일 가격을 모니터링합니다
                   </p>
                 </div>

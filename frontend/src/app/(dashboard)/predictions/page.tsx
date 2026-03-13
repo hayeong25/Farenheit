@@ -5,22 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { predictionsApi, routesApi, type PredictionResponse, type HeatmapResponse } from "@/lib/api-client";
-import { getLocalToday, getDateOneYearLater, formatPrice, formatRelativeTime, getMissingFieldsMsg, VALID_CABIN_CLASSES, SAME_ORIGIN_DEST_MSG } from "@/lib/utils";
-
-const DIRECTION_CONFIG: Record<string, { color: string; text: string; arrow: string }> = {
-  UP: { color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800", text: "상승 예상", arrow: "↑" },
-  DOWN: { color: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800", text: "하락 예상", arrow: "↓" },
-  STABLE: { color: "text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700", text: "안정", arrow: "→" },
-};
-
-function DirectionBadge({ direction }: { direction: string }) {
-  const c = DIRECTION_CONFIG[direction] || DIRECTION_CONFIG.STABLE;
-  return (
-    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${c.color}`}>
-      {c.arrow} {c.text}
-    </span>
-  );
-}
+import { getLocalToday, getDateOneYearLater, formatPrice, getMissingFieldsMsg, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, NETWORK_ERROR_MSG } from "@/lib/utils";
 
 function PredictionsContent() {
   const searchParams = useSearchParams();
@@ -32,7 +17,7 @@ function PredictionsContent() {
   const [destDisplay, setDestDisplay] = useState("");
   const [date, setDate] = useState(searchParams.get("date") || "");
   const cabinParam = searchParams.get("cabin") || "ECONOMY";
-  const cabinClass = (VALID_CABIN_CLASSES as readonly string[]).includes(cabinParam) ? cabinParam : "ECONOMY";
+  const [cabinClass, setCabinClass] = useState((VALID_CABIN_CLASSES as readonly string[]).includes(cabinParam) ? cabinParam : "ECONOMY");
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -109,7 +94,7 @@ function PredictionsContent() {
       setPrediction(result);
     } catch {
       if (currentRequestId !== requestIdRef.current) return;
-      setError("서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.");
+      setError(NETWORK_ERROR_MSG);
       setPrediction(null);
       setLoading(false);
       return; // Skip heatmap on prediction failure
@@ -147,6 +132,19 @@ function PredictionsContent() {
     }
   }, [searchParams, searched, handlePredict]);
 
+  // Re-search when cabin class changes (skip on initial mount)
+  const cabinInitialRef = useRef(true);
+  useEffect(() => {
+    if (cabinInitialRef.current) {
+      cabinInitialRef.current = false;
+      return;
+    }
+    if (searched && originCode && destCode && date) {
+      handlePredict(originCode, destCode, date);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cabinClass]);
+
   const handleSwap = () => {
     const tc = originCode, td = originDisplay;
     setOriginCode(destCode); setOriginDisplay(destDisplay);
@@ -157,16 +155,19 @@ function PredictionsContent() {
 
   const hasPredictionData = prediction && prediction.predicted_price !== null && prediction.model_version !== "none";
 
+  // Helpers for prediction result visualization
+  const predLow = prediction?.confidence_low != null ? Number(prediction.confidence_low) : null;
+  const predHigh = prediction?.confidence_high != null ? Number(prediction.confidence_high) : null;
+  const predPrice = prediction?.predicted_price != null ? Number(prediction.predicted_price) : null;
+  const confScore = prediction?.confidence_score != null ? Number(prediction.confidence_score) : null;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <h1 className="text-2xl font-bold">가격 예측</h1>
 
-      {/* Single Query Form */}
-      <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-        <p className="text-sm text-[var(--muted-foreground)] mb-4">
-          노선과 출발일을 입력하면 AI 가격 예측과 월간 히트맵을 함께 보여드립니다.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr_auto] gap-4 items-end">
+      {/* Search Form */}
+      <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] lg:grid-cols-[1fr_auto_1fr_1fr_1fr_auto] gap-3 items-end">
           <AirportSearch
             key={`po-${originKeyRef.current}`}
             label="출발지"
@@ -178,7 +179,7 @@ function PredictionsContent() {
             <button
               onClick={handleSwap}
               disabled={!originCode || !destCode}
-              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 hover:border-farenheit-300 transition-colors disabled:opacity-30"
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:border-farenheit-300 transition-colors disabled:opacity-30"
               title="출발지/도착지 바꾸기"
               aria-label="출발지와 도착지 바꾸기"
             >
@@ -206,6 +207,19 @@ function PredictionsContent() {
               className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
             />
           </div>
+          <div>
+            <label htmlFor="pred-cabin-class" className="block text-sm font-medium mb-1">좌석 등급</label>
+            <select
+              id="pred-cabin-class"
+              value={cabinClass}
+              onChange={(e) => setCabinClass(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
+            >
+              {VALID_CABIN_CLASSES.map((c) => (
+                <option key={c} value={c}>{CABIN_CLASS_LABELS[c]}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-end">
             <button
               onClick={() => {
@@ -228,12 +242,10 @@ function PredictionsContent() {
             </button>
           </div>
         </div>
-
-        {/* Mobile swap */}
         <button
           onClick={handleSwap}
           disabled={!originCode || !destCode}
-          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
+          className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)]"
         >
           <svg aria-hidden="true" className="w-4 h-4 rotate-90 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" />
@@ -261,216 +273,321 @@ function PredictionsContent() {
       {/* Loading */}
       {loading && (
         <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center">
-          <div className="inline-block w-8 h-8 border-4 border-farenheit-200 border-t-farenheit-500 rounded-full animate-spin mb-4" />
-          <p className="text-[var(--muted-foreground)]">AI가 가격 추세를 분석하고 있습니다...</p>
+          <div className="inline-block w-8 h-8 border-4 border-farenheit-200 border-t-farenheit-500 rounded-full animate-spin mb-3" />
+          <p className="text-sm text-[var(--muted-foreground)]">가격 추세를 분석하고 있습니다...</p>
         </div>
       )}
 
-      {/* Prediction Result */}
+      {/* Prediction Result - Redesigned */}
       {searched && !loading && hasPredictionData && (
-        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)] space-y-4" aria-live="polite">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-lg font-semibold">예측 결과</h2>
-            <DirectionBadge direction={prediction.price_direction} />
+        <div className="bg-[var(--background)] rounded-xl border border-[var(--border)] overflow-hidden animate-fade-in-up" aria-live="polite">
+          {/* Main price */}
+          <div className="px-6 pt-6 pb-4 text-center">
+            <p className="text-xs text-[var(--muted-foreground)] mb-1">예측 가격</p>
+            <p className="text-3xl sm:text-4xl font-bold tracking-tight">{formatPrice(predPrice!)}</p>
+            {prediction.price_direction && prediction.price_direction !== "STABLE" && (
+              <p className={`text-sm font-medium mt-1 ${
+                prediction.price_direction === "DOWN" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+              }`}>
+                {prediction.price_direction === "DOWN" ? "↓ 가격 하락 예상" : "↑ 가격 상승 예상"}
+              </p>
+            )}
+            {prediction.price_direction === "STABLE" && (
+              <p className="text-sm font-medium mt-1 text-[var(--muted-foreground)]">→ 가격 유지 예상</p>
+            )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-[var(--muted-foreground)]">예측 가격</p>
-              <p className="text-lg sm:text-xl font-bold break-all">{formatPrice(Number(prediction.predicted_price))}</p>
-            </div>
-            {prediction.confidence_low != null && Number.isFinite(Number(prediction.confidence_low)) && (
-              <div>
-                <p className="text-xs text-[var(--muted-foreground)]">예측 하한</p>
-                <p className="text-lg font-medium text-green-600 dark:text-green-400">{formatPrice(Number(prediction.confidence_low))}</p>
-              </div>
-            )}
-            {prediction.confidence_high != null && Number.isFinite(Number(prediction.confidence_high)) && (
-              <div>
-                <p className="text-xs text-[var(--muted-foreground)]">예측 상한</p>
-                <p className="text-lg font-medium text-red-600 dark:text-red-400">{formatPrice(Number(prediction.confidence_high))}</p>
-              </div>
-            )}
-            {prediction.confidence_score != null && Number.isFinite(Number(prediction.confidence_score)) && (() => {
-              const pct = Math.round(Number(prediction.confidence_score) * 100);
-              const label = pct >= 85 ? "높음" : pct >= 60 ? "보통" : "낮음";
-              const color = pct >= 85 ? "text-green-600 dark:text-green-400" : pct >= 60 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400";
-              return (
-                <div>
-                  <p className="text-xs text-[var(--muted-foreground)]">신뢰도</p>
-                  <p className="text-lg font-medium">{pct}% <span className={`text-sm ${color}`}>({label})</span></p>
+
+          {/* Range bar */}
+          {predLow != null && predHigh != null && Number.isFinite(predLow) && Number.isFinite(predHigh) && predHigh > predLow && (
+            <div className="px-6 pb-5">
+              <div className="relative">
+                <div className="flex justify-between text-xs text-[var(--muted-foreground)] mb-1.5">
+                  <span>{formatPrice(predLow)}</span>
+                  <span>{formatPrice(predHigh)}</span>
                 </div>
-              );
-            })()}
-          </div>
-          <p className="text-xs text-[var(--muted-foreground)]">
-            모델: {prediction.model_version}
-            {prediction.predicted_at && ` | 예측 시점: ${formatRelativeTime(prediction.predicted_at)}`}
-          </p>
-        </div>
-      )}
-
-      {/* Forecast Series */}
-      {searched && !loading && prediction && prediction.forecast_series.length > 1 && (
-        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-          <h2 className="text-lg font-semibold mb-3">출발일별 가격 전망</h2>
-          <p className="text-sm text-[var(--muted-foreground)] mb-4">
-            같은 노선의 다른 출발일 예측 가격입니다. 저렴한 날짜를 비교해보세요.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)]">
-                  <th className="text-left py-2 pr-4 font-medium text-[var(--muted-foreground)]">출발일</th>
-                  <th className="text-right py-2 px-4 font-medium text-[var(--muted-foreground)]">예측 가격</th>
-                  <th className="text-right py-2 px-4 font-medium text-[var(--muted-foreground)]">하한</th>
-                  <th className="text-right py-2 pl-4 font-medium text-[var(--muted-foreground)]">상한</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                const allPrices = prediction.forecast_series.map(p => p.predicted_price).filter(p => Number.isFinite(p) && p > 0);
-                const minForecast = allPrices.length > 0 ? Math.min(...allPrices) : 0;
-                return prediction.forecast_series.slice(0, 15).map((fp) => {
-                  const isSelected = fp.date === prediction.departure_date;
-                  const isLowest = fp.predicted_price === minForecast && minForecast > 0;
-                  return (
-                    <tr
-                      key={fp.date}
-                      className={`border-b border-[var(--border)] last:border-0 ${
-                        isSelected ? "bg-farenheit-50/50 dark:bg-farenheit-950/20" : ""
-                      }`}
-                    >
-                      <td className="py-2 pr-4">
-                        <span className="font-medium">{fp.date.slice(5)}</span>
-                        {isSelected && <span className="text-xs text-farenheit-500 ml-1.5">선택</span>}
-                        {isLowest && <span className="text-xs text-green-600 dark:text-green-400 ml-1.5">최저</span>}
-                      </td>
-                      <td className={`text-right py-2 px-4 font-semibold ${isLowest ? "text-green-600 dark:text-green-400" : ""}`}>
-                        {formatPrice(fp.predicted_price)}
-                      </td>
-                      <td className="text-right py-2 px-4 text-[var(--muted-foreground)]">
-                        {formatPrice(fp.confidence_low)}
-                      </td>
-                      <td className="text-right py-2 pl-4 text-[var(--muted-foreground)]">
-                        {formatPrice(fp.confidence_high)}
-                      </td>
-                    </tr>
-                  );
-                });
-              })()}
-              </tbody>
-            </table>
-          </div>
-          {prediction.forecast_series.length > 15 && (
-            <p className="text-xs text-[var(--muted-foreground)] mt-2 text-center">
-              {prediction.forecast_series.length}개 날짜 중 15개를 표시합니다
-            </p>
+                <div className="relative h-2 rounded-full bg-gradient-to-r from-green-400/30 via-yellow-300/30 to-red-400/30 dark:from-green-400/20 dark:via-yellow-300/20 dark:to-red-400/20">
+                  <div className="absolute h-2 rounded-full bg-gradient-to-r from-green-400 via-yellow-300 to-red-400 opacity-60" style={{ left: 0, right: 0 }} />
+                  {/* Predicted price marker */}
+                  {predPrice != null && (() => {
+                    const pct = Math.min(Math.max(((predPrice - predLow) / (predHigh - predLow)) * 100, 2), 98);
+                    return (
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-[var(--background)] border-[2.5px] border-farenheit-500 shadow-sm"
+                        style={{ left: `${pct}%`, marginLeft: "-7px" }}
+                      />
+                    );
+                  })()}
+                </div>
+                <div className="flex justify-between text-[10px] text-[var(--muted-foreground)] mt-1">
+                  <span>하한</span>
+                  <span>상한</span>
+                </div>
+              </div>
+            </div>
           )}
+
+          {/* Confidence */}
+          {confScore != null && Number.isFinite(confScore) && (
+            <div className="px-6 pb-5 flex items-center gap-3">
+              <span className="text-xs text-[var(--muted-foreground)] shrink-0">신뢰도</span>
+              <div className="flex-1 h-1.5 rounded-full bg-[var(--muted)]">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    confScore >= 0.85 ? "bg-green-500" : confScore >= 0.6 ? "bg-yellow-500" : "bg-red-500"
+                  }`}
+                  style={{ width: `${Math.round(confScore * 100)}%` }}
+                />
+              </div>
+              <span className={`text-xs font-medium tabular-nums ${
+                confScore >= 0.85 ? "text-green-600 dark:text-green-400" : confScore >= 0.6 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"
+              }`}>
+                {Math.round(confScore * 100)}%
+              </span>
+            </div>
+          )}
+
+          {/* Forecast Series Chart */}
+          {prediction.forecast_series && prediction.forecast_series.length > 1 && (() => {
+            const series = prediction.forecast_series;
+            const prices = series.map(f => f.predicted_price).filter(p => Number.isFinite(p) && p > 0);
+            const lows = series.map(f => f.confidence_low).filter(p => Number.isFinite(p) && p > 0);
+            const highs = series.map(f => f.confidence_high).filter(p => Number.isFinite(p) && p > 0);
+            if (prices.length < 2) return null;
+            const allVals = [...prices, ...lows, ...highs];
+            const minV = Math.min(...allVals);
+            const maxV = Math.max(...allVals);
+            const range = maxV - minV || 1;
+            const W = 600;
+            const H = 120;
+            const pad = { t: 10, b: 20, l: 0, r: 0 };
+            const cw = W - pad.l - pad.r;
+            const ch = H - pad.t - pad.b;
+            const toX = (i: number) => pad.l + (i / (series.length - 1)) * cw;
+            const toY = (v: number) => pad.t + (1 - (v - minV) / range) * ch;
+
+            const mainLine = series.map((f, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(f.predicted_price).toFixed(1)}`).join(" ");
+            const bandTop = series.map((f, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(f.confidence_high).toFixed(1)}`).join(" ");
+            const bandBot = [...series].reverse().map((f, i) => `L${toX(series.length - 1 - i).toFixed(1)},${toY(f.confidence_low).toFixed(1)}`).join(" ");
+
+            // Label dates: show first, middle, last
+            const labelIdxs = [0, Math.floor(series.length / 2), series.length - 1];
+            const formatShortDate = (d: string) => {
+              const parts = d.split("-");
+              return parts.length >= 3 ? `${Number(parts[1])}/${Number(parts[2])}` : d;
+            };
+
+            return (
+              <div className="px-6 pb-5">
+                <p className="text-xs text-[var(--muted-foreground)] mb-2">가격 예측 추이</p>
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" aria-label="가격 예측 추이 차트">
+                  {/* Confidence band */}
+                  <path d={`${bandTop} ${bandBot} Z`} className="fill-farenheit-200 dark:fill-farenheit-800 opacity-30 dark:opacity-40" />
+                  {/* Main line */}
+                  <path d={mainLine} fill="none" className="stroke-farenheit-500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  {/* Date labels */}
+                  {labelIdxs.map(i => (
+                    <text key={i} x={toX(i)} y={H - 2} textAnchor={i === 0 ? "start" : i === series.length - 1 ? "end" : "middle"} className="fill-[var(--muted-foreground)]" fontSize="9">{formatShortDate(series[i].date)}</text>
+                  ))}
+                  {/* Price labels: min and max */}
+                  <text x={W - 2} y={toY(maxV) + 3} textAnchor="end" className="fill-[var(--muted-foreground)]" fontSize="9">{formatPrice(Math.round(maxV))}</text>
+                  <text x={W - 2} y={toY(minV) - 2} textAnchor="end" className="fill-[var(--muted-foreground)]" fontSize="9">{formatPrice(Math.round(minV))}</text>
+                </svg>
+              </div>
+            );
+          })()}
+
+          {/* Quick action links */}
+          <div className="px-6 pb-5 flex items-center gap-3 flex-wrap">
+            <Link
+              href={`/search?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors"
+            >
+              <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              항공편 검색
+            </Link>
+            <Link
+              href={`/recommendations?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--muted)] transition-colors"
+            >
+              <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+              </svg>
+              구매 추천
+            </Link>
+          </div>
         </div>
       )}
 
+      {/* No prediction data */}
       {searched && !loading && !error && !hasPredictionData && (
-        <div className="rounded-xl p-8 border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 text-center">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
-            <svg aria-hidden="true" className="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-            </svg>
-          </div>
-          <p className="font-semibold text-blue-800 dark:text-blue-200">이 노선의 가격 데이터를 수집 중입니다</p>
-          <p className="text-sm text-blue-700 dark:text-blue-300 mt-2 max-w-md mx-auto">
-            약 1시간 후 AI 예측이 생성됩니다. 먼저 항공편을 검색하여 가격 데이터를 수집하세요.
+        <div className="rounded-xl p-8 border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 text-center">
+          <p className="font-medium text-blue-800 dark:text-blue-200">이 노선의 가격 데이터를 수집 중입니다</p>
+          <p className="text-sm text-blue-600 dark:text-blue-400 mt-1.5">
+            먼저 항공편을 검색하면 약 1시간 후 예측이 생성됩니다.
           </p>
           <Link
             href={originCode && destCode && date
               ? `/search?${new URLSearchParams({ origin: originCode, dest: destCode, date }).toString()}`
               : "/search"}
-            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-blue-600 dark:bg-blue-700 text-white font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm"
+            className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
           >
-            <svg aria-hidden="true" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
-            항공편 검색하러 가기
+            항공편 검색
           </Link>
         </div>
       )}
 
-      {/* Heatmap Section - auto-loaded with same route */}
-      {searched && !loading && (
-        <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-          <h2 className="text-lg font-semibold mb-2">
-            월간 가격 히트맵
-            {date && date.length >= 7 && (() => {
-              const [y, m] = date.slice(0, 7).split("-");
-              return m ? <span className="text-sm font-normal text-[var(--muted-foreground)] ml-2">{y}년 {Number(m)}월</span> : null;
+      {/* Heatmap - Calendar Style */}
+      {searched && !loading && !error && (
+        <div className="bg-[var(--background)] rounded-xl border border-[var(--border)] overflow-hidden">
+          {/* Calendar header */}
+          {!heatmapLoading && heatmap && heatmap.cells.length > 0 && (() => {
+            const firstDate = new Date(heatmap.cells[0].departure_date + "T00:00:00");
+            return (
+              <div className="px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between">
+                <h2 className="text-sm font-semibold">
+                  {firstDate.getFullYear()}년 {firstDate.getMonth() + 1}월
+                </h2>
+                <div className="flex items-center gap-1.5 text-[10px] text-[var(--muted-foreground)]">
+                  <span className="w-2 h-2 rounded-sm bg-green-500/25" />
+                  <span>저렴</span>
+                  <span className="w-2 h-2 rounded-sm bg-red-500/25 ml-1" />
+                  <span>비쌈</span>
+                </div>
+              </div>
+            );
+          })()}
+          {(heatmapLoading || !heatmap || heatmap.cells.length === 0) && (
+            <div className="px-4 py-2.5 border-b border-[var(--border)]">
+              <h2 className="text-sm font-semibold">월간 가격 히트맵</h2>
+            </div>
+          )}
+
+          <div className="p-2.5">
+            {heatmapLoading && (
+              <div>
+                <div className="grid grid-cols-7">
+                  {["일","월","화","수","목","금","토"].map(d => (
+                    <div key={d} className="py-1 text-center text-[10px] font-medium text-[var(--muted-foreground)]">{d}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-[1px] bg-[var(--border)] border border-[var(--border)] rounded-md overflow-hidden">
+                  {Array.from({ length: 35 }).map((_, i) => (
+                    <div key={i} className="bg-[var(--background)] h-10 animate-pulse">
+                      <div className="p-1"><div className="h-2 w-3 bg-[var(--muted)] rounded" /></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!heatmapLoading && heatmap && heatmap.cells.length > 0 && (() => {
+              const cellMap = new Map(heatmap.cells.map(c => [c.departure_date, c]));
+              const prices = heatmap.cells.map(c => c.predicted_price).filter(p => Number.isFinite(p) && p > 0);
+              const minP = Math.min(...prices);
+              const maxP = Math.max(...prices);
+              const range = maxP - minP || 1;
+
+              const firstDate = new Date(heatmap.cells[0].departure_date + "T00:00:00");
+              const year = firstDate.getFullYear();
+              const month = firstDate.getMonth();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const firstDow = new Date(year, month, 1).getDay();
+
+              const weeks: (typeof heatmap.cells[0] | null)[][] = [];
+              let week: (typeof heatmap.cells[0] | null)[] = Array(firstDow).fill(null);
+              for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                week.push(cellMap.get(dateStr) || null);
+                if (week.length === 7) { weeks.push(week); week = []; }
+              }
+              if (week.length > 0) {
+                while (week.length < 7) week.push(null);
+                weeks.push(week);
+              }
+
+              const DOW_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+              const selectedDate = date;
+
+              return (
+                <div>
+                  {/* Day-of-week header */}
+                  <div className="grid grid-cols-7">
+                    {DOW_LABELS.map((d, i) => (
+                      <div key={d} className={`py-1 text-center text-[10px] font-medium ${
+                        i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-[var(--muted-foreground)]"
+                      }`}>{d}</div>
+                    ))}
+                  </div>
+                  {/* Calendar grid */}
+                  <div className="grid grid-cols-7 gap-[1px] bg-[var(--border)] border border-[var(--border)] rounded-md overflow-hidden">
+                    {weeks.flat().map((cell, idx) => {
+                      const ci = idx % 7;
+                      if (!cell) {
+                        return <div key={idx} className="bg-[var(--background)] h-10" />;
+                      }
+                      const day = Number(cell.departure_date.slice(8));
+                      const ratio = range > 0 ? (cell.predicted_price - minP) / range : 0;
+                      const isSelected = cell.departure_date === selectedDate;
+                      const isSun = ci === 0;
+                      const isSat = ci === 6;
+                      const r = Math.round(ratio * 200 + 40);
+                      const g = Math.round((1 - ratio) * 180 + 50);
+                      const isDark = typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                      const opacity = isDark ? 0.25 + ratio * 0.30 : 0.15 + ratio * 0.20;
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`relative bg-[var(--background)] h-10 flex flex-col justify-between p-1 cursor-default transition-all ${
+                            isSelected ? "z-10 ring-2 ring-inset ring-farenheit-500" : ""
+                          }`}
+                          style={{ backgroundColor: `rgba(${r}, ${g}, 60, ${isSelected ? opacity + 0.08 : opacity})` }}
+                          title={`${cell.departure_date}: ${formatPrice(cell.predicted_price)}`}
+                        >
+                          <span className={`text-[10px] leading-none font-medium ${
+                            isSun ? "text-red-500 dark:text-red-400" : isSat ? "text-blue-500 dark:text-blue-400" : "text-[var(--foreground)]"
+                          }`}>
+                            {day}
+                          </span>
+                          <span className="text-[10px] leading-none font-semibold text-[var(--foreground)] opacity-65 text-right">
+                            {(cell.predicted_price / 10000).toFixed(cell.predicted_price >= 1000000 ? 0 : 1)}
+                            <span className="text-[8px] font-normal">만</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
             })()}
-          </h2>
-          <p className="text-sm text-[var(--muted-foreground)] mb-4">
-            같은 노선의 출발일별 예상 가격입니다. 초록색은 저렴, 빨간색은 비싼 날짜입니다.
-          </p>
 
-          {heatmapLoading && (
-            <div>
-              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-2">
-                {Array.from({ length: 7 }).map((_, i) => (
-                  <div key={i} className="p-2 rounded-lg border border-[var(--border)] animate-pulse">
-                    <div className="h-3 w-10 mx-auto bg-[var(--muted)] rounded mb-1" />
-                    <div className="h-4 w-14 mx-auto bg-[var(--muted)] rounded" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            {!heatmapLoading && heatmap && heatmap.cells.length === 0 && (
+              <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+                이 달의 히트맵 데이터가 아직 없습니다. 가격 수집 후 자동 생성됩니다.
+              </p>
+            )}
 
-          {!heatmapLoading && heatmap && heatmap.cells.length > 0 && (
-            <div>
-              {/* Legend */}
-              <div className="flex items-center gap-4 mb-3 text-xs text-[var(--muted-foreground)]">
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 dark:bg-green-900/50 border border-green-300 dark:border-green-700" /> 저렴</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-100 dark:bg-yellow-900/50 border border-yellow-300 dark:border-yellow-700" /> 보통</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 dark:bg-red-900/50 border border-red-300 dark:border-red-700" /> 비쌈</span>
-                <span className="ml-auto text-[10px]">같은 달 내 상대적 비교</span>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-2">
-                {heatmap.cells.map((cell) => (
-                  <div
-                    key={cell.departure_date}
-                    className={`p-2 rounded-lg text-center text-xs border ${
-                      cell.price_level === "LOW" ? "bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800" :
-                      cell.price_level === "HIGH" ? "bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800" :
-                      "bg-yellow-50 dark:bg-yellow-950/40 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800"
-                    }`}
-                  >
-                    <p className="font-medium">{cell.departure_date.slice(5)}</p>
-                    <p className="font-bold mt-0.5">{formatPrice(Number(cell.predicted_price))}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {!heatmapLoading && heatmap && heatmap.cells.length === 0 && (
-            <div className="p-8 text-center text-[var(--muted-foreground)]">
-              <p className="font-medium">이 달의 히트맵 데이터가 아직 없습니다.</p>
-              <p className="text-sm mt-1">가격 데이터가 쌓이면 히트맵이 자동으로 생성됩니다.</p>
-            </div>
-          )}
-
-          {!heatmapLoading && !heatmap && (
-            <div className="p-8 text-center text-[var(--muted-foreground)]">
-              <p className="text-sm">위에서 노선과 출발일을 입력하면 해당 월의 히트맵도 함께 표시됩니다.</p>
-            </div>
-          )}
+            {!heatmapLoading && !heatmap && (
+              <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+                노선과 출발일을 입력하면 해당 월의 히트맵이 표시됩니다.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
       {/* Initial State */}
       {!searched && !loading && (
-        <div className="bg-[var(--background)] rounded-xl p-12 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
-          <svg aria-hidden="true" className="w-12 h-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+        <div className="bg-[var(--background)] rounded-xl p-10 border border-[var(--border)] text-center text-[var(--muted-foreground)]">
+          <svg aria-hidden="true" className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
           </svg>
-          <p className="text-lg mb-2">출발지, 도착지, 출발일을 입력하세요</p>
-          <p className="text-sm">AI가 가격 변동 추세를 분석하고 월간 히트맵을 보여드립니다</p>
+          <p className="font-medium">노선과 출발일을 입력하세요</p>
         </div>
       )}
     </div>
@@ -483,8 +600,8 @@ export default function PredictionsPage() {
       <div className="space-y-6">
         <div className="h-8 w-28 bg-[var(--muted)] rounded animate-pulse" />
         <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-[var(--muted)] rounded-lg animate-pulse" />)}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-12 bg-[var(--muted)] rounded-lg animate-pulse" />)}
           </div>
         </div>
       </div>
