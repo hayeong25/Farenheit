@@ -19,10 +19,10 @@ _DELAY_BETWEEN_ROUTES = 0.5
 
 # Departure date ranges: (start_day, end_day, step)
 _DATE_RANGES = [
-    (7, 31, 3),     # 7-30 days: every 3 days (dense near-term)
-    (31, 61, 5),    # 31-60 days: every 5 days
-    (61, 121, 7),   # 61-120 days: weekly
-    (121, 181, 10), # 121-180 days: every 10 days
+    (7, 32, 3),     # 7-31 days: every 3 days (dense near-term)
+    (32, 62, 5),    # 32-61 days: every 5 days
+    (62, 122, 7),   # 62-121 days: weekly
+    (122, 181, 10), # 122-180 days: every 10 days
 ]
 
 

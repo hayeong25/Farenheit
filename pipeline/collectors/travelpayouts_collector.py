@@ -107,10 +107,10 @@ class TravelpayoutsCollector(AbstractCollector):
     ) -> PriceObservation | None:
         try:
             price = Decimal(str(offer["price"]))
-        except (InvalidOperation, TypeError):
+            if not price.is_finite() or price <= 0 or price > _MAX_PRICE_KRW:
+                return None
+        except (InvalidOperation, TypeError, ArithmeticError):
             logger.warning(f"Invalid price value: {offer.get('price')}")
-            return None
-        if price <= 0 or price > _MAX_PRICE_KRW:
             return None
 
         airline_code = offer.get("airline", "")
