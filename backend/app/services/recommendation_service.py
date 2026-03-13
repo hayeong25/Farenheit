@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.airline import Airline
 from app.models.prediction import Prediction
 from app.models.route import Route
 from app.schemas.recommendation import RecommendationResponse
@@ -36,7 +37,7 @@ class RecommendationService:
             )
 
         # Get latest prediction
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         pred_result = await self.db.execute(
             select(Prediction)
             .where(
@@ -68,13 +69,23 @@ class RecommendationService:
             route.id, cabin_class, departure_date
         )
 
+        # Resolve airline code to human-readable name
+        best_airline_name: str | None = pred.airline_code
+        if pred.airline_code:
+            airline_result = await self.db.execute(
+                select(Airline.name).where(Airline.iata_code == pred.airline_code)
+            )
+            airline_row = airline_result.scalar_one_or_none()
+            if airline_row:
+                best_airline_name = airline_row
+
         return RecommendationResponse(
             origin=origin,
             destination=dest,
             departure_date=departure_date,
             cabin_class=cabin_class,
             signal=signal,
-            best_airline=pred.airline_code,
+            best_airline=best_airline_name,
             current_price=max(pred.predicted_price, _ZERO) if pred.predicted_price else None,
             predicted_low=max(predicted_low_price, _ZERO) if predicted_low_price else (
                 max(pred.confidence_low, _ZERO) if pred.confidence_low else None
@@ -88,7 +99,7 @@ class RecommendationService:
         self, route_id: int, cabin_class: str, departure_date: date
     ) -> tuple[date | None, Decimal | None]:
         """Find the lowest predicted price date within ±14 days of the requested departure."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         today = now.date()
 
         # Search within ±14 days of departure_date for relevant recommendations
@@ -148,6 +159,11 @@ class RecommendationService:
             return (
                 f"가격이 {direction} 추세입니다 (신뢰도 {confidence_pct}%). "
                 f"조금 더 기다리면 더 낮은 가격을 기대할 수 있습니다."
+            )
+        if pred.price_direction == "DOWN":
+            return (
+                f"가격이 {direction} 추세이나 신뢰도가 낮습니다 ({confidence_pct}%). "
+                f"추가 데이터를 수집 중입니다. 급하지 않다면 모니터링을 계속하세요."
             )
         return (
             f"가격이 {direction} 상태입니다. "

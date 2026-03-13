@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG, MAX_FUTURE_DAYS
+from app.config import VALID_CABIN_CLASSES, CABIN_CLASS_ERROR_MSG, IATA_CODE_CONSTRAINTS, SAME_ORIGIN_DEST_MSG, DATE_PAST_MSG, DATE_TOO_FAR_MSG, RETURN_BEFORE_DEPART_MSG, RETURN_DATE_TOO_FAR_MSG, MAX_FUTURE_DAYS
 from app.db.session import get_db
 from app.schemas.flight import FlightSearchResponse, PriceHistoryResponse
 from app.services.flight_service import FlightService
@@ -35,13 +35,13 @@ async def search_flights(
         raise HTTPException(status_code=400, detail=DATE_PAST_MSG)
 
     if return_date and return_date < departure_date:
-        raise HTTPException(status_code=400, detail="귀국일은 출발일 이후여야 합니다.")
+        raise HTTPException(status_code=400, detail=RETURN_BEFORE_DEPART_MSG)
 
     max_date = today + timedelta(days=MAX_FUTURE_DAYS)
     if departure_date > max_date:
         raise HTTPException(status_code=400, detail=DATE_TOO_FAR_MSG)
     if return_date and return_date > max_date:
-        raise HTTPException(status_code=400, detail="귀국일은 1년 이내여야 합니다.")
+        raise HTTPException(status_code=400, detail=RETURN_DATE_TOO_FAR_MSG)
 
     cabin_class = cabin_class.upper()
     if cabin_class not in VALID_CABIN_CLASSES:

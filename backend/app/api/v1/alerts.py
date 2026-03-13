@@ -89,7 +89,7 @@ async def create_alert(
                 await asyncio.sleep(delay)
                 delay *= 2
             if not route:
-                raise HTTPException(status_code=500, detail="노선 생성에 실패했습니다.")
+                raise HTTPException(status_code=400, detail="유효하지 않은 공항 코드이거나 노선 생성에 실패했습니다.")
 
     alert = PriceAlert(
         user_id=None,

@@ -1,5 +1,5 @@
 import calendar
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import select, func
@@ -35,7 +35,7 @@ class PredictionService:
         self, route_id: int, cabin_class: str
     ) -> list[ForecastPoint]:
         """Query future predictions for the same route/cabin and return deduplicated series."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         today = now.date()
 
         result = await self.db.execute(
@@ -77,7 +77,7 @@ class PredictionService:
     async def get_prediction(
         self, route_id: int, departure_date: date, cabin_class: str
     ) -> PredictionResponse:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         result = await self.db.execute(
             select(Prediction)
             .where(
@@ -154,7 +154,7 @@ class PredictionService:
         month_start = date(year, mon, 1)
         month_end = date(year, mon, days_in_month)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         today = now.date()
         result = await self.db.execute(
             select(Prediction)
@@ -194,7 +194,8 @@ class PredictionService:
                     price_level=level,
                 ))
         else:
-            # Fallback: use actual price data to generate heatmap
+            # Fallback: use recent price data to generate heatmap (last 7 days only)
+            recent_cutoff = now - timedelta(days=7)
             price_result = await self.db.execute(
                 select(
                     FlightPrice.departure_date,
@@ -205,6 +206,7 @@ class PredictionService:
                     FlightPrice.departure_date >= month_start,
                     FlightPrice.departure_date <= month_end,
                     FlightPrice.cabin_class == cabin_class,
+                    FlightPrice.time >= recent_cutoff,
                 )
                 .group_by(FlightPrice.departure_date)
                 .order_by(FlightPrice.departure_date)

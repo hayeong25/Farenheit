@@ -105,6 +105,7 @@ def start_scheduler() -> None:
         id="cleanup",
         name="Data cleanup",
         replace_existing=True,
+        max_instances=1,
         misfire_grace_time=_CLEANUP_MISFIRE_GRACE_SECS,
     )
 

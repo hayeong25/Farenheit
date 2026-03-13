@@ -17,13 +17,21 @@ class Settings(BaseSettings):
     TRAVELPAYOUTS_TOKEN: str = ""
     TRAVELPAYOUTS_BASE_URL: str = "https://api.travelpayouts.com"
 
+    # AirLabs API
+    AIRLABS_API_KEY: str = ""
+    AIRLABS_BASE_URL: str = "https://airlabs.co/api/v9"
+
+    # Aviationstack API (LCC schedule fallback)
+    AVIATIONSTACK_API_KEY: str = ""
+    AVIATIONSTACK_BASE_URL: str = "http://api.aviationstack.com/v1"
+
     # Auth
     JWT_SECRET_KEY: str = "change-this-to-a-real-secret-key"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3100"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3100"]
 
     # Scheduler
     COLLECTION_INTERVAL_MINUTES: int = 30
@@ -41,4 +49,6 @@ IATA_CODE_CONSTRAINTS = {"min_length": 3, "max_length": 3, "pattern": r"^[A-Za-z
 SAME_ORIGIN_DEST_MSG = "출발지와 도착지가 같습니다."
 DATE_PAST_MSG = "출발일은 오늘 또는 이후여야 합니다."
 DATE_TOO_FAR_MSG = "출발일은 1년 이내여야 합니다."
+RETURN_BEFORE_DEPART_MSG = "귀국일은 출발일 이후여야 합니다."
+RETURN_DATE_TOO_FAR_MSG = "귀국일은 1년 이내여야 합니다."
 MAX_FUTURE_DAYS = 365
