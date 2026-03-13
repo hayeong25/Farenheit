@@ -849,9 +849,12 @@ function SearchContent() {
                             ) : (
                               <span className="text-xs text-[var(--muted-foreground)] italic">시간 미정</span>
                             )}
-                            {(offer.return_duration_minutes || offer.duration_minutes) != null && (offer.return_duration_minutes || offer.duration_minutes)! > 0 && (
-                              <span className="text-[var(--muted-foreground)]">{formatDuration(offer.return_duration_minutes || offer.duration_minutes)}</span>
-                            )}
+                            {(() => {
+                              const dur = offer.return_duration_minutes ?? offer.duration_minutes;
+                              return dur != null && dur > 0 ? (
+                                <span className="text-[var(--muted-foreground)]">{formatDuration(dur)}</span>
+                              ) : null;
+                            })()}
                             <span className="text-[var(--muted-foreground)]">
                               {getStopsLabel(offer.return_stops ?? offer.stops)}
                             </span>
