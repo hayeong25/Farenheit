@@ -566,8 +566,8 @@ class FlightService:
             if not flight_iata or not dep_time or not arr_time or not airline_iata:
                 continue
             # Extract HH:MM from full datetime or time string
-            dep_hm = dep_time[11:16] if len(dep_time) > 10 else dep_time[:5]
-            arr_hm = arr_time[11:16] if len(arr_time) > 10 else arr_time[:5]
+            dep_hm = _extract_time(dep_time) or dep_time[:5]
+            arr_hm = _extract_time(arr_time) or arr_time[:5]
             sched = FlightSchedule(
                 origin_code=origin,
                 dest_code=dest,
@@ -988,9 +988,8 @@ class FlightService:
                 if o.return_flight_number or not o.flight_number:
                     continue
                 # Try return schedules airline-code match (might have been added by supplement)
-                rt_by_al = {s.airline_code: s for s in return_schedules if s.airline_code == o.airline_code}
-                if rt_by_al:
-                    rsched = rt_by_al[o.airline_code]
+                rsched = next((s for s in return_schedules if s.airline_code == o.airline_code), None)
+                if rsched:
                     o.return_flight_number = rsched.flight_iata
                     continue
                 # If no return schedule at all, use outbound flight_number + 1 heuristic

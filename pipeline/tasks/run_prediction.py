@@ -49,6 +49,7 @@ async def _predict_all_routes() -> dict:
         now_utc = datetime.now(timezone.utc)
         # SQLite stores tz-naive datetimes; use naive UTC for DataFrame comparisons
         now_naive = now_utc.replace(tzinfo=None)
+        valid_until = now_naive + timedelta(hours=_VALID_UNTIL_HOURS)
         today = now_utc.date()
         target_dates = [
             today + timedelta(days=d)
@@ -94,16 +95,18 @@ async def _predict_all_routes() -> dict:
                 else:
                     dominant_airline = None
 
+                # Pre-filter and group by departure_date for O(1) lookup
+                past_prices = price_df[price_df["time"] <= now_naive]
+                grouped_by_dep = dict(tuple(past_prices.groupby("departure_date")))
+
                 for dep_date in target_dates:
                     # Prefer departure-date-specific prices; fall back to all route prices
-                    dep_specific = price_df[
-                        (price_df["time"] <= now_naive) & (price_df["departure_date"] == dep_date)
-                    ]
-                    if len(dep_specific) >= _MIN_DATA_POINTS:
+                    dep_specific = grouped_by_dep.get(dep_date)
+                    if dep_specific is not None and len(dep_specific) >= _MIN_DATA_POINTS:
                         relevant = dep_specific.copy()
                     else:
                         # Fall back to all prices for this route (better than nothing)
-                        relevant = price_df[price_df["time"] <= now_naive].copy()
+                        relevant = past_prices.copy()
 
                     if len(relevant) < _MIN_DATA_POINTS:
                         continue
@@ -150,8 +153,6 @@ async def _predict_all_routes() -> dict:
                         )
                     )
                     pred = existing.scalar_one_or_none()
-
-                    valid_until = now_naive + timedelta(hours=_VALID_UNTIL_HOURS)
 
                     if pred:
                         pred.predicted_price = result_pred["predicted_price"]
