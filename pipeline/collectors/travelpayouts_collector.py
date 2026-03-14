@@ -58,8 +58,8 @@ class TravelpayoutsCollector(AbstractCollector):
                     try:
                         data = response.json()
                     except Exception as e:
-                        logger.error(f"Failed to parse JSON response: {e}")
-                        return observations
+                        logger.warning(f"Failed to parse JSON response (attempt {attempt + 1}/{max_retries}): {e}")
+                        continue
                     if data.get("success"):
                         now = datetime.now(timezone.utc).replace(tzinfo=None)
                         # Iterate all destination keys (API may return city code)
