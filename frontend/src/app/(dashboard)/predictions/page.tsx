@@ -591,6 +591,7 @@ function PredictionsContent() {
 
               const DOW_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
               const selectedDate = date;
+              const isDark = typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
 
               // Find cheapest and most expensive dates
               let cheapestDate = "", expensiveDate = "";
@@ -606,7 +607,7 @@ function PredictionsContent() {
                   <div className="grid grid-cols-7">
                     {DOW_LABELS.map((d, i) => (
                       <div key={d} className={`py-1 text-center text-[10px] font-medium ${
-                        i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-[var(--muted-foreground)]"
+                        i === 0 ? "text-red-600 dark:text-red-400" : i === 6 ? "text-blue-600 dark:text-blue-400" : "text-[var(--muted-foreground)]"
                       }`}>{d}</div>
                     ))}
                   </div>
@@ -624,7 +625,6 @@ function PredictionsContent() {
                       const isSat = ci === 6;
                       const r = Math.round(ratio * 200 + 40);
                       const g = Math.round((1 - ratio) * 180 + 50);
-                      const isDark = typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
                       const opacity = isDark ? 0.25 + ratio * 0.30 : 0.15 + ratio * 0.20;
 
                       return (
@@ -667,7 +667,7 @@ function PredictionsContent() {
                             )}
                           </div>
                           <span className="text-[10px] leading-none font-semibold text-[var(--foreground)] opacity-65 text-right">
-                            {(cell.predicted_price / 10000).toFixed(cell.predicted_price >= 1000000 ? 0 : 1)}
+                            {(Math.round(cell.predicted_price) / 10000).toFixed(cell.predicted_price >= 1000000 ? 0 : 1)}
                             <span className="text-[8px] font-normal">만</span>
                           </span>
                         </div>

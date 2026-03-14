@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AirportSearch } from "@/components/flights/AirportSearch";
 import { flightsApi, FlightOffer, AirlineInfo, PriceHistoryResponse, routesApi } from "@/lib/api-client";
-import { formatPrice, saveRecentSearch, getRecentSearches, getLocalToday, getDateOneYearLater, getMissingFieldsMsg, getKoreanHolidays, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, RETURN_BEFORE_DEPART_MSG, NETWORK_ERROR_MSG, type RecentSearch } from "@/lib/utils";
+import { formatPrice, saveRecentSearch, getRecentSearches, getLocalToday, getDateOneYearLater, getMissingFieldsMsg, getKoreanHolidays, VALID_CABIN_CLASSES, CABIN_CLASS_LABELS, SAME_ORIGIN_DEST_MSG, RETURN_BEFORE_DEPART_MSG, RETURN_DATE_RESET_MSG, NETWORK_ERROR_MSG, type RecentSearch } from "@/lib/utils";
 
 const VALID_STOPS = ["any", "0", "1", "2"];
 const VALID_SORTS = ["price", "price_desc", "duration", "stops"];
@@ -18,12 +18,12 @@ function buildBookingUrl(
 ): string {
   const depCompact = departureDate.replace(/-/g, "");
   const fareType = CABIN_TO_NAVER[cabinClass] || "Y";
-  const direct = directOnly ? "&isDirect=true" : "";
-  if (returnDate) {
-    const retCompact = returnDate.replace(/-/g, "");
-    return `https://flight.naver.com/flights/international/${origin}-${dest}-${depCompact}/${dest}-${origin}-${retCompact}?adult=1&fareType=${fareType}${direct}`;
-  }
-  return `https://flight.naver.com/flights/international/${origin}-${dest}-${depCompact}?adult=1&fareType=${fareType}${direct}`;
+  const basePath = returnDate
+    ? `international/${origin}-${dest}-${depCompact}/${dest}-${origin}-${returnDate.replace(/-/g, "")}`
+    : `international/${origin}-${dest}-${depCompact}`;
+  const params = new URLSearchParams({ adult: "1", fareType });
+  if (directOnly) params.set("isDirect", "true");
+  return `https://flight.naver.com/flights/${basePath}?${params.toString()}`;
 }
 
 function formatDuration(minutes: number | null | undefined): string {
@@ -381,7 +381,7 @@ function SearchContent() {
                 setValidationMsg("");
                 if (returnDate && e.target.value > returnDate) {
                   setReturnDate("");
-                  setValidationMsg("출발일이 귀국일보다 늦어 귀국일이 초기화되었습니다.");
+                  setValidationMsg(RETURN_DATE_RESET_MSG);
                 }
               }}
               min={getLocalToday()}
