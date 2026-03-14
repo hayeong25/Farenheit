@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -8,6 +9,8 @@ from app.models.airline import Airline
 from app.models.prediction import Prediction
 from app.models.route import Route
 from app.schemas.recommendation import RecommendationResponse
+
+logger = logging.getLogger(__name__)
 
 _ZERO = Decimal("0")
 _PREDICTION_WINDOW_DAYS = 14
@@ -80,7 +83,7 @@ class RecommendationService:
                 if airline_row:
                     best_airline_name = airline_row
             except Exception:
-                pass  # Graceful fallback: use airline_code as-is
+                logger.debug("Airline name lookup failed for %s, using code as-is", pred.airline_code)
 
         return RecommendationResponse(
             origin=origin,

@@ -105,7 +105,7 @@ class StatisticalPredictor:
             x = np.arange(trend_window)
             y = prices[-trend_window:]
             slope, intercept = np.polyfit(x, y, 1)
-            trend_per_day = slope
+            trend_per_day = slope if np.isfinite(slope) else 0.0
         else:
             trend_per_day = 0
 
@@ -131,8 +131,9 @@ class StatisticalPredictor:
             recent_prices = prices[-direction_window:]
             weights = np.linspace(0.5, 1.0, len(recent_prices))
             weighted_trend = np.polyfit(np.arange(len(recent_prices)), recent_prices, 1, w=weights)
+            wt_slope = weighted_trend[0] if np.isfinite(weighted_trend[0]) else 0.0
             mean_price = recent_prices.mean()
-            pct_change = weighted_trend[0] * len(recent_prices) / max(mean_price, 1.0)
+            pct_change = wt_slope * len(recent_prices) / max(mean_price, 1.0)
 
             if pct_change > PRICE_DIRECTION_THRESHOLD:
                 direction = "UP"
