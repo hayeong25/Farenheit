@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 from sqlalchemy import select, or_, case, literal, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,9 +74,9 @@ class RouteService:
             )
             .group_by(FlightPrice.route_id)
         )
-        price_map: dict[int, float] = {}
+        price_map: dict[int, Decimal] = {}
         for pr in price_result.all():
-            price_map[pr.route_id] = float(pr.min_price)
+            price_map[pr.route_id] = pr.min_price
 
         responses = []
         for row in rows:

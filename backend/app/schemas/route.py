@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from decimal import Decimal
+
+from pydantic import BaseModel, Field
 
 
 class RouteResponse(BaseModel):
@@ -8,7 +10,7 @@ class RouteResponse(BaseModel):
     origin_city: str | None = None
     dest_city: str | None = None
     is_active: bool
-    min_price: float | None = None
+    min_price: Decimal | None = Field(None, ge=0)
 
     model_config = {"from_attributes": True}
 

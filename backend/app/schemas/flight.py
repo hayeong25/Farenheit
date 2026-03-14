@@ -67,6 +67,6 @@ class PriceHistoryResponse(BaseModel):
     departure_date: date
     airline_code: str | None
     prices: list[PricePoint]
-    min_price: Decimal | None = None
-    max_price: Decimal | None = None
-    avg_price: Decimal | None = None
+    min_price: Decimal | None = Field(None, ge=0)
+    max_price: Decimal | None = Field(None, ge=0)
+    avg_price: Decimal | None = Field(None, ge=0)
