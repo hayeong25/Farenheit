@@ -216,9 +216,9 @@ export const flightsApi = {
     sort_by?: string;
   }): Promise<FlightSearchResponse> => {
     const res = await fetchAPI<FlightSearchResponse>(`/flights/search?${qs(params)}`);
-    // Decimal fields arrive as strings from Pydantic; coerce to number
+    // Decimal fields arrive as strings from Pydantic; coerce to number (NaN → 0)
     for (const o of res.offers) {
-      o.price_amount = Number(o.price_amount);
+      o.price_amount = Number(o.price_amount) || 0;
     }
     return res;
   },
@@ -288,8 +288,13 @@ export const recommendationsApi = {
 
 // Route APIs
 export const routesApi = {
-  popular: (limit?: number) =>
-    fetchAPI<RouteResponse[]>(`/routes/popular?${qs({ limit: limit ?? 10 })}`),
+  popular: async (limit?: number) => {
+    const res = await fetchAPI<RouteResponse[]>(`/routes/popular?${qs({ limit: limit ?? 10 })}`);
+    for (const r of res) {
+      if (r.min_price != null) r.min_price = Number(r.min_price);
+    }
+    return res;
+  },
 
   searchAirports: (q: string) =>
     fetchAPI<Airport[]>(`/routes/airports/search?${qs({ q })}`),
@@ -302,7 +307,13 @@ export const statsApi = {
 
 // Alerts API
 export const alertsApi = {
-  list: () => fetchAPI<AlertResponse[]>("/alerts"),
+  list: async () => {
+    const res = await fetchAPI<AlertResponse[]>("/alerts");
+    for (const a of res) {
+      a.target_price = Number(a.target_price);
+    }
+    return res;
+  },
 
   create: (data: {
     origin: string;

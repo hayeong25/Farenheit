@@ -233,7 +233,7 @@ export function AirportSearch({ label, placeholder, value, onSelect }: AirportSe
           ) : (
             results.map((airport, idx) => (
               <li
-                key={`${airport.iata_code}-${idx}`}
+                key={airport.iata_code}
                 id={`${listboxId}-option-${idx}`}
                 role="option"
                 aria-selected={idx === highlightIdx}

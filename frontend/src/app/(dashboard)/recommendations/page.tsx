@@ -195,7 +195,17 @@ function RecommendationsContent() {
       </div>
 
       {/* Query Form */}
-      <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+      <form
+        className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const missingMsg = getMissingFieldsMsg(originCode, destCode, date);
+          if (missingMsg) { setValidationMsg(missingMsg); return; }
+          if (originCode === destCode) { setValidationMsg(SAME_ORIGIN_DEST_MSG); return; }
+          setValidationMsg("");
+          handleGetRecommendation(originCode, destCode, date);
+        }}
+      >
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] lg:grid-cols-[1fr_auto_1fr_1fr_1fr_auto] gap-4 items-end">
           <AirportSearch
             key={`ro-${originKeyRef.current}`}
@@ -206,6 +216,7 @@ function RecommendationsContent() {
           />
           <div className="hidden md:flex items-end pb-1">
             <button
+              type="button"
               onClick={handleSwap}
               disabled={!originCode || !destCode}
               className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:border-farenheit-300 transition-colors disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-farenheit-500"
@@ -251,19 +262,7 @@ function RecommendationsContent() {
           </div>
           <div className="flex items-end">
             <button
-              onClick={() => {
-                const missingMsg = getMissingFieldsMsg(originCode, destCode, date);
-                if (missingMsg) {
-                  setValidationMsg(missingMsg);
-                  return;
-                }
-                if (originCode === destCode) {
-                  setValidationMsg(SAME_ORIGIN_DEST_MSG);
-                  return;
-                }
-                setValidationMsg("");
-                handleGetRecommendation(originCode, destCode, date);
-              }}
+              type="submit"
               disabled={!originCode || !destCode || !date || loading}
               className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
             >
@@ -274,6 +273,7 @@ function RecommendationsContent() {
 
         {/* Mobile swap */}
         <button
+          type="button"
           onClick={handleSwap}
           disabled={!originCode || !destCode}
           className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
@@ -286,7 +286,7 @@ function RecommendationsContent() {
         {validationMsg && (
           <p role="alert" className="text-xs text-red-500 dark:text-red-400 mt-2">{validationMsg}</p>
         )}
-      </div>
+      </form>
 
       {/* Error */}
       {error && (

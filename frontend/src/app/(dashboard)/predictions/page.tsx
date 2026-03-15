@@ -177,7 +177,17 @@ function PredictionsContent() {
       <h1 className="text-2xl font-bold">가격 예측</h1>
 
       {/* Search Form */}
-      <div className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]">
+      <form
+        className="bg-[var(--background)] rounded-xl p-5 border border-[var(--border)]"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const missingMsg = getMissingFieldsMsg(originCode, destCode, date);
+          if (missingMsg) { setValidationMsg(missingMsg); return; }
+          if (originCode === destCode) { setValidationMsg(SAME_ORIGIN_DEST_MSG); return; }
+          setValidationMsg("");
+          handlePredict(originCode, destCode, date);
+        }}
+      >
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] lg:grid-cols-[1fr_auto_1fr_1fr_1fr_auto] gap-3 items-end">
           <AirportSearch
             key={`po-${originKeyRef.current}`}
@@ -188,6 +198,7 @@ function PredictionsContent() {
           />
           <div className="hidden md:flex items-end pb-1">
             <button
+              type="button"
               onClick={handleSwap}
               disabled={!originCode || !destCode}
               className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:border-farenheit-300 transition-colors disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-farenheit-500"
@@ -233,19 +244,7 @@ function PredictionsContent() {
           </div>
           <div className="flex items-end">
             <button
-              onClick={() => {
-                const missingMsg = getMissingFieldsMsg(originCode, destCode, date);
-                if (missingMsg) {
-                  setValidationMsg(missingMsg);
-                  return;
-                }
-                if (originCode === destCode) {
-                  setValidationMsg(SAME_ORIGIN_DEST_MSG);
-                  return;
-                }
-                setValidationMsg("");
-                handlePredict(originCode, destCode, date);
-              }}
+              type="submit"
               disabled={!originCode || !destCode || !date || loading}
               className="w-full py-3 px-6 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
             >
@@ -254,6 +253,7 @@ function PredictionsContent() {
           </div>
         </div>
         <button
+          type="button"
           onClick={handleSwap}
           disabled={!originCode || !destCode}
           className="md:hidden w-full mt-2 py-2 flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--muted)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 transition-colors disabled:opacity-30 text-sm text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-farenheit-500"
@@ -266,7 +266,7 @@ function PredictionsContent() {
         {validationMsg && (
           <p role="alert" className="text-xs text-red-500 dark:text-red-400 mt-2">{validationMsg}</p>
         )}
-      </div>
+      </form>
 
       {/* Error */}
       {error && (
@@ -358,7 +358,7 @@ function PredictionsContent() {
                   className={`h-full rounded-full transition-all ${
                     confScore >= 0.85 ? "bg-green-500" : confScore >= 0.6 ? "bg-yellow-500" : "bg-red-500"
                   }`}
-                  style={{ width: `${Math.round(confScore * 100)}%` }}
+                  style={{ width: `${Math.min(Math.round(confScore * 100), 100)}%` }}
                 />
               </div>
               <span className={`text-xs font-medium tabular-nums ${
@@ -376,7 +376,8 @@ function PredictionsContent() {
             const lows = series.map(f => f.confidence_low).filter(p => Number.isFinite(p) && p > 0);
             const highs = series.map(f => f.confidence_high).filter(p => Number.isFinite(p) && p > 0);
             if (prices.length < 2) return null;
-            const allVals = [...prices, ...lows, ...highs];
+            const allVals = [...prices, ...lows, ...highs].filter(v => Number.isFinite(v) && v > 0);
+            if (allVals.length === 0) return null;
             const minV = Math.min(...allVals);
             const maxV = Math.max(...allVals);
             const range = maxV - minV || 1;
@@ -386,7 +387,7 @@ function PredictionsContent() {
             const cw = W - pad.l - pad.r;
             const ch = H - pad.t - pad.b;
             const toX = (i: number) => pad.l + (i / (series.length - 1)) * cw;
-            const toY = (v: number) => pad.t + (1 - (v - minV) / range) * ch;
+            const toY = (v: number) => { const y = pad.t + (1 - (v - minV) / range) * ch; return Number.isFinite(y) ? y : pad.t + ch / 2; };
 
             const mainLine = series.map((f, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(f.predicted_price).toFixed(1)}`).join(" ");
             const bandTop = series.map((f, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(f.confidence_high).toFixed(1)}`).join(" ");
@@ -409,7 +410,7 @@ function PredictionsContent() {
                   {/* Confidence band */}
                   <path d={`${bandTop} ${bandBot} Z`} className="fill-farenheit-200 dark:fill-farenheit-800 opacity-30 dark:opacity-40" />
                   {/* Main line */}
-                  <path d={mainLine} fill="none" className="stroke-farenheit-500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d={mainLine} fill="none" className="stroke-farenheit-500 dark:stroke-farenheit-400" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   {/* Selected date indicator */}
                   {selectedIdx >= 0 && (
                     <>
@@ -567,6 +568,7 @@ function PredictionsContent() {
             {!heatmapLoading && heatmap && heatmap.cells.length > 0 && (() => {
               const cellMap = new Map(heatmap.cells.map(c => [c.departure_date, c]));
               const prices = heatmap.cells.map(c => c.predicted_price).filter(p => Number.isFinite(p) && p > 0);
+              if (prices.length === 0) return null;
               const minP = Math.min(...prices);
               const maxP = Math.max(...prices);
               const range = maxP - minP || 1;
@@ -597,8 +599,8 @@ function PredictionsContent() {
               let cheapestDate = "", expensiveDate = "";
               let cheapestP = Infinity, expensiveP = -Infinity;
               for (const c of heatmap.cells) {
-                if (c.predicted_price > 0 && c.predicted_price < cheapestP) { cheapestP = c.predicted_price; cheapestDate = c.departure_date; }
-                if (c.predicted_price > expensiveP) { expensiveP = c.predicted_price; expensiveDate = c.departure_date; }
+                if (Number.isFinite(c.predicted_price) && c.predicted_price > 0 && c.predicted_price < cheapestP) { cheapestP = c.predicted_price; cheapestDate = c.departure_date; }
+                if (Number.isFinite(c.predicted_price) && c.predicted_price > 0 && c.predicted_price > expensiveP) { expensiveP = c.predicted_price; expensiveDate = c.departure_date; }
               }
 
               return (
@@ -619,7 +621,8 @@ function PredictionsContent() {
                         return <div key={idx} className="bg-[var(--background)] h-10" />;
                       }
                       const day = Number(cell.departure_date.slice(8));
-                      const ratio = range > 0 ? (cell.predicted_price - minP) / range : 0;
+                      const cellPrice = Number.isFinite(cell.predicted_price) && cell.predicted_price > 0 ? cell.predicted_price : minP;
+                      const ratio = range > 0 ? (cellPrice - minP) / range : 0;
                       const isSelected = cell.departure_date === selectedDate;
                       const isSun = ci === 0;
                       const isSat = ci === 6;
@@ -647,8 +650,8 @@ function PredictionsContent() {
                             isSelected ? "z-10 ring-2 ring-inset ring-farenheit-500" : ""
                           }`}
                           style={{ backgroundColor: `rgba(${r}, ${g}, 60, ${isSelected ? opacity + 0.08 : opacity})` }}
-                          title={`${cell.departure_date}: ${formatPrice(cell.predicted_price)} — 클릭하여 예측 조회`}
-                          aria-label={`${cell.departure_date}: ${formatPrice(cell.predicted_price)}`}
+                          title={`${cell.departure_date}: ${formatPrice(cellPrice)} — 클릭하여 예측 조회`}
+                          aria-label={`${cell.departure_date}: ${formatPrice(cellPrice)}`}
                         >
                           <div className="flex items-center gap-0.5">
                             <span className={`text-[10px] leading-none font-medium ${
@@ -659,15 +662,15 @@ function PredictionsContent() {
                             {holidays.has(cell.departure_date) && (
                               <span className="w-1 h-1 rounded-full bg-orange-400" title={holidays.get(cell.departure_date)} />
                             )}
-                            {cell.departure_date === cheapestDate && range > 0 && (
+                            {cell.departure_date === cheapestDate && minP !== maxP && (
                               <span className="w-1 h-1 rounded-full bg-green-500" title="이 달 최저가" />
                             )}
-                            {cell.departure_date === expensiveDate && range > 0 && (
+                            {cell.departure_date === expensiveDate && minP !== maxP && (
                               <span className="w-1 h-1 rounded-full bg-red-500" title="이 달 최고가" />
                             )}
                           </div>
                           <span className="text-[10px] leading-none font-semibold text-[var(--foreground)] opacity-65 text-right">
-                            {(Math.round(cell.predicted_price) / 10000).toFixed(cell.predicted_price >= 1000000 ? 0 : 1)}
+                            {(Math.round(cellPrice) / 10000).toFixed(cellPrice >= 1000000 ? 0 : 1)}
                             <span className="text-[8px] font-normal">만</span>
                           </span>
                         </div>
@@ -675,7 +678,7 @@ function PredictionsContent() {
                     })}
                   </div>
                   {/* Min/Max summary */}
-                  {range > 0 && (
+                  {minP !== maxP && (
                     <div className="flex items-center justify-between mt-2 px-1 text-[10px] text-[var(--muted-foreground)] flex-wrap gap-y-1">
                       <span className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500" />

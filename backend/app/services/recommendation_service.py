@@ -122,7 +122,7 @@ class RecommendationService:
                 Prediction.valid_until >= now,
                 Prediction.predicted_price.isnot(None),
             )
-            .order_by(Prediction.predicted_price.asc())
+            .order_by(Prediction.predicted_price.asc(), Prediction.departure_date.asc())
             .limit(1)
         )
         lowest = result.scalar_one_or_none()

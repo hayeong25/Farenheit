@@ -15,7 +15,6 @@ class PipelineSettings(BaseSettings):
     TRAVELPAYOUTS_BASE_URL: str = "https://api.travelpayouts.com"
 
     # Collection settings
-    COLLECTION_BATCH_SIZE: int = 10
     MAX_RETRIES: int = 3
 
     model_config = {"env_file": str(PROJECT_ROOT / ".env"), "env_file_encoding": "utf-8", "extra": "ignore"}

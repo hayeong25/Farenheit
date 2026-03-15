@@ -31,15 +31,24 @@ _DURATION_SORT_FALLBACK = 9999
 _SCHEDULE_CACHE_HOURS = 24
 
 
+_MAX_FLIGHT_DURATION_MINUTES = 1080  # 18 hours — HH:MM durations above this are likely cross-timezone errors
+
 def _calc_duration_from_hhmm(dep_hhmm: str, arr_hhmm: str) -> int | None:
-    """Calculate duration in minutes from HH:MM departure and arrival times."""
+    """Calculate duration in minutes from HH:MM departure and arrival times.
+
+    Note: Only accurate for routes where departure and arrival times are in
+    similar timezones. For cross-timezone long-haul routes, the HH:MM difference
+    may not reflect actual flight duration; results exceeding 18h are discarded.
+    """
     try:
         dh, dm = int(dep_hhmm[:2]), int(dep_hhmm[3:5])
         ah, am = int(arr_hhmm[:2]), int(arr_hhmm[3:5])
         diff = (ah * 60 + am) - (dh * 60 + dm)
         if diff < 0:
             diff += 24 * 60  # next day arrival
-        return diff if diff > 0 else None
+        if diff <= 0 or diff > _MAX_FLIGHT_DURATION_MINUTES:
+            return None
+        return diff
     except (ValueError, IndexError):
         return None
 
@@ -183,8 +192,8 @@ class AviationstackClient:
                     dep_scheduled = departure.get("scheduledTime") or ""
                     arr_scheduled = arrival.get("scheduledTime") or ""
 
-                    dep_hm = _extract_time(dep_scheduled) if "T" in dep_scheduled else dep_scheduled[:5]
-                    arr_hm = _extract_time(arr_scheduled) if "T" in arr_scheduled else arr_scheduled[:5]
+                    dep_hm = _extract_time(dep_scheduled) if "T" in dep_scheduled else (dep_scheduled[:5] if len(dep_scheduled) >= 5 else None)
+                    arr_hm = _extract_time(arr_scheduled) if "T" in arr_scheduled else (arr_scheduled[:5] if len(arr_scheduled) >= 5 else None)
 
                     if not flight_iata or not dep_hm or not arr_hm:
                         continue
@@ -302,16 +311,19 @@ class TravelpayoutsClient:
                         if not isinstance(stops_dict, dict):
                             continue
                         for _stops_key, offer in stops_dict.items():
-                            airline = offer.get("airline", "")
-                            fn_raw = offer.get("flight_number")
-                            if airline and fn_raw and airline not in result:
-                                departure_at = offer.get("departure_at", "")
-                                duration_to = offer.get("duration_to")
-                                result[airline] = {
-                                    "flight_number": f"{airline}{fn_raw}",
-                                    "departure_at": departure_at or None,
-                                    "duration_minutes": int(duration_to) if duration_to else None,
-                                }
+                            try:
+                                airline = offer.get("airline", "")
+                                fn_raw = offer.get("flight_number")
+                                if airline and fn_raw and airline not in result:
+                                    departure_at = offer.get("departure_at", "")
+                                    duration_to = offer.get("duration_to")
+                                    result[airline] = {
+                                        "flight_number": f"{airline}{fn_raw}",
+                                        "departure_at": departure_at or None,
+                                        "duration_minutes": int(duration_to) if duration_to else None,
+                                    }
+                            except (ValueError, TypeError):
+                                continue
 
                 # Parse calendar response
                 if isinstance(cal_resp, dict) and cal_resp.get("success"):
@@ -511,10 +523,10 @@ class FlightService:
                         self.db.add_all(new_schedules)
                         await self.db.commit()
                         logger.info(f"Supplemented {len(new_schedules)} schedules: {origin}->{dest}")
+                        cached = list(cached) + new_schedules
                     except Exception as e:
                         logger.error(f"Failed to store supplemental schedules: {e}")
                         await self.db.rollback()
-                    cached = list(cached) + new_schedules
             logger.debug(f"Schedule cache hit: {origin}->{dest} ({len(cached)} flights)")
             return list(cached)
 
@@ -563,11 +575,13 @@ class FlightService:
             airline_iata = entry.get("airline_iata", "")
             dep_time = entry.get("dep_time", "")
             arr_time = entry.get("arr_time", "")
-            if not flight_iata or not dep_time or not arr_time or not airline_iata:
+            if not flight_iata or not dep_time or not arr_time or not airline_iata or len(airline_iata) < 2:
                 continue
             # Extract HH:MM from full datetime or time string
-            dep_hm = _extract_time(dep_time) or dep_time[:5]
-            arr_hm = _extract_time(arr_time) or arr_time[:5]
+            dep_hm = _extract_time(dep_time) or (dep_time[:5] if len(dep_time) >= 5 else None)
+            arr_hm = _extract_time(arr_time) or (arr_time[:5] if len(arr_time) >= 5 else None)
+            if not dep_hm or not arr_hm:
+                continue
             sched = FlightSchedule(
                 origin_code=origin,
                 dest_code=dest,
@@ -838,8 +852,13 @@ class FlightService:
             route_id = route.id
             try:
                 await self.db.commit()
-            except Exception as e:
-                logger.debug(f"Route commit skipped (likely already committed): {e}")
+            except Exception:
+                await self.db.rollback()
+                # Re-query route after rollback (it likely already exists)
+                re = await self.db.execute(
+                    select(Route.id).where(Route.origin_code == origin, Route.dest_code == dest)
+                )
+                route_id = re.scalar_one_or_none()
 
         # Search Travelpayouts API for live results
         offers = await _tp_client.search_flights(
@@ -856,6 +875,15 @@ class FlightService:
             offers = await self._search_from_db(origin, dest, departure_date, cabin_class)
             if offers:
                 data_source = "cached"
+                # Override return_date to match user's request (cached data may have different return_date)
+                for o in offers:
+                    o.return_date = return_date
+                    if not return_date:
+                        o.return_flight_number = None
+                        o.return_departure_time = None
+                        o.return_arrival_time = None
+                        o.return_stops = None
+                        o.return_duration_minutes = None
                 logger.info(f"Search fallback to cache: {origin}->{dest} ({len(offers)} cached offers)")
             else:
                 logger.info(f"No results for {origin}->{dest} on {departure_date} (API + cache empty)")
@@ -996,11 +1024,13 @@ class FlightService:
                 # (common for Asian LCCs: odd=outbound, even=return)
                 fn = o.flight_number
                 al = o.airline_code or ""
-                num_part = fn[len(al):] if fn.startswith(al) else fn[2:]
-                if num_part.isdigit():
-                    next_num = int(num_part) + 1
-                    o.return_flight_number = f"{al}{next_num}"
-                    logger.debug(f"Inferred return flight: {o.flight_number} -> {o.return_flight_number}")
+                if al and fn and fn.startswith(al):
+                    num_part = fn[len(al):]
+                    if num_part.isdigit() and len(num_part) <= 4:
+                        next_num = int(num_part) + 1
+                        if next_num <= 9999:
+                            o.return_flight_number = f"{al}{next_num}"
+                            logger.debug(f"Inferred return flight: {fn} -> {o.return_flight_number}")
 
         # Deduplicate: keep cheapest per (airline, stops, duration bucket)
         offers = self._deduplicate_offers(offers)

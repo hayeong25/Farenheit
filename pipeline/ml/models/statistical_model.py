@@ -30,14 +30,15 @@ class StatisticalPredictor:
 
     # Day-of-week seasonality factors (Mon=0 ... Sun=6)
     # Based on typical flight pricing: weekdays slightly cheaper, weekend departures pricier
+    # Normalized to sum to 7.0 (neutral average = 1.0)
     DOW_FACTORS = {
         0: 0.98,   # Monday - slightly below avg
         1: 0.97,   # Tuesday - cheapest day
         2: 0.98,   # Wednesday - slightly below avg
         3: 1.00,   # Thursday - average
         4: 1.03,   # Friday - slightly above avg
-        5: 1.04,   # Saturday - above avg
-        6: 1.02,   # Sunday - slightly above avg
+        5: 1.03,   # Saturday - above avg
+        6: 1.01,   # Sunday - slightly above avg
     }
 
     def predict(
@@ -112,7 +113,7 @@ class StatisticalPredictor:
         # Volatility (standard deviation of daily changes)
         if n >= 3:
             prev_prices = prices[:-1]
-            safe_mask = prev_prices > 0.01
+            safe_mask = prev_prices > 100
             if safe_mask.any():
                 safe_changes = np.diff(prices)[safe_mask] / prev_prices[safe_mask]
                 safe_changes = safe_changes[np.isfinite(safe_changes)]
@@ -190,6 +191,8 @@ class StatisticalPredictor:
             })
 
         # Use the final forecast day (closest to departure date)
+        if not forecast_series:
+            return None
         mid = forecast_series[-1]
 
         return {
@@ -204,6 +207,14 @@ class StatisticalPredictor:
     @staticmethod
     def _ema(data: np.ndarray, span: int) -> float:
         """Calculate exponential moving average."""
-        weights = np.exp(np.linspace(-1, 0, min(len(data), span)))
-        weights /= weights.sum()
-        return float(np.dot(data[-len(weights):], weights))
+        subset = data[-min(len(data), span):]
+        finite_mask = np.isfinite(subset)
+        if not finite_mask.any():
+            return float("nan")
+        subset = subset[finite_mask]
+        weights = np.exp(np.linspace(-1, 0, len(subset)))
+        w_sum = weights.sum()
+        if w_sum == 0:
+            return float(np.mean(subset))
+        weights /= w_sum
+        return float(np.dot(subset, weights))

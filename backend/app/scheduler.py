@@ -119,5 +119,8 @@ def start_scheduler() -> None:
 def stop_scheduler() -> None:
     """Stop the scheduler."""
     if scheduler.running:
-        scheduler.shutdown(wait=False)
-        logger.info("Scheduler stopped")
+        try:
+            scheduler.shutdown(wait=False)
+            logger.info("Scheduler stopped")
+        except Exception as e:
+            logger.error(f"Scheduler shutdown error: {e}", exc_info=True)

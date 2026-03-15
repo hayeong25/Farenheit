@@ -27,7 +27,7 @@ function buildBookingUrl(
 }
 
 function formatDuration(minutes: number | null | undefined): string {
-  if (minutes === null || minutes === undefined || minutes <= 0) return "";
+  if (minutes === null || minutes === undefined || !Number.isFinite(minutes) || minutes <= 0) return "";
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m > 0 ? `${h}시간 ${m}분` : `${h}시간`;
@@ -298,10 +298,23 @@ function SearchContent() {
       <h1 className="text-2xl font-bold">항공편 검색</h1>
 
       {/* Search Form */}
-      <div className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]">
+      <form
+        className="bg-[var(--background)] rounded-xl p-6 border border-[var(--border)]"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const missingMsg = getMissingFieldsMsg(originCode, destCode, date, { tripType, returnDate });
+          if (missingMsg) { setValidationMsg(missingMsg); return; }
+          if (tripType === "round_trip" && returnDate && returnDate < date) { setValidationMsg(RETURN_BEFORE_DEPART_MSG); return; }
+          if (originCode === destCode) { setValidationMsg(SAME_ORIGIN_DEST_MSG); return; }
+          setValidationMsg("");
+          const retDate = tripType === "round_trip" ? returnDate : undefined;
+          handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
+        }}
+      >
         {/* Trip Type Toggle */}
         <div className="flex gap-1 mb-4 bg-[var(--muted)] rounded-lg p-1 w-fit">
           <button
+            type="button"
             onClick={() => setTripType("round_trip")}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 ${
               tripType === "round_trip"
@@ -312,6 +325,7 @@ function SearchContent() {
             왕복
           </button>
           <button
+            type="button"
             onClick={() => { setTripType("one_way"); setReturnDate(""); }}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-farenheit-500 ${
               tripType === "one_way"
@@ -334,6 +348,7 @@ function SearchContent() {
           />
           <div className="hidden md:flex items-end pb-1">
             <button
+              type="button"
               onClick={handleSwap}
               disabled={!originCode || !destCode}
               className="w-9 h-9 flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] hover:bg-farenheit-50 dark:hover:bg-farenheit-950 hover:border-farenheit-300 transition-colors disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-farenheit-500"
@@ -354,6 +369,7 @@ function SearchContent() {
           />
           {/* Mobile swap */}
           <button
+            type="button"
             onClick={handleSwap}
             disabled={!originCode || !destCode}
             aria-label="출발지와 도착지 바꾸기"
@@ -418,24 +434,7 @@ function SearchContent() {
           </div>
           <div className="flex flex-col items-stretch justify-end">
             <button
-              onClick={() => {
-                const missingMsg = getMissingFieldsMsg(originCode, destCode, date, { tripType, returnDate });
-                if (missingMsg) {
-                  setValidationMsg(missingMsg);
-                  return;
-                }
-                if (tripType === "round_trip" && returnDate && returnDate < date) {
-                  setValidationMsg(RETURN_BEFORE_DEPART_MSG);
-                  return;
-                }
-                if (originCode === destCode) {
-                  setValidationMsg(SAME_ORIGIN_DEST_MSG);
-                  return;
-                }
-                setValidationMsg("");
-                const retDate = tripType === "round_trip" ? returnDate : undefined;
-                handleSearch(originCode, destCode, date, cabinClass, maxStops, sortBy, retDate);
-              }}
+              type="submit"
               disabled={isLoading}
               className="w-full py-3 rounded-lg bg-farenheit-500 text-white font-semibold hover:bg-farenheit-600 hover:shadow-lg hover:shadow-farenheit-500/25 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-farenheit-500 focus:ring-offset-2"
             >
@@ -446,7 +445,7 @@ function SearchContent() {
             )}
           </div>
         </div>
-      </div>
+      </form>
 
       {/* Error */}
       {error && (
@@ -584,6 +583,7 @@ function SearchContent() {
                 const minP = Number(priceHistory.min_price);
                 const avgP = Number(priceHistory.avg_price);
                 const maxP = Number(priceHistory.max_price);
+                if (!Number.isFinite(minP) || !Number.isFinite(avgP) || !Number.isFinite(maxP)) return null;
                 const prices = priceHistory.prices.map(p => Number(p.price_amount)).filter(p => Number.isFinite(p) && p > 0);
                 const currentMin = minPrice;
                 const isGoodPrice = currentMin <= avgP;
@@ -754,7 +754,7 @@ function SearchContent() {
           ) : (
             <div className="space-y-3 animate-stagger">
               {filteredOffers.slice(0, 100).map((offer, idx) => {
-                const isLowest = minPrice > 0 && offer.price_amount === minPrice;
+                const isLowest = Number.isFinite(minPrice) && minPrice > 0 && offer.price_amount === minPrice;
                 const offerKey = `${offer.airline_code}-${offer.flight_number || ""}-${offer.departure_date}-${offer.stops}-${offer.price_amount}-${idx}`;
                 return (
                   <article
