@@ -53,18 +53,25 @@ def _calc_duration_from_hhmm(dep_hhmm: str, arr_hhmm: str) -> int | None:
         return None
 
 
-def _extract_time(dt_str: str) -> str | None:
-    """Extract HH:MM from ISO datetime string.
+def _is_hhmm(s: str) -> bool:
+    """Check if string is valid HH:MM format."""
+    return len(s) == 5 and s[2] == ":" and s[:2].isdigit() and s[3:].isdigit()
 
-    Examples: "2026-04-27T10:25:00+09:00" → "10:25", "2026-06-14T09:00:00" → "09:00"
+
+def _extract_time(dt_str: str) -> str | None:
+    """Extract HH:MM from datetime string.
+
+    Supports both ISO ("2026-04-27T10:25:00+09:00") and
+    space-separated ("2026-03-29 15:05") formats from AirLabs.
     """
-    try:
-        t_idx = dt_str.index("T")
-        hhmm = dt_str[t_idx + 1 : t_idx + 6]  # "HH:MM"
-        if len(hhmm) == 5 and hhmm[2] == ":":
-            return hhmm
-    except (ValueError, IndexError):
-        pass
+    for sep in ("T", " "):
+        try:
+            t_idx = dt_str.index(sep)
+            hhmm = dt_str[t_idx + 1 : t_idx + 6]  # "HH:MM"
+            if _is_hhmm(hhmm):
+                return hhmm
+        except (ValueError, IndexError):
+            continue
     return None
 
 
@@ -578,8 +585,8 @@ class FlightService:
             if not flight_iata or not dep_time or not arr_time or not airline_iata or len(airline_iata) < 2:
                 continue
             # Extract HH:MM from full datetime or time string
-            dep_hm = _extract_time(dep_time) or (dep_time[:5] if len(dep_time) >= 5 else None)
-            arr_hm = _extract_time(arr_time) or (arr_time[:5] if len(arr_time) >= 5 else None)
+            dep_hm = _extract_time(dep_time) or (dep_time[:5] if len(dep_time) >= 5 and _is_hhmm(dep_time[:5]) else None)
+            arr_hm = _extract_time(arr_time) or (arr_time[:5] if len(arr_time) >= 5 and _is_hhmm(arr_time[:5]) else None)
             if not dep_hm or not arr_hm:
                 continue
             sched = FlightSchedule(
