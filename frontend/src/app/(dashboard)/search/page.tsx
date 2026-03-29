@@ -605,37 +605,6 @@ function SearchContent() {
                       </div>
                     </div>
 
-                    {/* Sparkline chart */}
-                    {prices.length >= 2 && (() => {
-                      const sparMin = Math.min(...prices);
-                      const sparMax = Math.max(...prices);
-                      const sparRange = sparMax - sparMin || 1;
-                      const W = 400, H = 48, pad = 4;
-                      const cw = W - pad * 2, ch = H - pad * 2;
-                      const pts = prices.map((p, i) => {
-                        const x = pad + (i / (prices.length - 1)) * cw;
-                        const y = pad + (1 - (p - sparMin) / sparRange) * ch;
-                        return `${x.toFixed(1)},${y.toFixed(1)}`;
-                      });
-                      const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p}`).join(" ");
-                      const area = `${line} L${(pad + cw).toFixed(1)},${H} L${pad},${H} Z`;
-
-                      return (
-                        <div className="mb-3">
-                          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-12" aria-label="가격 추이 스파크라인">
-                            <defs>
-                              <linearGradient id="sparkGrad" x1="0" x2="0" y1="0" y2="1">
-                                <stop offset="0%" stopColor={isGoodPrice ? "#22c55e" : "#f59e0b"} stopOpacity="0.2" />
-                                <stop offset="100%" stopColor={isGoodPrice ? "#22c55e" : "#f59e0b"} stopOpacity="0.02" />
-                              </linearGradient>
-                            </defs>
-                            <path d={area} fill="url(#sparkGrad)" />
-                            <path d={line} fill="none" stroke={isGoodPrice ? "#22c55e" : "#f59e0b"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
-                      );
-                    })()}
-
                     {Number.isFinite(avgP) && avgP > 0 && (() => {
                       const min = prices.length > 0 ? Math.min(...prices) : minP;
                       const max = prices.length > 0 ? Math.max(...prices) : maxP;
