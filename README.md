@@ -41,6 +41,20 @@ farenheit/
 └── scripts/          # Seed scripts (airports, airlines, routes)
 ```
 
+## Screenshots
+
+| 메인 | 검색 |
+|:---:|:---:|
+| ![메인](images/main.png) | ![검색](images/search.png) |
+
+| 가격 예측 | 구매 추천 |
+|:---:|:---:|
+| ![가격 예측](images/prediction.png) | ![구매 추천](images/recommendation.png) |
+
+| 가격 알림 | 대시보드 |
+|:---:|:---:|
+| ![가격 알림](images/alert.png) | ![대시보드](images/dashboard.png) |
+
 ## Features
 
 - **Real-time Flight Search**: Amadeus API integration with deduplication, filters (stops, sort)
@@ -98,7 +112,3 @@ cd frontend && npm install && npm run dev -- -p 3100
 APScheduler → collect_prices (30min) → run_prediction (60min) → check_alerts
                                                                → daily cleanup (4 AM)
 ```
-
-## License
-
-Private
