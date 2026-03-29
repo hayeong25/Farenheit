@@ -307,7 +307,16 @@ function PredictionsContent() {
           {/* Main price */}
           <div className="px-6 pt-6 pb-4 text-center">
             <p className="text-xs text-[var(--muted-foreground)] mb-1">예측 가격</p>
-            <p className="text-3xl sm:text-4xl font-bold tracking-tight">{formatPrice(predPrice!)}</p>
+            <p className="text-3xl sm:text-4xl font-bold tracking-tight">
+              {formatPrice(predPrice!)}
+              {confScore != null && Number.isFinite(confScore) && (
+                <span className={`ml-2 text-sm font-medium ${
+                  confScore >= 0.85 ? "text-green-600 dark:text-green-400" : confScore >= 0.6 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"
+                }`}>
+                  신뢰도 {Math.round(confScore * 100)}%
+                </span>
+              )}
+            </p>
             {prediction.price_direction && prediction.price_direction !== "STABLE" && (
               <p className={`text-sm font-medium mt-1 ${
                 prediction.price_direction === "DOWN" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
@@ -349,96 +358,7 @@ function PredictionsContent() {
             </div>
           )}
 
-          {/* Confidence */}
-          {confScore != null && Number.isFinite(confScore) && (
-            <div className="px-6 pb-5 flex items-center gap-3">
-              <span className="text-xs text-[var(--muted-foreground)] shrink-0">신뢰도</span>
-              <div className="flex-1 h-1.5 rounded-full bg-[var(--muted)]">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    confScore >= 0.85 ? "bg-green-500" : confScore >= 0.6 ? "bg-yellow-500" : "bg-red-500"
-                  }`}
-                  style={{ width: `${Math.min(Math.round(confScore * 100), 100)}%` }}
-                />
-              </div>
-              <span className={`text-xs font-medium tabular-nums ${
-                confScore >= 0.85 ? "text-green-600 dark:text-green-400" : confScore >= 0.6 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"
-              }`}>
-                {Math.round(confScore * 100)}%
-              </span>
-            </div>
-          )}
 
-          {/* Forecast Series Chart */}
-          {prediction.forecast_series && prediction.forecast_series.length > 1 && (() => {
-            const series = prediction.forecast_series;
-            const prices = series.map(f => f.predicted_price).filter(p => Number.isFinite(p) && p > 0);
-            const lows = series.map(f => f.confidence_low).filter(p => Number.isFinite(p) && p > 0);
-            const highs = series.map(f => f.confidence_high).filter(p => Number.isFinite(p) && p > 0);
-            if (prices.length < 2) return null;
-            const allVals = [...prices, ...lows, ...highs].filter(v => Number.isFinite(v) && v > 0);
-            if (allVals.length === 0) return null;
-            const minV = Math.min(...allVals);
-            const maxV = Math.max(...allVals);
-            const range = maxV - minV || 1;
-            const W = 600;
-            const H = 120;
-            const pad = { t: 10, b: 20, l: 0, r: 0 };
-            const cw = W - pad.l - pad.r;
-            const ch = H - pad.t - pad.b;
-            const toX = (i: number) => pad.l + (i / (series.length - 1)) * cw;
-            const toY = (v: number) => { const y = pad.t + (1 - (v - minV) / range) * ch; return Number.isFinite(y) ? y : pad.t + ch / 2; };
-
-            const mainLine = series.map((f, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(f.predicted_price).toFixed(1)}`).join(" ");
-            const bandTop = series.map((f, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(f.confidence_high).toFixed(1)}`).join(" ");
-            const bandBot = [...series].reverse().map((f, i) => `L${toX(series.length - 1 - i).toFixed(1)},${toY(f.confidence_low).toFixed(1)}`).join(" ");
-
-            // Label dates: show first, middle, last
-            const labelIdxs = [0, Math.floor(series.length / 2), series.length - 1];
-            const formatShortDate = (d: string) => {
-              const parts = d.split("-");
-              return parts.length >= 3 ? `${Number(parts[1])}/${Number(parts[2])}` : d;
-            };
-
-            // Find index of current selected date for highlight
-            const selectedIdx = series.findIndex(f => f.date === date);
-
-            return (
-              <div className="px-6 pb-5">
-                <p className="text-xs text-[var(--muted-foreground)] mb-2">가격 예측 추이</p>
-                <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" aria-label="가격 예측 추이 차트">
-                  {/* Confidence band */}
-                  <path d={`${bandTop} ${bandBot} Z`} className="fill-farenheit-200 dark:fill-farenheit-800 opacity-30 dark:opacity-40" />
-                  {/* Main line */}
-                  <path d={mainLine} fill="none" className="stroke-farenheit-500 dark:stroke-farenheit-400" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  {/* Selected date indicator */}
-                  {selectedIdx >= 0 && (
-                    <>
-                      <line
-                        x1={toX(selectedIdx)} y1={pad.t}
-                        x2={toX(selectedIdx)} y2={H - pad.b}
-                        className="stroke-farenheit-400 dark:stroke-farenheit-600" strokeWidth="1" strokeDasharray="3,3" opacity="0.5"
-                      />
-                      <circle
-                        cx={toX(selectedIdx)}
-                        cy={toY(series[selectedIdx].predicted_price)}
-                        r="4"
-                        className="fill-farenheit-500 stroke-[var(--background)]"
-                        strokeWidth="2"
-                      />
-                    </>
-                  )}
-                  {/* Date labels */}
-                  {labelIdxs.map(i => (
-                    <text key={i} x={toX(i)} y={H - 2} textAnchor={i === 0 ? "start" : i === series.length - 1 ? "end" : "middle"} className="fill-[var(--muted-foreground)]" fontSize="9">{formatShortDate(series[i].date)}</text>
-                  ))}
-                  {/* Price labels: min and max */}
-                  <text x={W - 2} y={toY(maxV) + 3} textAnchor="end" className="fill-[var(--muted-foreground)]" fontSize="9">{formatPrice(Math.round(maxV))}</text>
-                  <text x={W - 2} y={toY(minV) - 2} textAnchor="end" className="fill-[var(--muted-foreground)]" fontSize="9">{formatPrice(Math.round(minV))}</text>
-                </svg>
-              </div>
-            );
-          })()}
 
           {/* Quick action links */}
           <div className="px-6 pb-5 flex items-center gap-3 flex-wrap">
